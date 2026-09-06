@@ -341,9 +341,9 @@ def compare_signals(
 ) -> None:
     """Score each signal mix side by side.
 
-    This is the measurement the section is really about, and it is worth running
-    before believing anything anyone says about co-occurrence — including this
-    repo's own docstrings.
+    Read the warning this prints before quoting any of these numbers. On a graph
+    that has already been through `disambiguate.py` the comparison is biased in a
+    known direction — see the module docstring of `graphrank/resolution.py`.
     """
     table = Table(
         title="What each signal actually contributes",
@@ -383,6 +383,19 @@ def compare_signals(
         )
     console.print(table)
 
+    if _already_disambiguated():
+        console.print(
+            "  [bold yellow]![/] This graph has already been through "
+            "[bold]disambiguate.py[/] — entity nodes carry `aliases`, so the "
+            "duplicates left are\n    the ones the original run missed. That run's "
+            "Jaro-Winkler and metaphone branches were\n    inverted and never fired, "
+            "while its co-occurrence branch worked and swept the corpus.\n"
+            "  [bold yellow]![/] The numbers above therefore flatter the string "
+            "ladder and penalise co-occurrence, by construction.\n"
+            "    Rebuild through step 9 of build_graph.py, stopping before "
+            "disambiguation, to measure this honestly.\n"
+        )
+
     # The comparison that matters: does the graph signal reach anything the
     # string ladder cannot?
     string_alias = {p.key for p in res.filter_pairs(pairs, signals={"string", "alias"})}
@@ -408,6 +421,25 @@ def compare_signals(
     for pair in unique_hits[:8]:
         console.print(f"    [green]✓[/] {pair.describe()}")
     console.print()
+
+
+def _already_disambiguated() -> bool:
+    """Has disambiguate.py run on this graph?
+
+    `merge_component` writes an `aliases` array onto every surviving node, and
+    phase 2 deletes the `IS_SAME_ENTITY_AS` relationships behind it. A graph with
+    populated alias arrays and no such relationships has been through the merge.
+    """
+    row = res.read_query(
+        """
+        CALL { MATCH (n) WHERE NOT n:Chunk AND n.aliases IS NOT NULL
+                             AND size(n.aliases) > 0
+               RETURN count(n) AS merged }
+        CALL { MATCH ()-[r:IS_SAME_ENTITY_AS]->() RETURN count(r) AS pending }
+        RETURN merged, pending
+        """
+    )[0]
+    return row["merged"] > 0 and row["pending"] == 0
 
 
 # ── Roster check ──────────────────────────────────────────────────────────────

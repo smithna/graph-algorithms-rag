@@ -55,46 +55,48 @@ The three signals
 ``alias``         shared alias arrays, or one node's alias matching the other's
                   canonical name. Receipts from resolution passes already run.
 
-What the co-occurrence signal actually does here
-────────────────────────────────────────────────
-Measured on this corpus, for Person, against the identity gold set in
-`questions/corps_members.yaml` (run `demo_resolution.py --compare-signals` to
-reproduce):
+Careful with `--compare-signals` on the shipped dump
+───────────────────────────────────────────────────
+Running the signal comparison against the corps-of-discovery release dump does
+**not** tell you what each signal is worth in general, and the trap is subtle
+enough to be worth spelling out.
 
-    signals              pairs    TP    FP   precision   recall   largest WCC
-    string + alias         901    64    19        0.77     0.25            54
-    co-occurrence only     252     2   136        0.01     0.01            78
-    all three            1,147    64   154        0.29     0.25           249
+That dump is the *post-pipeline* graph: `build_graph.py` runs `disambiguate.py`
+twice before cutting it. So the duplicates still present are the ones the
+original run failed to find — and the original run's signals were not equally
+alive. Because of the inverted comparison documented at `JARO_CUTOFF` above, its
+Jaro-Winkler and double-metaphone branches never fired at all, while its
+co-occurrence branch (cosine, correctly thresholded) worked fine and swept the
+corpus.
 
-Co-occurrence proposed 246 pairs the string ladder did not. **Zero** of them
-were real duplicates. Adding the signal left recall exactly where it was and
-cut precision from 0.77 to 0.29. No support floor or similarity cutoff rescues
-it — sweeping both to their useful limits never produces a unique true positive.
+What is left is therefore close to *the complement of what co-occurrence can
+find*, handed to a string ladder that was never allowed to run. Measured there,
+co-occurrence looks worthless and the string ladder looks excellent. Both
+readings are artifacts of the order the signals ran in during the build, not
+properties of the signals.
 
-The reason is structural, and it is more interesting than the result:
+To measure this honestly, run against a graph built through step 9 of
+`build_graph.py` and stopped before `disambiguate.py`, scored against the
+identity gold set in `questions/corps_members.yaml` — which is independent of
+the pipeline, having been assembled from observed surface forms and the
+historical roster rather than from what the pipeline chose to merge.
 
-    Two spellings of one person almost never occur in the same chunk.
+One structural fact does hold regardless of that experiment, and it is a reason
+to expect co-occurrence to be weak *on this particular corpus*:
+
+    Two spellings of one person rarely occur in the same chunk.
 
 A scribe writing an entry picks one spelling and uses it throughout, so
-"DREWYER" and "GEORGE DROUILLARD" have nearly disjoint chunk sets. Their
-co-occurrence *neighbourhoods* are therefore built from different evidence —
-and worse, every member of the corps co-occurs with every other member, so the
-neighbourhoods that do overlap overlap for everyone. The signal cannot separate
-"same person" from "same expedition". `MERIWETHER LEWIS` and `WILLIAM CLARK`
+"DREWYER" and "GEORGE DROUILLARD" have largely disjoint chunk sets. Compounding
+it, every member of the corps co-occurs with every other, so the neighbourhoods
+that do overlap overlap for everyone — `MERIWETHER LEWIS` and `WILLIAM CLARK`
 have nearly parallel co-occurrence vectors, and only the string signal's
-disagreement keeps them apart.
+disagreement keeps them apart. Expecting a result is not the same as having
+measured it.
 
-So the honest claim for this corpus is narrower than "co-occurrence finds
-duplicates strings miss": co-occurrence is a **recall instrument for corpora
-where the same entity is named differently in the same context** — cross-document
-entity resolution, say, where two source systems describe the same customer in
-the same transaction. This corpus is not that shape, and the demo says so.
-
-The algorithm is not wrong and node similarity is not useless. It is answering
-the question it was asked, on data where that question does not discriminate.
-The same algorithm pointed at a different question — "which chunks share
-entities with this chunk" — does real work at query time; that is
-`graphrank/cooccurrence.py`.
+None of this touches the query-time use of the same algorithm. "Which chunks
+share entities with this chunk" is a different question, it is not affected by
+any of the above, and it does real work — that is `graphrank/cooccurrence.py`.
 """
 
 from __future__ import annotations

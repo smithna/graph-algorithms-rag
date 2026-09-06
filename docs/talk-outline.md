@@ -17,7 +17,7 @@ before the section's slides can be written honestly.
 | 1 | What is a graph? | none | not started |
 | 2 | What is Graph RAG / evidence | none (sources gathered) | not started |
 | 3 | Roadmap | none | not started |
-| 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ **built and verified** — but see *Section 4 findings*, the thesis changed |
+| 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ code built and verified — ⚠️ **the co-occurrence measurement is retracted**, see *Section 4 findings*; needs a pre-disambiguation rerun |
 | 5 | Ranking is wrong → personalized PageRank | `pagerank.py`, `demo_pagerank.py` | ✅ runs live; still needs hub visibility |
 | 6 | Context is redundant → communities | `communities.py`, `demo_communities.py` | ✅ runs live; still needs Leiden + conductance |
 | 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | ✅ runs live (needed a resolution fix — see below) |
@@ -70,10 +70,11 @@ not section 4, and no benchmark number should be quoted until it runs clean.
 
 ### Section 4 findings — read before writing these slides
 
-Section 4's code is built, runs read-only against the live database, and
-produces real numbers. Two of those numbers change the argument the outline
-below currently makes. **The section is stronger for it, but it is a different
-section than the one drafted.**
+Section 4's code is built and runs read-only against the live database.
+Finding #1 below is solid and changes the section for the better. Finding #2 was
+reported as a result and is **retracted** — the experiment was run on a graph
+that had already been disambiguated, which biases it. The rerun that would
+settle it is specified there.
 
 #### 1. The string ladder in `disambiguate.py` is inverted
 
@@ -97,10 +98,70 @@ the function name is the trap, and the fix is `1 - x`. Corrected in
 
 *(The corps repo still has the inverted version. Worth a PR, separately.)*
 
-#### 2. Co-occurrence similarity does not find duplicates in this corpus
+#### 2. ⚠️ RETRACTED — "co-occurrence finds no duplicates" is not supported
 
-Measured, Person label, against the identity gold set
-(`demo_resolution.py --compare-signals`):
+**Do not put this on a slide.** The measurement below is real, but the
+experiment that produced it is biased, and the bias runs entirely in one
+direction. Nathan caught this; the reasoning is worth keeping because the
+correct experiment still has to be run.
+
+**The dump is the post-pipeline graph.** `build_graph.py` runs
+`disambiguate.py` twice (steps 10–13) before the release dump was cut. Every
+Person node carries an `aliases` array and 467 Person surface forms have
+already been absorbed; there are zero `IS_SAME_ENTITY_AS` relationships left,
+because phase 2 deletes them after merging.
+
+**And the original run's signals were not equally functional.** Because of
+finding #1 above:
+
+| signal, during the original build | state |
+|---|---|
+| co-occurrence (`nodeSimilarity`, cosine) | **worked** — cosine is a real similarity, correctly thresholded |
+| string: Jaro-Winkler branch | **dead** — inverted comparison |
+| string: double-metaphone branch | **dead** — inverted comparison |
+| string: token containment | worked (no Jaro-Winkler involved) |
+| alias equality | worked |
+
+So co-occurrence had first pass over the whole corpus and harvested everything
+it could reach; the Jaro-Winkler and metaphone signals never fired at all. What
+survives into the dump is, close to by construction, *the set of duplicates
+co-occurrence could not find and the string ladder was never allowed to try.*
+
+Measuring on that residue asks co-occurrence to find what it has already
+exhausted, while giving the string ladder an untouched field. It is rigged, and
+the direction of the rigging exactly produces the result I reported.
+
+The one number that is not biased this way: replaying the **corrected** string
+ladder against the 451 canonical/alias pairs the pipeline actually merged, it
+recovers **363 of them (80%)** — Jaro-Winkler 146, metaphone 308, containment
+49. So at most ~20% of the merges the full pipeline made needed a non-string
+signal, and some of that 20% is junk (`FOUR MEN`/`4 MEN`) rather than semantics.
+That bounds the room co-occurrence had to be load-bearing; it does not measure
+whether it filled it.
+
+*(Also visible in that replay: `GEORGE SHANNON` is an alias **on** the
+`GEORGE DROUILLARD` node. The shipped pipeline made that false merge itself, so
+the alias arrays carry the pipeline's mistakes and are not clean ground truth
+either.)*
+
+**The experiment that would settle it** is to rebuild the graph through step 9
+and stop before `disambiguate.py`, then run `--compare-signals` on that
+pre-disambiguation graph, scored against the hand-built identity gold set in
+`questions/corps_members.yaml` — which is independent of the pipeline, since it
+was assembled from observed surface forms and the historical roster rather than
+from what the pipeline chose to merge. Cost: `extract.py` over 2,913 chunks
+with gpt-4o-mini at concurrency 5, roughly $2–4 and 20–45 minutes. Fully
+reversible — `data/lewis-clark-graphrag.dump` is on disk, so the current graph
+can be restored afterwards.
+
+Until that runs, section 4 should claim **nothing** about co-occurrence's value
+for entity resolution in either direction.
+
+---
+
+The biased measurement, kept for reference — Person label, against the identity
+gold set (`demo_resolution.py --compare-signals`), on the post-disambiguation
+graph:
 
 | signals | pairs | TP | FP | precision | recall | largest WCC |
 |---|---|---|---|---|---|---|
@@ -108,40 +169,26 @@ Measured, Person label, against the identity gold set
 | co-occurrence only | 252 | 2 | 136 | 0.01 | 0.01 | 78 |
 | all three | 1,147 | 64 | 154 | 0.29 | 0.25 | 249 |
 
-Co-occurrence proposed **246 pairs the string ladder did not, and zero of them
-were real duplicates.** Adding the signal left recall exactly where it was and
-cut precision from 0.77 to 0.29. Sweeping the support floor (≥3, ≥5, ≥10
-mentions) and the cosine cutoff (0.6, 0.8, 0.9) never produces a unique true
-positive.
+On this residue, co-occurrence proposed 246 pairs the string ladder did not and
+none were real duplicates. **That is a fact about the residue, not about the
+signal.** See the retraction above for why the two are not the same claim.
 
-The reason is structural and is the better talk beat:
+One observation that does survive independently, because it is structural
+rather than measured: two spellings of one person rarely share a chunk, since a
+scribe picks one spelling per entry and uses it throughout. `DREWYER` (265
+mentions) and `GEORGE DROUILLARD` (63) have largely disjoint chunk sets. That is
+a reason to *expect* co-occurrence to struggle here, and it is worth saying —
+but expecting a result and having measured it are different things, and only one
+of them belongs on a slide.
 
-> **Two spellings of one person almost never occur in the same chunk.**
+The query-time `cooccurrence` strategy is unaffected by any of this. It answers
+a different question ("which chunks share entities with this chunk") and on
+`shoshone-horses` it beat vector by 25 points of recall at 22 ms. That result
+stands on its own and belongs in section 8's benchmark.
 
-A scribe picks one spelling per entry and uses it throughout, so `DREWYER` (265
-mentions) and `GEORGE DROUILLARD` (63) have nearly disjoint chunk sets. Worse,
-every member of the corps co-occurs with every other member, so the
-neighbourhoods that *do* overlap overlap for everyone. The signal cannot
-separate "same person" from "same expedition" — `MERIWETHER LEWIS` and
-`WILLIAM CLARK` have near-parallel co-occurrence vectors and only the string
-signal's disagreement keeps them apart.
-
-**What to do with the section.** The honest version is narrower and more
-useful than "you have more information than you think":
-
-- Co-occurrence is a recall instrument for corpora where **the same entity is
-  named differently in the same context** — two source systems describing the
-  same customer on the same transaction. The journals are not that shape.
-- Say that out loud. It is the same move as the section 8 "maybe you don't need
-  this" slide and the section 2 conflict-of-interest disclosure, and it is what
-  makes the rest of the talk credible.
-- The algorithm is not wrong. It answered the question it was asked on data
-  where that question does not discriminate. **The same algorithm pointed at a
-  different question does real work** — that is the query-time `cooccurrence`
-  strategy, which is unaffected and still belongs in section 8's benchmark.
-
-This also strengthens the section 10 takeaway: *measure on your own corpus*
-now has a first-hand example where the presenter's own prior was wrong.
+Whatever the rerun shows, the section 10 takeaway *measure on your own corpus*
+now has a first-hand example attached — including the part where the first
+measurement was set up wrong.
 
 #### 3. Transitive closure is the sharpest demo material
 
@@ -316,8 +363,9 @@ catches it (XPN vs XRPN, JW ≈ 0.925). Show the ladder of string signals — bu
 frame it as a losing battle, because it is.
 
 **You have more information than you think — and then you measure it.**
-⚠️ *Rewritten after building the code. See "Section 4 findings" above for the
-numbers; the original claim did not survive contact with the corpus.*
+⚠️ *Open question. An earlier draft of these notes claimed the measurement
+refuted this; that claim is retracted — see "Section 4 findings" above. Do not
+write this part of the section until the pre-disambiguation rerun has happened.*
 
 The intuition is reasonable: two names appearing alongside the same people,
 places and dates are probably the same entity, and that signal is already in
@@ -327,14 +375,16 @@ the graph at zero token cost.
 - `gds.nodeSimilarity.filtered` — cosine over co-occurrence vectors, same-label
 - Union the graph signal with the string and alias signals
 
-Then show the measurement, live: on these journals co-occurrence adds **zero**
-true positives over the string ladder and drops precision from 0.77 to 0.29,
-because two spellings of one person almost never share a chunk, and everyone
-in the corps co-occurs with everyone else. Name the corpus shape it *does*
-work on — the same entity named differently in the same context — and move on.
+Then show the measurement, live — whatever it turns out to be. There is a real
+structural reason to expect co-occurrence to struggle on *this* corpus (a scribe
+uses one spelling per entry, so two spellings of one person rarely share a
+chunk), and a real reason to expect it to work on corpora shaped differently
+(the same entity named differently in the same context — two systems describing
+one customer on one transaction).
 
-This is the most valuable ninety seconds in the talk. Everyone in the room has
-shipped a feature on an intuition like this one.
+Which of those the journals actually are is not yet established. Run
+`demo_resolution.py --compare-signals` on a pre-disambiguation graph first, then
+write this part.
 
 **WCC, and what it is actually for.** Sharpen this, because it's usually taught
 wrong: WCC answers *"are these connected at all"*, not *"are these a topic."*
