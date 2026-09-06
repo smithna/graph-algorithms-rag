@@ -24,6 +24,7 @@ before the section's slides can be written honestly.
 | 8 | Does this help? | `benchmark.py`, `metrics.py` | written, unverified; gold labels unchecked |
 | 9 | How to implement | docs only | not started |
 | 10 | Takeaways | none | not started |
+| — | **Step 6: the deck** | reveal.js, vendored offline | not started — blocked until demos run and numbers exist |
 
 **Nothing in this repo has been executed against a live database yet.** Every
 timing estimate below is provisional, and the gold labels in
@@ -379,8 +380,28 @@ labels (they are currently unverified). Add markdown table output to
 `benchmark.py`. Run it for real numbers.
 
 **Step 6 — The deck.** Only after the demos have run and the numbers exist.
-Match the existing dark theme (`#0D1B2A` / `#018BFF` / Calibri / 10×5.625in) so
-it reads as a sequel.
+
+**Format: reveal.js, vendored for offline use.** Decided deliberately over
+PPTX:
+
+- Speaker view carries the notes *and* a running timer, which is what makes the
+  per-section minute budgets above usable in rehearsal
+- Real syntax highlighting for the Cypher and GDS calls, which are most of
+  sections 4–7
+- Diagrams as inline SVG — editable as markup rather than redrawn
+- Prints to PDF if KCDC wants slides afterward
+
+**Vendor reveal.js into the repo. Do not load it from a CDN.** The deck has to
+open from a local file with no network, because conference wifi is not a
+dependency worth taking. Publish an Artifact copy alongside it for reviewing
+between sessions, but the local file is what gets presented from.
+
+Match last year's dark theme so it reads as a sequel: background `#0D1B2A`,
+panel `#152235`, accent `#018BFF`, highlight `#00CC76`, body text `#E8EDF2`,
+muted `#7A8FA6`, Calibri, 16:9.
+
+Nathan does not plan to hand-edit the deck, so optimise for quality over
+round-trip editability.
 
 ## Verification
 
