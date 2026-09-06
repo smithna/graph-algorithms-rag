@@ -57,22 +57,22 @@ The three signals
 
 What each signal is actually worth
 ─────────────────────────────────
-Measured on a purpose-built pre-disambiguation graph (see "Which database to
-measure on" below), Person label, against the identity gold set in
+Measured on `rawluna`, the canonical pre-disambiguation baseline (see "Which
+database to measure on" below), Person label, against the identity gold set in
 `questions/corps_members.yaml`:
 
     signals              pairs    TP    FP   precision   recall
-    string + alias         915    47    13        0.78     0.21
-    co-occurrence only     207     2   129        0.02     0.01
-    all three            1,112    48   139        0.26     0.22
+    string + alias         802    29     8        0.78     0.16
+    co-occurrence only     323     1   175        0.01     0.01
+    all three            1,116    30   180        0.14     0.17
 
 Taken at face value the co-occurrence row is damning: 2 right, 129 wrong. As a
 *decision* procedure it is useless, and it stays useless at every support floor
 and similarity cutoff worth trying.
 
-But it is not a decision procedure. Run the adjudicator over exactly those 131
-scoreable pairs and it rejects 129 — every false positive, no true ones —
-leaving precision 1.00. And one of the two survivors is:
+But it is not a decision procedure. Run the adjudicator over exactly those 176
+scoreable pairs and it rejects 175 — every false positive, no true ones —
+leaving precision 1.00. The single survivor is:
 
     INDIAN WOMAN  ~  SACAGAWEA
 
@@ -85,9 +85,9 @@ So the shape of the thing is:
     recall is what the algorithm is for
     precision is what the adjudicator is for
 
-795 Person nodes make 315,615 possible pairs. The three signals propose 1,112 of
-them — a 284x cut — and gpt-4o-mini cleans up what is left for fractions of a
-cent. A signal with 1.5% precision is not a broken signal when something
+811 Person nodes make 328,455 possible pairs. The three signals propose 1,116 of
+them — a 294x cut — and the adjudicator cleans up what is left for fractions of
+a cent. A signal with 1.5% precision is not a broken signal when something
 downstream can afford to filter it. That is why this module returns candidates
 and verdicts as *values* and decides nothing itself.
 
@@ -103,7 +103,8 @@ complement of what co-occurrence can find, handed to a string ladder that never
 got to run. Measured there, co-occurrence looks worthless *by construction* —
 and the numbers above are meaningfully different from the ones that graph gives.
 
-`demo_resolution.py --compare-signals` detects this and says so.
+`demo_resolution.py --compare-signals` detects this and says so. Measure on
+`rawluna` instead: `NEO4J_DATABASE=rawluna python scripts/demo_resolution.py`.
 
 Note also that there is no fully unresolved state in this pipeline: `extract.py`
 resolves as it extracts, assigning a canonical name per mention and filing the
@@ -305,17 +306,70 @@ WHERE id(e1) < id(e2)
   AND e2.canonicalName IS NOT NULL
 WITH e1, e2, count(DISTINCT c) AS chunkCount
 WHERE chunkCount >= $minCount
+WITH e1, e2, chunkCount,
+     count { (e1)-[:MENTIONED_IN]->(:Chunk) } AS df1,
+     count { (e2)-[:MENTIONED_IN]->(:Chunk) } AS df2
 RETURN gds.graph.project(
     $graphName, e1, e2,
     {
         sourceNodeLabels: labels(e1),
         targetNodeLabels: labels(e2),
         relationshipType: 'MENTIONED_WITH',
-        relationshipProperties: {chunkCount: chunkCount}
+        relationshipProperties: {
+            chunkCount: toFloat(chunkCount),
+            idfWeighted: CASE WHEN df1 = 0 OR df2 = 0 THEN 0.0 ELSE
+                toFloat(chunkCount)
+                * log(1.0 + toFloat($totalChunks) / df1)
+                * log(1.0 + toFloat($totalChunks) / df2)
+            END
+        }
     },
     {undirectedRelationshipTypes: ['MENTIONED_WITH']}
 )
 """
+
+#: Which relationship property `cooccurrence_candidates` scores on.
+#:
+#: ``chunkCount``   raw shared-chunk count, as the source pipeline used
+#: ``idfWeighted``  the same count discounted by both endpoints' inverse chunk
+#:                  frequency
+#:
+#: The IDF variant exists because of what the one true positive on this corpus
+#: turned out to be made of. `SACAGAWEA` and `INDIAN WOMAN` never share a chunk;
+#: they match through four shared neighbours, and **79% of the resulting cosine
+#: comes from MERIWETHER LEWIS and WILLIAM CLARK** — who co-occur with nearly
+#: everyone and therefore say almost nothing about identity. Only 22% comes from
+#: TOUSSAINT CHARBONNEAU (her husband) and HIDATSA (her nation), which are the
+#: neighbours that actually identify her.
+#:
+#: That is the same hub trap the retrieval projection already defuses, one stage
+#: earlier: `projection.py` IDF-weights its MENTIONS edges precisely so a shared
+#: mention of Beaverhead Rock outweighs a shared mention of Lewis.
+#:
+#: **Measured, it does not help — and that is the interesting part.** Under IDF
+#: the composition flips as intended: Charbonneau goes from 16.5% of the cosine
+#: to 48.4% and the two captains fall from 78.7% to 43.6%, so the match is made
+#: for the right reason. But precision is unchanged (0.006 -> 0.007 on
+#: `rawluna`), a third fewer candidates buys nothing, on `rawgraph` it costs a
+#: true positive, and it drags this very match from 0.647 down to 0.501 against
+#: a 0.5 cutoff.
+#:
+#: The reason is that the two algorithms fail differently. PageRank's problem is
+#: hubs — a ubiquitous node creates shortcuts, and down-weighting it fixes that.
+#: Node similarity's problem here is *sparsity*: SACAGAWEA has five neighbours,
+#: and cosine over five dimensions is high whenever three or four coincide, no
+#: matter how they are weighted. Reweighting redistributes evidence; it does not
+#: create any.
+#:
+#: So `chunkCount` stays the default. Both remain available because the negative
+#: result is worth being able to reproduce.
+#:
+#: Note the arithmetic works out cleanly for cosine. Weighting an edge by
+#: ``idf(e1) * idf(e2)`` scales each node's whole vector by its own IDF, and
+#: cosine is scale-invariant — so a node's own IDF cancels, and what survives is
+#: exactly a discount on each *shared neighbour*. One symmetric edge weight gets
+#: the asymmetric effect we want.
+COOCCURRENCE_WEIGHTS = ("chunkCount", "idfWeighted")
 
 
 def drop_graph(name: str) -> None:
@@ -340,18 +394,30 @@ def build_cooccurrence_graph():
     client with `QueryMode.READ`.
     """
     drop_graph(COOCCURRENCE_GRAPH)
+    total = read_query("MATCH (c:Chunk) RETURN count(c) AS n")[0]["n"]
     graph, _ = gds().graph.cypher.project(
         COOCCURRENCE_PROJECTION,
         graphName=COOCCURRENCE_GRAPH,
         minCount=MIN_CHUNK_COUNT,
+        totalChunks=total,
     )
     return graph
 
 
 def cooccurrence_candidates(
-    graph, inventory: dict[int, EntityRef], label: str
+    graph,
+    inventory: dict[int, EntityRef],
+    label: str,
+    *,
+    weight: str = "chunkCount",
 ) -> list[CandidatePair]:
-    """Filtered cosine similarity over co-occurrence vectors, same-label only."""
+    """Filtered cosine similarity over co-occurrence vectors, same-label only.
+
+    ``weight`` selects which edge property to score on — see
+    :data:`COOCCURRENCE_WEIGHTS`.
+    """
+    if weight not in COOCCURRENCE_WEIGHTS:
+        raise ValueError(f"weight must be one of {COOCCURRENCE_WEIGHTS}")
     frame = gds().nodeSimilarity.filtered.stream(
         graph,
         sourceNodeFilter=label,
@@ -359,7 +425,7 @@ def cooccurrence_candidates(
         topK=TOP_K,
         similarityCutoff=COSINE_CUTOFF,
         similarityMetric="COSINE",
-        relationshipWeightProperty="chunkCount",
+        relationshipWeightProperty=weight,
     )
 
     pairs: list[CandidatePair] = []
@@ -494,6 +560,7 @@ def candidates(
     inventory: dict[int, EntityRef] | None = None,
     use_cooccurrence: bool = True,
     apply_person_gate: bool = True,
+    weight: str = "chunkCount",
 ) -> list[CandidatePair]:
     """All candidate duplicate pairs for one label, unioned across signals.
 
@@ -507,7 +574,7 @@ def candidates(
 
     proposed: list[CandidatePair] = []
     if use_cooccurrence and graph is not None:
-        proposed += cooccurrence_candidates(graph, inventory, label)
+        proposed += cooccurrence_candidates(graph, inventory, label, weight=weight)
     proposed += string_candidates(inventory, label)
     proposed += alias_candidates(inventory, label)
 

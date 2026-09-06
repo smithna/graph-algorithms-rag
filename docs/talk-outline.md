@@ -73,16 +73,20 @@ not section 4, and no benchmark number should be quoted until it runs clean.
 Section 4's code is built, runs read-only, and has been measured against three
 independently built graphs:
 
-| database | what it is |
-|---|---|
-| `neo4j` | the demo graph — restored dump, fully disambiguated |
-| `rawgraph` | pre-disambiguation, `gpt-4o-mini` extraction |
-| `rawluna` | pre-disambiguation, `gpt-5.6-luna` extraction, 39% more mention edges |
+| database | what it is | status |
+|---|---|---|
+| `neo4j` | the demo graph — restored dump, fully disambiguated | **keep** — what the demos run against |
+| `rawluna` | pre-disambiguation, `gpt-5.6-luna` extraction | **keep** — the canonical measurement baseline |
+| `rawgraph` | pre-disambiguation, `gpt-4o-mini` extraction | retired — superseded by `rawluna` |
 
-All findings below are settled and the co-occurrence result replicates across
-all three. Finding #2 went through a retraction on the way — the first version
-of that experiment was biased — and the history is kept, because it is the most
-useful thing in this section.
+**`rawluna` is the baseline for all measurement from here on.** `rawgraph` was
+an earlier build on the stale extraction model; its numbers are retained below
+only where they establish that a result *replicates* across independent builds,
+which is evidence worth keeping. Nothing new should be measured on it.
+
+All findings below are settled. Finding #2 went through a retraction on the way
+— the first version of that experiment was biased — and the history is kept,
+because it is the most useful thing in this section.
 
 #### 1. The string ladder in `disambiguate.py` is inverted
 
@@ -126,27 +130,30 @@ got to run. Measuring there made co-occurrence look worthless by construction.
 `extract.py`, then only the label-cleanup steps, skipping every step that is
 itself entity resolution. Details in the box below.
 
-Result on the clean graph, scored against the hand-built identity gold set:
+Result on `rawluna`, the canonical pre-disambiguation baseline, scored against
+the hand-built identity gold set:
 
 | signals | pairs | TP | FP | precision | recall | largest WCC |
 |---|---|---|---|---|---|---|
-| string + alias | 915 | 47 | 13 | **0.78** | 0.21 | 37 |
-| co-occurrence only | 207 | 2 | 129 | 0.02 | 0.01 | 73 |
-| all three | 1,112 | 48 | 139 | 0.26 | **0.22** | 242 |
+| string + alias | 802 | 29 | 8 | **0.78** | 0.16 | 37 |
+| co-occurrence only | 323 | 1 | 175 | 0.01 | 0.01 | 76 |
+| all three | 1,116 | 30 | 180 | 0.14 | **0.17** | 247 |
 
-**The conclusion held.** Co-occurrence still contributes almost nothing on its
-own: 1 true positive the string ladder could not reach, against 129 false
-positives. Raw precision 0.015.
+*(The same run on the retired `rawgraph` gave 915/47/13 at precision 0.78 and
+207/2/129 for co-occurrence — same shape, which is the replication.)*
+
+**The conclusion held.** Co-occurrence contributes almost nothing on its own: 1
+true positive the string ladder could not reach, against 175 false positives.
 
 **And then adjudication changes the verdict completely.** Running the LLM over
-those 131 scoreable co-occurrence pairs:
+the 176 scoreable co-occurrence pairs:
 
 | | pairs kept | TP | FP | precision |
 |---|---|---|---|---|
-| co-occurrence, raw | 131 | 2 | 129 | **0.015** |
-| after adjudication | 2 | 2 | 0 | **1.000** |
+| co-occurrence, raw | 176 | 1 | 175 | **0.006** |
+| after adjudication | 1 | 1 | 0 | **1.000** |
 
-**Adjudication rejected 129 of 131 — every false positive, no true ones.** And
+**Adjudication rejected 175 of 176 — every false positive, no true ones.** And
 the pair only co-occurrence could find is the one that matters:
 
 > `INDIAN WOMAN  ~  SACAGAWEA`
@@ -169,10 +176,10 @@ Now with numbers behind it:
 
 | | |
 |---|---|
-| Person nodes | 795 |
-| All possible pairs | **315,615** |
-| Proposed by all three signals | **1,112** — 0.35% |
-| Reduction | **284×** |
+| Person nodes | 811 |
+| All possible pairs | **328,455** |
+| Proposed by all three signals | **1,116** — 0.34% |
+| Reduction | **294×** |
 | Adjudicated at gpt-4o-mini | fractions of a cent |
 
 That is the section. Not "graph structure beats string matching" — it doesn't,
@@ -283,6 +290,79 @@ names entities differently (99 of the gold forms present, versus 110 in
 `rawgraph`), so absolute recall is not comparable across the two databases. The
 *unique contribution* comparison is unaffected, because both signals are scored
 on the same forms within each graph.
+
+#### 2c. The hub fix that saves PageRank does *not* save node similarity
+
+Worth running, worth reporting, and it did not work — which is more useful for
+the talk than if it had, because it draws a sharp line between two failure modes
+the audience will otherwise conflate.
+
+**Why it looked promising.** The one true positive co-occurrence finds,
+`SACAGAWEA ~ INDIAN WOMAN`, is found for largely the wrong reason. The two names
+never share a chunk — not once. They match through four shared neighbours, and
+under the source pipeline's raw `chunkCount` weighting the similarity breaks
+down as:
+
+| shared neighbour | df | share of the cosine |
+|---|---|---|
+| WILLIAM CLARK | 505 | 40.9% |
+| MERIWETHER LEWIS | 820 | 37.8% |
+| TOUSSAINT CHARBONNEAU | 55 | 16.5% |
+| HIDATSA | 147 | 4.7% |
+
+**79% of the evidence is the two captains** — who co-occur with nearly everyone
+and therefore say almost nothing about identity. Only Charbonneau (her husband)
+and Hidatsa (her nation) actually identify her, and together they are a fifth of
+the score. That is the section 5 hub trap, appearing one stage earlier.
+
+**The fix, and what it did.** IDF-weighting the co-occurrence edges by
+`chunkCount * log(1 + N/df1) * log(1 + N/df2)` — the same discount
+`projection.py` already applies to `MENTIONS`. The composition flips exactly as
+intended:
+
+| shared neighbour | raw | IDF-weighted |
+|---|---|---|
+| TOUSSAINT CHARBONNEAU | 16.5% | **48.4%** |
+| WILLIAM CLARK | 40.9% | 27.6% |
+| MERIWETHER LEWIS | 37.8% | 16.0% |
+| HIDATSA | 4.7% | 8.0% |
+| **cosine** | **0.647** | **0.501** |
+
+Charbonneau becomes the dominant contributor. The match is now made for the
+right reason.
+
+**And it buys nothing.**
+
+| graph | weighting | pairs | TP | FP | precision |
+|---|---|---|---|---|---|
+| `rawluna` | chunkCount | 323 | 1 | 175 | 0.006 |
+| `rawluna` | idfWeighted | 218 | 1 | 142 | 0.007 |
+| `rawgraph` | chunkCount | 207 | 2 | 129 | 0.015 |
+| `rawgraph` | idfWeighted | 174 | 1 | 126 | **0.008** |
+
+A third fewer candidates, essentially unchanged precision, and on `rawgraph` it
+*lost* a true positive. Worse, it drags the surviving match down to **0.501
+against a 0.5 cutoff** — the fix that makes the reasoning sound very nearly
+throws the answer away.
+
+**Why it fails, and this is the slide.** The two algorithms fail for different
+reasons, so the same fix does not serve both:
+
+> **PageRank's problem is hubs.** A ubiquitous node creates shortcuts between
+> everything, so the walk drowns. Down-weight the hub and the problem is gone.
+>
+> **Node similarity's problem here is sparsity.** `SACAGAWEA` has five
+> neighbours. Cosine over a five-dimensional vector is high whenever three or
+> four of them happen to overlap, no matter how those dimensions are weighted.
+> Reweighting redistributes evidence; it does not create any.
+
+IDF fixes *which* neighbours count. It cannot fix *how few* there are. That is
+why 175 false positives survive it — they are overwhelmingly low-degree nodes
+whose handful of neighbours coincide.
+
+Both weightings stay available (`COOCCURRENCE_WEIGHTS`), with `chunkCount` the
+default, since IDF showed no measured benefit. The negative result is the
+deliverable.
 
 #### 4. The default model is three generations stale
 

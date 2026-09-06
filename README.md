@@ -127,6 +127,15 @@ transaction, so the server rejects a write outright. The run ends by diffing
 node and relationship counts, per-label and per-type totals, and a sample of
 `aliases` arrays against a snapshot taken before it started.
 
+**Measure on `rawluna`, not the demo graph.** The shipped dump has already been
+through `disambiguate.py`, so the duplicates left in it are the ones that run
+missed — measuring resolution signals there is biased, and the script warns you.
+`rawluna` is a pre-disambiguation build kept for exactly this purpose:
+
+```bash
+NEO4J_DATABASE=rawluna python scripts/demo_resolution.py --compare-signals
+```
+
 `--compare-signals` is the one to run first. On this corpus the co-occurrence
 signal contributes zero unique true positives and costs 48 points of precision
 — a result worth reproducing before trusting the intuition behind it.
