@@ -24,7 +24,7 @@ before the section's slides can be written honestly.
 | 8 | Does this help? | `benchmark.py`, `metrics.py` | runs; **4 gold labels still unresolved** |
 | 9 | How to implement | docs only | not started |
 | 10 | Takeaways | none | not started |
-| — | **Step 6: the deck** | reveal.js, vendored offline | not started — section 4's numbers now exist |
+| — | **Step 6: the deck** | reveal.js, vendored offline | not started — section 4's numbers exist and are replicated across three graphs |
 
 ### Step 0 results (2026-09-06)
 
@@ -70,11 +70,19 @@ not section 4, and no benchmark number should be quoted until it runs clean.
 
 ### Section 4 findings — read before writing these slides
 
-Section 4's code is built, runs read-only, and has now been measured against a
-purpose-built pre-disambiguation graph (`rawgraph`) as well as the demo graph.
-Both findings below are settled. Finding #2 went through a retraction on the way
-— the first version of that experiment was biased — and the history is kept
-because it is the most useful thing in this section.
+Section 4's code is built, runs read-only, and has been measured against three
+independently built graphs:
+
+| database | what it is |
+|---|---|
+| `neo4j` | the demo graph — restored dump, fully disambiguated |
+| `rawgraph` | pre-disambiguation, `gpt-4o-mini` extraction |
+| `rawluna` | pre-disambiguation, `gpt-5.6-luna` extraction, 39% more mention edges |
+
+All findings below are settled and the co-occurrence result replicates across
+all three. Finding #2 went through a retraction on the way — the first version
+of that experiment was biased — and the history is kept, because it is the most
+useful thing in this section.
 
 #### 1. The string ladder in `disambiguate.py` is inverted
 
@@ -208,7 +216,106 @@ affordable, and buys you the cases nothing else can reach."**
 > Both databases are kept, so before/after resolution can be shown side by side
 > without a reload: `NEO4J_DATABASE=rawgraph python scripts/demo_resolution.py`.
 
-#### 3. Transitive closure is the sharpest demo material
+#### 2b. Replicated on a better extraction — and the model default was wrong
+
+`extract.py` defaulted to `gpt-4o-mini`, and finding #4 below shows that is now
+the *worst* of six current models on this pipeline's adjudication task. So the
+whole corpus was re-extracted with `gpt-5.6-luna` into a third database,
+`rawluna`, and everything above was re-run against it.
+
+**What better extraction fixed, and what it did not:**
+
+| | `rawgraph` (gpt-4o-mini) | `rawluna` (gpt-5.6-luna) |
+|---|---|---|
+| entity nodes | 4,460 | 5,264 |
+| Person nodes | 795 | 811 |
+| `MENTIONED_IN` edges | 16,355 | **22,754** (+39%) |
+| **malformed nodes present** | **22 of 29** | **5 of 29** (−77%) |
+| identities still split | 24 | 22 |
+| duplicate pairs to find | 221 | 180 |
+
+The split is exactly the one to put on a slide, because the two halves behave
+completely differently:
+
+- **Extraction artifacts collapse.** The concatenated-name junk — `SHANNON
+  HOWARD`, `LABEECH SHANNON`, `SHANNON COLLINS SHIELDS`, two names from a party
+  list fused into one entity — drops by 77%. Those were never a resolution
+  problem; they were an extraction problem wearing a resolution problem's
+  clothes.
+- **Real duplicates do not.** 22 corps members are still split across 180
+  pairs. `DREWYER` (329 mentions) and `GEORGE DROUILLARD` (51) are still two
+  nodes, and the split is *starker* than before. No extractor fixes this,
+  because the variation is in the journals: Clark spelled it differently on
+  different days.
+
+*(Not a pure win: luna also invents `JOHN BRATTON` (7 mentions) alongside
+William Bratton, and prefers modern forms like `PIERRE CRUZATTE` that the
+journals never use. Better, not perfect.)*
+
+**And the co-occurrence result replicates.** On `rawluna` — with a
+co-occurrence graph 39% denser in mention edges, which is the best case the
+signal could ask for:
+
+| signals | pairs | TP | FP | precision | recall |
+|---|---|---|---|---|---|
+| string + alias | 802 | 29 | 8 | 0.78 | 0.16 |
+| co-occurrence only | 323 | 1 | 175 | 0.01 | 0.01 |
+| all three | 1,116 | 30 | 180 | 0.14 | 0.17 |
+
+Co-occurrence proposed 314 pairs the string ladder did not. Exactly **one** was
+real, and it is the same one as before:
+
+> `SACAGAWEA ~ INDIAN WOMAN`
+
+Adjudication then rejected 175 of 176 and kept precisely that pair —
+precision 0.006 → 1.000.
+
+**So the finding is robust across three independently built graphs:** the
+post-disambiguation dump, a gpt-4o-mini extraction, and a gpt-5.6-luna
+extraction with 39% more mention edges. Co-occurrence contributes one semantic
+match nothing else can reach, buried in 175 false positives, and adjudication
+recovers it cleanly every time. That is a replication, not an anecdote, and it
+is worth saying so from the stage.
+
+⚠️ **Caveat on the recall column.** The gold set's surface forms were harvested
+from the `neo4j` graph, which descends from a gpt-4o-mini extraction. `rawluna`
+names entities differently (99 of the gold forms present, versus 110 in
+`rawgraph`), so absolute recall is not comparable across the two databases. The
+*unique contribution* comparison is unaffected, because both signals are scored
+on the same forms within each graph.
+
+#### 4. The default model is three generations stale
+
+Benchmarked over 187 labelled Person pairs, `gpt-4o-mini` — the default in both
+`extract.py` and `disambiguate.py` — is the worst of six current models:
+
+| model | TP | FP | FN | precision | recall | F1 | wall |
+|---|---|---|---|---|---|---|---|
+| gpt-4o-mini | 31 | 0 | 17 | 1.000 | **0.646** | 0.785 | 16s |
+| gpt-4.1-nano | 39 | 0 | 9 | 1.000 | 0.812 | 0.897 | 13s |
+| gpt-5-nano | 39 | 0 | 9 | 1.000 | 0.812 | 0.897 | 105s |
+| gpt-5-mini | 47 | 0 | 1 | 1.000 | 0.979 | 0.989 | 89s |
+| gpt-5.4-nano | 47 | 0 | 1 | 1.000 | 0.979 | 0.989 | 18s |
+| **gpt-5.6-luna** | 48 | 0 | 0 | 1.000 | **1.000** | **1.000** | 30s |
+
+**Every model has perfect precision.** On a task this constrained none of them
+invent a merge, so the entire spread is recall — how many real duplicates a
+model is willing to recognise. `gpt-4o-mini` balks at `GEORGE DREWYER` /
+`GEORGE DROUILLARD` and `SILAS GOODRICH` / `SILAS GUTRICH`.
+
+Adjudicating every Person candidate pair costs ~9¢ on `gpt-4o-mini` and ~12¢ on
+`gpt-5.6-luna`. **Three cents buys 35 points of recall.** At this corpus size
+price is not a real axis; choose on quality.
+
+Reproduce with `demo_resolution.py --compare-models`. The top three are within
+one pair of each other on 187 samples and are statistically indistinguishable;
+the gap down to `gpt-4o-mini` is not.
+
+*Operational note:* the entire GPT-5 generation rejects an explicit
+`temperature`, which both `adjudicate.py` and the corps `extract.py` hardcode to
+0. `adjudicate.py` retries without it.
+
+#### 5. Transitive closure is the sharpest demo material
 
 WCC over unadjudicated candidates produces one 54-node component containing
 both captains, Sacagawea, York and most of the sergeants. Over string+alias
