@@ -144,18 +144,50 @@ whether it filled it.
 the alias arrays carry the pipeline's mistakes and are not clean ground truth
 either.)*
 
-**The experiment that would settle it** is to rebuild the graph through step 9
-and stop before `disambiguate.py`, then run `--compare-signals` on that
-pre-disambiguation graph, scored against the hand-built identity gold set in
-`questions/corps_members.yaml` — which is independent of the pipeline, since it
-was assembled from observed surface forms and the historical roster rather than
-from what the pipeline chose to merge. Cost: `extract.py` over 2,913 chunks
-with gpt-4o-mini at concurrency 5, roughly $2–4 and 20–45 minutes. Fully
-reversible — `data/lewis-clark-graphrag.dump` is on disk, so the current graph
-can be restored afterwards.
+**The experiment that settles it — the `rawgraph` database.**
 
-Until that runs, section 4 should claim **nothing** about co-occurrence's value
-for entity resolution in either direction.
+Rather than clearing the demo graph, the baseline is built from scratch in a
+**second database**, so `neo4j` stays exactly as restored and both graphs are
+available side by side. That also means the "before resolution" and "after
+resolution" states can both be shown from the stage without a reload.
+
+```
+CREATE DATABASE rawgraph
+ALTER USER neo4j SET HOME DATABASE rawgraph   -- corps scripts call session()
+                                              -- with no database; restore after
+python ingest.py                              -- Gutenberg -> 2,913 chunks
+EXTRACTION_CONCURRENCY=10 python extract.py    -- raw entity extraction
+python fix_waterbody_labels.py
+python flag_generic_locations.py
+python cleanup_relationships.py
+```
+
+Ingest reproduced the corpus exactly: **2,913 chunks**, the same count as the
+dump, which is a useful check that the chunking is deterministic.
+
+**Three pipeline steps are deliberately skipped, because each is itself entity
+resolution and would contaminate the baseline:**
+
+| skipped | why |
+|---|---|
+| `resolve_mentions.py` | LLM re-routes single-word Person mentions onto full-name nodes and deletes the emptied ones. That is resolution, and it absorbs exactly the `SHIELDS`/`JOHN SHIELDS` pairs under test. |
+| `enrich_sacagawea.py` | Hand-written alias linking; it writes `aliases` directly, pre-solving the hardest semantic case in the corpus. |
+| `disambiguate.py` | The thing being measured. |
+| `add_taxonomy.py` | Skipped for time only. Taxon nodes have zero `MENTIONED_IN` edges, so they cannot enter the co-occurrence projection. |
+
+So `rawgraph` is **raw extracted entities, cleaned of labelling artifacts, with
+no identity resolution of any kind applied.** That is a stricter baseline than
+"stop after step 9", and it is the right one: it is the only state in which the
+string ladder and the co-occurrence signal have both had an equal, untouched
+field to work on.
+
+Scored against the hand-built identity gold set in
+`questions/corps_members.yaml`, which is independent of the pipeline — it was
+assembled from observed surface forms plus the historical roster, not from what
+the pipeline chose to merge.
+
+⏳ **Result pending.** Until it lands, section 4 should claim **nothing** about
+co-occurrence's value for entity resolution in either direction.
 
 ---
 
