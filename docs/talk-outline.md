@@ -17,14 +17,14 @@ before the section's slides can be written honestly.
 | 1 | What is a graph? | none | not started |
 | 2 | What is Graph RAG / evidence | none (sources gathered) | not started |
 | 3 | Roadmap | none | not started |
-| 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ **built, verified, and measured on a clean pre-disambiguation graph** — see *Section 4 findings* |
+| 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ **built, verified, and the section's story settled** — Sacagawea cluster is the spine; see *Section 4 findings* |
 | 5 | Ranking is wrong → personalized PageRank | `pagerank.py`, `demo_pagerank.py` | ✅ runs live; still needs hub visibility |
 | 6 | Context is redundant → communities | `communities.py`, `demo_communities.py` | ✅ runs live; still needs Leiden + conductance |
 | 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | ✅ runs live (needed a resolution fix — see below) |
 | 8 | Does this help? | `benchmark.py`, `metrics.py` | runs; **4 gold labels still unresolved** |
 | 9 | How to implement | docs only | not started |
 | 10 | Takeaways | none | not started |
-| — | **Step 6: the deck** | reveal.js, vendored offline | not started — section 4's numbers exist and are replicated across three graphs |
+| — | **Step 6: the deck** | reveal.js, vendored offline | not started — section 4's narrative settled: built on the Sacagawea example, no metric claims |
 
 ### Step 0 results (2026-09-06)
 
@@ -68,7 +68,13 @@ Still outstanding: `verify_questions.py` reports **4 unresolved gold labels**
 (`CAMAS` → `CAMASSIA QUAMASH`, `PRAIRIE DOG`, and two others). That is Step 5,
 not section 4, and no benchmark number should be quoted until it runs clean.
 
-### Section 4 findings — read before writing these slides
+### Section 4 findings — working notes, not slide material
+
+> ⚠️ **Numbers below are for our own decision-making.** Nathan's call: no
+> precision or recall claims go on a slide, because the gold set is a hand-built
+> reference rather than ground truth — see *3b. What the gold set is, and what
+> it is not*. The section is carried by the Sacagawea example instead. Keep
+> these tables; they are how we chose the metric, the model and the thresholds.
 
 Section 4's code is built, runs read-only, and has been measured against three
 independently built graphs:
@@ -447,6 +453,60 @@ external list still beats the algorithm on raw coverage. What the algorithm
 gives you is coverage that is *derived*, reproducible, and works on a corpus
 nobody has written a website about.
 
+#### 3b. What the gold set is, and what it is not
+
+**It is not ground truth, and no slide should treat it as one.** Nathan's call,
+and it is the right one. The limits are worth writing down so nobody — us
+included — quotes these numbers later without them.
+
+**Where the labels come from.** `questions/corps_members.yaml` was assembled by
+reading surface forms off the live graph and grouping them using the historical
+roster. That is deliberately *independent of the pipeline* — it is not derived
+from what `disambiguate.py` chose to merge, which is what makes it usable for
+judging the pipeline at all. But independent is not the same as correct. That
+`SQUAR WIFE TO SHABONO` denotes Sacagawea is a judgement, a good one, not a fact
+established by anything.
+
+**And the pipeline's own history is shakier still.** The merges recorded in the
+shipped graph's `aliases` arrays were confirmed by an LLM judge running on
+`gpt-4o-mini`, which finding #4 below shows misses a third of real duplicates.
+Its false *negatives* are documented; its false *positives* are not, and at
+least one is visible — `GEORGE SHANNON` sits in `GEORGE DROUILLARD`'s alias
+array in the shipped dump. So the corpus's own resolution history contains
+mistakes, which is precisely why the gold set was not built from it.
+
+**Coverage is thin and lopsided.** On `rawluna`:
+
+| | |
+|---|---|
+| Person nodes | 811 |
+| labelled by the gold set | **114 (14%)** |
+| string+alias pairs that are scoreable | **56 of 802 (7%)** |
+| co-occurrence pairs that are scoreable | 252 of 1,359 (19%) |
+
+A precision figure computed on 7% of a signal's output is not a precision
+figure, and the 7% is biased: labelled forms are the ones recognisable as corps
+members, so the unscored remainder is disproportionately junk-vs-junk. True
+precision across the whole output is likely *worse* than what the tables say.
+
+Recall is lopsided in the other direction — Sacagawea is now **46%** of the
+recall denominator (153 of 330 pairs), because she is the only identity
+enumerated exhaustively. Any aggregate recall number is mostly hers.
+
+**So what survives, and can go on a slide:**
+
+- ✅ The Sacagawea cluster — ten named nodes, shown on screen, checkable by eye
+- ✅ The *ordering* of signals and metrics (OVERLAP > COSINE > JACCARD), which
+  follows from the metric definitions and is not a close empirical call
+- ✅ Counts of what a given run proposed, kept and closed — those are exact
+- ❌ Any precision or recall percentage
+- ❌ "co-occurrence finds N% of duplicates"
+
+**If we ever do want a defensible precision number**, the cheap route is a
+random sample: take ~100 proposed pairs regardless of labelling, judge them, and
+estimate from that. It is unbiased and far cheaper than labelling 811 nodes.
+Not needed for the talk as scoped.
+
 #### 4. The default model is three generations stale
 
 Benchmarked over 187 labelled Person pairs, `gpt-4o-mini` — the default in both
@@ -656,48 +716,91 @@ Four failures, four algorithms, two stages.
 
 ### 4. "Your entities are a mess" → node similarity + WCC (9 min) · 0:14
 
+> **Editorial decision (Nathan): no precision/recall numbers on these slides.**
+> The gold set is a reasonable hand-built reference, not ground truth — see
+> "What the gold set is and isn't" below. The section is built on the Sacagawea
+> example instead, which is concrete, checkable on screen, and matters to this
+> corpus. Aggregate metrics stay in the working notes for our own use.
+
 **The failure.** In the journals, William Clark is `CLARK`, `CAPT. CLARK`,
 `WILLIAM CLARK`, `Capt Clark`, `Wm. Clark`. Every one is a separate node.
 Retrieval for Clark silently misses most of Clark. No error, no warning — just
 quietly incomplete context, which is the worst failure mode RAG has.
 
+**Then make it personal to the corpus.** Sacagawea is named directly in **8
+chunks**. She is referred to in far more. Ask the graph for Sacagawea and you
+get 8 chunks' worth of a woman who is present through the entire expedition.
+
 **The naive fix and why it breaks.** String matching gets you a long way and
-then falls off a cliff. The journals spell Charbonneau as *Chabonah*. Raw
-Jaro-Winkler scores that below threshold. Double-metaphone on the surname
-catches it (XPN vs XRPN, JW ≈ 0.925). Show the ladder of string signals — but
-frame it as a losing battle, because it is.
+then falls off a cliff. The journals spell Charbonneau as *Chabonah* —
+double-metaphone catches that (XPN vs XRPN). Show the ladder working. Then show
+what it is up against here:
 
-**You have more information than you think — and then you measure it.**
-✅ *Settled on a clean pre-disambiguation graph; see "Section 4 findings" above
-for the numbers and for the retraction this went through first.*
+```
+SACAGAWEA · INDIAN WOMAN · THE INDIAN WOMAN · OUR INDIAN WOMAN
+THE INDIAN WOMAN WITH US · SQUAR · THE SQUAR · THE SQUAW · HIS SQUAR
+SQUARWIFE · SQUAR INTERPRETRESS · SQUAR WIFE TO SHABONO · JANEY
+THE WIFE OF SHABONO · WIFE OF SHABONO · SNAKE INDIAN WIFE
+INTERPRETERS WIFE · OUR INTERPRETER THE SNAKE WOMAN
+```
 
-The intuition is reasonable: two names appearing alongside the same people,
-places and dates are probably the same entity, and that signal is already in
-the graph at zero token cost.
+Nineteen nodes, one woman. **No string algorithm will ever connect `SACAGAWEA`
+to `THE SQUAR`**, because there is nothing there to connect. The letters have
+run out.
+
+**How the corps repo solved it — and why that should bother you.** With
+`enrich_sacagawea.py`: a script that scrapes a curated list of her surface forms
+from **lewis-clark.org**. It works. It is also a third-party website hard-coded
+into a build pipeline, and it exists only because someone had already done this
+by hand for this specific expedition. There is no lewis-clark.org for your
+corpus.
+
+**You have more information than you think.** Two names appearing alongside the
+same people, places and dates are probably the same entity — and that signal is
+already in the graph, at zero token cost.
 
 - Project entity↔entity co-occurrence weighted by shared chunk count
-- `gds.nodeSimilarity.filtered` — cosine over co-occurrence vectors, same-label
-- Union the graph signal with the string and alias signals
+- `gds.nodeSimilarity.filtered` with **OVERLAP**, not cosine — duplicates are
+  asymmetric (a rare form has few neighbours, the common form has many), and
+  overlap asks *is the rare name's context contained in the common one's?*
+- Union it with the string and alias signals
 
-Then show the measurement, live, and let it complicate the story — because it
-does. On its own the graph signal is *bad*: 2 true positives against 129 false
-ones, precision 0.015. Someone in the room is about to conclude it is useless.
+**The payoff, live.** Running that on a graph built *without* the scraper, the
+algorithm proposes candidates, the LLM adjudicates them, and WCC closes them:
 
-Then run adjudication over exactly those pairs and show 129 of 131 rejected,
-both true positives kept, precision 1.00 — including `INDIAN WOMAN ~ SACAGAWEA`,
-which no string signal on earth reaches.
+```
+INDIAN WOMAN + INTERPRETERS WIFE + SACAGAWEA + SQUAR INTERPRETRESS
++ SQUAR WIFE TO SHABONO + THE INDIAN WOMAN + THE INDIAN WOMAN WITH US
++ THE SQUAR + THE SQUAW + THE WIFE OF SHABONO
+```
 
-That is the beat the section is built around: **a signal with 1.5% precision is
-not a broken signal if something downstream can afford to filter it.** 315,615
-possible pairs become 1,112 — a 284× cut — and the LLM cleans up what is left
-for fractions of a cent. Recall is what the algorithm is for; precision is what
-the adjudicator is for.
+Ten surface forms, one entity, **derived entirely from how the corpus uses the
+names.** No website. Point out that the hub of the cluster is `SQUAR
+INTERPRETRESS`, a node appearing in a *single chunk* — one passage puts it in
+company nothing else shares, and that is enough.
+
+> **The line:** the graph found her the way a reader does — not by how the name
+> is spelled, but by who she is always standing next to.
+
+**Say what it costs.** The graph signal on its own is *bad* — it proposes
+hundreds of wrong pairs for every right one, and anyone who ships it unfiltered
+gets nonsense. That is not a defect, it is a division of labour:
+
+> **Recall is what the algorithm is for. Precision is what the adjudicator is
+> for.** The algorithm's job is to shrink an O(n²) problem — 811 people is
+> 328,455 possible pairs — down to something an LLM can afford to read. It does
+> not decide anything.
 
 **WCC, and what it is actually for.** Sharpen this, because it's usually taught
 wrong: WCC answers *"are these connected at all"*, not *"are these a topic."*
-Its job here is **transitive closure** — A≈B, B≈C, therefore one entity. That
-is a precise and correct use. Run WCC on a raw corpus graph and you get one
-giant component and some dust.
+Its job here is **transitive closure** — A≈B, B≈C, therefore one entity. The
+Sacagawea cluster is built from ten pairwise judgements; no single one of them
+sees the whole identity. WCC is what turns them into one node.
+
+And show the danger in the same breath: one wrong edge welds two identities
+together permanently. `GEORGE DREWYER + GEORGE DROUILLARD + GEORGE SHANNON` —
+two correct merges and one shared given name, and Shannon is Drouillard forever.
+That is why adjudication runs *before* closure, not after.
 
 **Same algorithm, query time.** One slide: node similarity also retrieves.
 "Find chunks that share entities with this chunk" is a different question from
@@ -705,20 +808,13 @@ giant component and some dust.
 miss. Carried into the benchmark in section 8 as the `cooccurrence` strategy.
 
 **Demo** — `demo_resolution.py`, read-only, runs in ~2 s:
-- the `aliases` arrays as receipts of what past resolution already merged
-  (`JOSEPH FIELD` absorbed 44 surface forms; `SACAGAWEA` 21)
-- live candidate generation finding duplicates that **survived both passes** —
-  `DREWYER`/`GEORGE DROUILLARD`, 328 mentions split down the middle
-- `--compare-signals`: precision and recall per signal mix, the table that
-  refutes the intuition above
-- transitive closure contaminating an identity in three names:
-  `GEORGE DREWYER + GEORGE DROUILLARD + GEORGE SHANNON`
-- `--adjudicate` to clean it up, and the write audit proving zero writes
+- Sacagawea's nineteen surface forms, as the problem statement
+- live candidate generation, then `--adjudicate`, then the closed component
+- the write audit proving zero writes
 
-**Honest note.** An LLM adjudicates the candidate pairs. The algorithm's job
-isn't to decide — it's to shrink the candidate set from O(n²) to something
-adjudication can afford. Adjudication is off by default, disk-cached, and hard-
-capped, so the demo is free and byte-for-byte repeatable after the first run.
+**Take-home for this section.** Fix entity resolution before you tune retrieval,
+and note that build-time work is what makes query-time work possible — the
+callback section 10 lands.
 
 ### 5. "Your ranking is wrong" → personalized PageRank (10 min) · 0:23
 
