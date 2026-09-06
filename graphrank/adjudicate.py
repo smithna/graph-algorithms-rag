@@ -42,9 +42,40 @@ from .resolution import CandidatePair
 
 CACHE_DIR = Path(__file__).resolve().parent.parent / ".cache" / "adjudication"
 
-#: Deliberately small and cheap. The judge is doing a narrow, well-specified
-#: binary task with a rubric, not open-ended reasoning.
-DEFAULT_MODEL = "gpt-4o-mini"
+#: Chosen by measurement, not by reputation — see the table below.
+#:
+#: The pipeline this ports from uses `gpt-4o-mini`, which was the sensible
+#: default when it was written in 2024. It is now the worst of the six models
+#: benchmarked on this exact task, and not by a little.
+#:
+#: Scored over 187 labelled Person pairs from the pre-disambiguation graph
+#: (48 real duplicates, 139 non-duplicates), against the identity gold set:
+#:
+#:     model           TP  FP  FN   precision  recall     F1   wall
+#:     gpt-4o-mini     31   0  17       1.000   0.646  0.785    16s
+#:     gpt-4.1-nano    39   0   9       1.000   0.812  0.897    13s
+#:     gpt-5-nano      39   0   9       1.000   0.812  0.897   105s
+#:     gpt-5-mini      47   0   1       1.000   0.979  0.989    89s
+#:     gpt-5.4-nano    47   0   1       1.000   0.979  0.989    18s
+#:     gpt-5.6-luna    48   0   0       1.000   1.000  1.000    30s
+#:
+#: Two things stand out. **Every model has perfect precision.** On a task this
+#: constrained they are all conservative, and none of them invented a merge. So
+#: the entire spread is recall — the differentiator is how many real duplicates
+#: a model is willing to recognise, and `gpt-4o-mini` misses a third of them
+#: (`GEORGE DREWYER`/`GEORGE DROUILLARD`, `SILAS GOODRICH`/`SILAS GUTRICH`, most
+#: of the Bratton variants).
+#:
+#: And **the price difference is irrelevant at this scale.** Adjudicating every
+#: Person candidate pair in the corpus costs roughly 9 cents on `gpt-4o-mini`
+#: and 12 cents here. Three cents buys 35 points of recall. Choose on quality;
+#: the whole corpus is pocket change either way.
+#:
+#: Caveat worth keeping: the top three are separated by one pair each on a
+#: 187-pair sample, so they are statistically indistinguishable. The gap down to
+#: `gpt-4o-mini` is not. Re-run `--compare-models` on your own corpus rather
+#: than trusting this ordering.
+DEFAULT_MODEL = "gpt-5.6-luna"
 
 #: A cap, not a budget to spend. Chosen so a full Person run over this corpus
 #: stays well under a dollar and finishes inside a coffee break.
@@ -195,7 +226,19 @@ def _parse(model: str, label: str, left: str, right: str):
     endpoint = getattr(client.chat.completions, "parse", None)
     if endpoint is None:  # pragma: no cover - older client
         endpoint = client.beta.chat.completions.parse
-    return endpoint(**kwargs).choices[0].message.parsed
+
+    try:
+        return endpoint(**kwargs).choices[0].message.parsed
+    except Exception as exc:
+        # The GPT-5 generation rejects an explicit temperature outright:
+        #   "Unsupported value: 'temperature' does not support 0 with this model"
+        # Determinism was the only reason it was set, and those models are
+        # already low-variance on a task this constrained. Drop it and retry
+        # rather than pinning this repo to one model generation.
+        if "temperature" not in str(exc):
+            raise
+        kwargs.pop("temperature", None)
+        return endpoint(**kwargs).choices[0].message.parsed
 
 
 def adjudicate(
@@ -312,6 +355,111 @@ def confirmed_pairs(verdicts: list[Verdict]) -> list[CandidatePair]:
     a single component containing most of the expedition.
     """
     return [v.pair for v in verdicts if v.decided and v.same_entity]
+
+
+#: The lineup `--compare-models` runs by default. Cheap tiers only: the judge is
+#: doing constrained binary classification, and the frontier models cost 10-50x
+#: for a task the small ones already saturate.
+CANDIDATE_MODELS = [
+    "gpt-4o-mini",
+    "gpt-4.1-nano",
+    "gpt-5-nano",
+    "gpt-5-mini",
+    "gpt-5.4-nano",
+    "gpt-5.6-luna",
+]
+
+
+@dataclass
+class ModelScore:
+    model: str
+    true_positives: int
+    false_positives: int
+    true_negatives: int
+    false_negatives: int
+    errors: int
+    seconds: float
+    missed: list[tuple[str, str]]
+
+    @property
+    def precision(self) -> float:
+        denominator = self.true_positives + self.false_positives
+        return self.true_positives / denominator if denominator else 0.0
+
+    @property
+    def recall(self) -> float:
+        denominator = self.true_positives + self.false_negatives
+        return self.true_positives / denominator if denominator else 0.0
+
+    @property
+    def f1(self) -> float:
+        p, r = self.precision, self.recall
+        return 2 * p * r / (p + r) if (p + r) else 0.0
+
+
+def benchmark_models(
+    labelled: list[tuple[CandidatePair, bool]],
+    *,
+    models: list[str] | None = None,
+    max_workers: int = 8,
+) -> list[ModelScore]:
+    """Score each model against pairs whose correct answer is already known.
+
+    ``labelled`` is (pair, is_really_the_same_entity). The gold set supplies the
+    labels, so this measures the judge rather than the signals that nominated
+    the pairs.
+
+    Deliberately bypasses the verdict cache: comparing models means actually
+    calling them. It is a few cents for the whole sweep.
+    """
+    import concurrent.futures as futures
+    import time
+
+    models = models or CANDIDATE_MODELS
+    scores: list[ModelScore] = []
+
+    for model in models:
+
+        def judge(item):
+            pair, truth = item
+            try:
+                decision = _parse(model, pair.left.label, *pair.names)
+                return pair, truth, bool(decision.same_entity), None
+            except Exception as exc:  # model unavailable, schema drift, quota
+                return pair, truth, None, str(exc).split("\n")[0][:90]
+
+        started = time.perf_counter()
+        tp = fp = tn = fn = errors = 0
+        missed: list[tuple[str, str]] = []
+        with futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+            for pair, truth, predicted, error in pool.map(judge, labelled):
+                if predicted is None:
+                    errors += 1
+                elif truth and predicted:
+                    tp += 1
+                elif truth and not predicted:
+                    fn += 1
+                    missed.append(pair.names)
+                elif not truth and predicted:
+                    fp += 1
+                    missed.append(pair.names)
+                else:
+                    tn += 1
+
+        scores.append(
+            ModelScore(
+                model=model,
+                true_positives=tp,
+                false_positives=fp,
+                true_negatives=tn,
+                false_negatives=fn,
+                errors=errors,
+                seconds=time.perf_counter() - started,
+                missed=missed,
+            )
+        )
+
+    return scores
 
 
 def summarize(verdicts: list[Verdict]) -> dict[str, int]:

@@ -279,6 +279,19 @@ Two sources to weave in: the NICD paper (`nicd-reducing-hallucinations-graphrag.
 and the Neo4j blog on [scaling Karpathy's LLM wiki](https://neo4j.com/blog/agentic-ai/scaling-karpathy-llm-wiki-graph/).
 The blog cites the paper, so they're one thread.
 
+A third source, **not evidence but good framing**: Arijit Ghoshal's
+[*When Does Graph RAG Actually Add Value?*](https://medium.com/@arijitghoshal222/when-does-graph-rag-actually-add-value-a-hands-on-experiment-2f61a0c31736).
+Four retrieval setups — plain vector RAG, graph-only, graph RAG, and a frontier
+model handed the whole corpus — over the same questions. Its useful contribution
+is a vocabulary: graph RAG helps with **reasoning problems** and does close to
+nothing for **coverage problems** ("retrieve all the relevant text"). That is the
+same line section 8 already draws with its control questions, said more crisply.
+
+**Do not put its numbers on a slide.** Two documents, LLM-as-judge scoring on a
+1–10 scale, one run. It is an honest blog post about a weekend experiment and
+says so itself. It belongs in the further-reading slide and as a phrase Nathan
+borrows — not in the evidence table next to a 510-question study.
+
 **This plan delivers the outline.** Code gets implemented section by section
 afterward, in the order given at the bottom.
 
@@ -342,7 +355,11 @@ headline and someone will look it up:
 - **Coarse truthfulness actually favors plain vector RAG** (−31 vs −49),
   because vector RAG refuses to answer more often. Refusing isn't winning.
 - **The paper was funded by Neo4j**, disclosed in their conflict-of-interest
-  statement. One sentence, from the stage, costs nothing.
+  statement. One sentence, from the stage, costs nothing. If it comes up in
+  Q&A, the honest follow-up is that independent write-ups reach compatible
+  conclusions on the reasoning-vs-coverage split — Ghoshal's is on the further
+  reading slide — they're just far smaller. Thin but independent, next to
+  thorough but funded.
 
 **Then the gift.** The agent in that study had a shortest-path tool available.
 It was **never called, not once.** LLMs are biased toward tools resembling what
@@ -526,9 +543,23 @@ questions and quietly breaks the easy ones is not an improvement.
 
 > "Maybe you don't need this."
 
-Then: the signals that say you do. Answers requiring traversal rather than
-lookup. The same entity named differently across documents. Questions about how
-things connect rather than what they say.
+Then: the signals that say you do. The cleanest way to split it, borrowed from
+Ghoshal's post (see Context):
+
+> "Graph algorithms fix **reasoning** problems. They do very little for
+> **coverage** problems. If your retrieval is failing because the right chunk
+> never came back, none of this helps — go fix your chunking and your
+> embeddings first."
+
+Concretely, you want this when: answers require traversal rather than lookup,
+the same entity is named differently across documents, or the question is about
+how things connect rather than what they say.
+
+**And the caveat that costs nothing to say:** if the whole corpus fits in the
+context window, stuff it in the context window. Ghoshal's frontier-model
+baseline beat every retrieval setup he tested, and the NICD paper's zero-shot
+column says something similar. Retrieval architecture is a response to a corpus
+that doesn't fit — not a virtue on its own.
 
 ### 9. How to implement this (3 min) · 0:48
 
@@ -556,7 +587,15 @@ do.
 3. **Measure on your own corpus.** The harness is in the repo. Include control
    questions where plain vector should win, and check that it still does.
 
-Repo link. Q&A from 0:53.
+Repo link, plus a **further reading** list on the same slide (no time spent on
+it out loud — it exists for the PDF):
+
+- NICD, *Reducing hallucinations with GraphRAG* — the 510-question study
+- Neo4j, [*Scaling Karpathy's LLM wiki*](https://neo4j.com/blog/agentic-ai/scaling-karpathy-llm-wiki-graph/)
+- Ghoshal, [*When Does Graph RAG Actually Add Value?*](https://medium.com/@arijitghoshal222/when-does-graph-rag-actually-add-value-a-hands-on-experiment-2f61a0c31736) — small experiment, useful framing
+- [Last year's talk repo](https://github.com/smithna/corps-of-discovery-graph-rag) — the pipeline that built this graph
+
+Q&A from 0:53.
 
 ---
 

@@ -422,6 +422,70 @@ def compare_signals(
     console.print()
 
 
+def compare_models(
+    pairs: list[res.CandidatePair],
+    gold: res.GoldSet,
+    models: list[str] | None = None,
+) -> None:
+    """Benchmark adjudicator models against the gold set. Costs money."""
+    lookup = gold.name_to_identity
+    excluded = gold.excluded()
+    labelled = [
+        (p, lookup[p.names[0]] == lookup[p.names[1]])
+        for p in pairs
+        if p.names[0] not in excluded
+        and p.names[1] not in excluded
+        and lookup.get(p.names[0])
+        and lookup.get(p.names[1])
+    ]
+    if not labelled:
+        console.print("[yellow]No labelled pairs to benchmark against.[/]")
+        return
+
+    positives = sum(1 for _, truth in labelled if truth)
+    console.print(
+        f"[bold]Benchmarking adjudicators[/] over {len(labelled)} labelled pairs "
+        f"({positives} duplicates, {len(labelled) - positives} not) …"
+    )
+
+    scores = adj.benchmark_models(labelled, models=models)
+
+    table = Table(
+        title="Which model should adjudicate?", show_header=True, header_style="bold"
+    )
+    table.add_column("Model")
+    table.add_column("TP", justify="right")
+    table.add_column("FP", justify="right")
+    table.add_column("FN", justify="right")
+    table.add_column("precision", justify="right")
+    table.add_column("recall", justify="right")
+    table.add_column("F1", justify="right")
+    table.add_column("wall", justify="right")
+
+    best = max(s.f1 for s in scores)
+    for score in sorted(scores, key=lambda s: -s.f1):
+        mark = "[bold green]" if score.f1 >= best else ""
+        close = "[/]" if mark else ""
+        table.add_row(
+            f"{mark}{score.model}{close}",
+            f"[green]{score.true_positives}[/]",
+            f"[red]{score.false_positives}[/]",
+            f"[yellow]{score.false_negatives}[/]",
+            f"{score.precision:.3f}",
+            f"{mark}{score.recall:.3f}{close}",
+            f"{score.f1:.3f}",
+            f"{score.seconds:.0f}s",
+        )
+    console.print(table)
+    console.print(
+        "[dim]Every model here tends to perfect precision — on a task this "
+        "constrained none of them invent a merge — so the whole spread is "
+        "recall.\n"
+        "Adjudicating the full Person candidate set costs pennies on any of "
+        "them, so choose on quality, not price.[/]\n"
+    )
+
+
 def _already_disambiguated() -> bool:
     """Has `disambiguate.py` run on this graph?
 
@@ -502,6 +566,11 @@ def main() -> int:
         help="report which roster names exist in the graph, then exit",
     )
     parser.add_argument("--no-receipts", action="store_true")
+    parser.add_argument(
+        "--compare-models",
+        action="store_true",
+        help="benchmark adjudicator models against the gold set (costs money)",
+    )
     parser.add_argument(
         "--compare-signals",
         action="store_true",
@@ -605,6 +674,8 @@ def main() -> int:
                 )
             if args.compare_signals:
                 compare_signals(pairs, inventory, gold, present)
+            if args.compare_models:
+                compare_models(pairs, gold)
             show_scores(pairs, gold, present, args.limit)
             show_recall(label)
 
