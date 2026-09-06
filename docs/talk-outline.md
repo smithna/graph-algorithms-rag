@@ -17,7 +17,7 @@ before the section's slides can be written honestly.
 | 1 | What is a graph? | none | not started |
 | 2 | What is Graph RAG / evidence | none (sources gathered) | not started |
 | 3 | Roadmap | none | not started |
-| 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ code built and verified — ⚠️ **the co-occurrence measurement is retracted**, see *Section 4 findings*; needs a pre-disambiguation rerun |
+| 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ **built, verified, and measured on a clean pre-disambiguation graph** — see *Section 4 findings* |
 | 5 | Ranking is wrong → personalized PageRank | `pagerank.py`, `demo_pagerank.py` | ✅ runs live; still needs hub visibility |
 | 6 | Context is redundant → communities | `communities.py`, `demo_communities.py` | ✅ runs live; still needs Leiden + conductance |
 | 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | ✅ runs live (needed a resolution fix — see below) |
@@ -70,11 +70,11 @@ not section 4, and no benchmark number should be quoted until it runs clean.
 
 ### Section 4 findings — read before writing these slides
 
-Section 4's code is built and runs read-only against the live database.
-Finding #1 below is solid and changes the section for the better. Finding #2 was
-reported as a result and is **retracted** — the experiment was run on a graph
-that had already been disambiguated, which biases it. The rerun that would
-settle it is specified there.
+Section 4's code is built, runs read-only, and has now been measured against a
+purpose-built pre-disambiguation graph (`rawgraph`) as well as the demo graph.
+Both findings below are settled. Finding #2 went through a retraction on the way
+— the first version of that experiment was biased — and the history is kept
+because it is the most useful thing in this section.
 
 #### 1. The string ladder in `disambiguate.py` is inverted
 
@@ -98,129 +98,115 @@ the function name is the trap, and the fix is `1 - x`. Corrected in
 
 *(The corps repo still has the inverted version. Worth a PR, separately.)*
 
-#### 2. ⚠️ RETRACTED — "co-occurrence finds no duplicates" is not supported
+#### 2. Co-occurrence earns its place — but only behind adjudication
 
-**Do not put this on a slide.** The measurement below is real, but the
-experiment that produced it is biased, and the bias runs entirely in one
-direction. Nathan caught this; the reasoning is worth keeping because the
-correct experiment still has to be run.
+*(This finding was reported, retracted, and then re-established on a clean
+graph. The retraction was right to make and the history is kept below, because
+"my first measurement was rigged" is a better story than the result alone.)*
 
-**The dump is the post-pipeline graph.** `build_graph.py` runs
-`disambiguate.py` twice (steps 10–13) before the release dump was cut. Every
-Person node carries an `aliases` array and 467 Person surface forms have
-already been absorbed; there are zero `IS_SAME_ENTITY_AS` relationships left,
-because phase 2 deletes them after merging.
+**The false start.** The first measurement ran against the release dump, which
+is the *post*-pipeline graph — `build_graph.py` runs `disambiguate.py` twice
+before cutting it. Worse, the two signals had not competed on equal terms during
+that build: because of finding #1, the Jaro-Winkler and metaphone branches were
+inverted and never fired, while co-occurrence (cosine, correctly thresholded)
+worked and swept the corpus. What survives into the dump is close to *the
+complement of what co-occurrence can find*, handed to a string ladder that never
+got to run. Measuring there made co-occurrence look worthless by construction.
 
-**And the original run's signals were not equally functional.** Because of
-finding #1 above:
+**The clean test.** Rebuilt the corpus from Project Gutenberg into a separate
+`rawgraph` database — 2,913 chunks, identical count to the dump — ran
+`extract.py`, then only the label-cleanup steps, skipping every step that is
+itself entity resolution. Details in the box below.
 
-| signal, during the original build | state |
-|---|---|
-| co-occurrence (`nodeSimilarity`, cosine) | **worked** — cosine is a real similarity, correctly thresholded |
-| string: Jaro-Winkler branch | **dead** — inverted comparison |
-| string: double-metaphone branch | **dead** — inverted comparison |
-| string: token containment | worked (no Jaro-Winkler involved) |
-| alias equality | worked |
-
-So co-occurrence had first pass over the whole corpus and harvested everything
-it could reach; the Jaro-Winkler and metaphone signals never fired at all. What
-survives into the dump is, close to by construction, *the set of duplicates
-co-occurrence could not find and the string ladder was never allowed to try.*
-
-Measuring on that residue asks co-occurrence to find what it has already
-exhausted, while giving the string ladder an untouched field. It is rigged, and
-the direction of the rigging exactly produces the result I reported.
-
-The one number that is not biased this way: replaying the **corrected** string
-ladder against the 451 canonical/alias pairs the pipeline actually merged, it
-recovers **363 of them (80%)** — Jaro-Winkler 146, metaphone 308, containment
-49. So at most ~20% of the merges the full pipeline made needed a non-string
-signal, and some of that 20% is junk (`FOUR MEN`/`4 MEN`) rather than semantics.
-That bounds the room co-occurrence had to be load-bearing; it does not measure
-whether it filled it.
-
-*(Also visible in that replay: `GEORGE SHANNON` is an alias **on** the
-`GEORGE DROUILLARD` node. The shipped pipeline made that false merge itself, so
-the alias arrays carry the pipeline's mistakes and are not clean ground truth
-either.)*
-
-**The experiment that settles it — the `rawgraph` database.**
-
-Rather than clearing the demo graph, the baseline is built from scratch in a
-**second database**, so `neo4j` stays exactly as restored and both graphs are
-available side by side. That also means the "before resolution" and "after
-resolution" states can both be shown from the stage without a reload.
-
-```
-CREATE DATABASE rawgraph
-ALTER USER neo4j SET HOME DATABASE rawgraph   -- corps scripts call session()
-                                              -- with no database; restore after
-python ingest.py                              -- Gutenberg -> 2,913 chunks
-EXTRACTION_CONCURRENCY=10 python extract.py    -- raw entity extraction
-python fix_waterbody_labels.py
-python flag_generic_locations.py
-python cleanup_relationships.py
-```
-
-Ingest reproduced the corpus exactly: **2,913 chunks**, the same count as the
-dump, which is a useful check that the chunking is deterministic.
-
-**Three pipeline steps are deliberately skipped, because each is itself entity
-resolution and would contaminate the baseline:**
-
-| skipped | why |
-|---|---|
-| `resolve_mentions.py` | LLM re-routes single-word Person mentions onto full-name nodes and deletes the emptied ones. That is resolution, and it absorbs exactly the `SHIELDS`/`JOHN SHIELDS` pairs under test. |
-| `enrich_sacagawea.py` | Hand-written alias linking; it writes `aliases` directly, pre-solving the hardest semantic case in the corpus. |
-| `disambiguate.py` | The thing being measured. |
-| `add_taxonomy.py` | Skipped for time only. Taxon nodes have zero `MENTIONED_IN` edges, so they cannot enter the co-occurrence projection. |
-
-So `rawgraph` is **raw extracted entities, cleaned of labelling artifacts, with
-no identity resolution of any kind applied.** That is a stricter baseline than
-"stop after step 9", and it is the right one: it is the only state in which the
-string ladder and the co-occurrence signal have both had an equal, untouched
-field to work on.
-
-Scored against the hand-built identity gold set in
-`questions/corps_members.yaml`, which is independent of the pipeline — it was
-assembled from observed surface forms plus the historical roster, not from what
-the pipeline chose to merge.
-
-⏳ **Result pending.** Until it lands, section 4 should claim **nothing** about
-co-occurrence's value for entity resolution in either direction.
-
----
-
-The biased measurement, kept for reference — Person label, against the identity
-gold set (`demo_resolution.py --compare-signals`), on the post-disambiguation
-graph:
+Result on the clean graph, scored against the hand-built identity gold set:
 
 | signals | pairs | TP | FP | precision | recall | largest WCC |
 |---|---|---|---|---|---|---|
-| string + alias | 901 | 64 | 19 | **0.77** | **0.25** | 54 |
-| co-occurrence only | 252 | 2 | 136 | 0.01 | 0.01 | 78 |
-| all three | 1,147 | 64 | 154 | 0.29 | 0.25 | 249 |
+| string + alias | 915 | 47 | 13 | **0.78** | 0.21 | 37 |
+| co-occurrence only | 207 | 2 | 129 | 0.02 | 0.01 | 73 |
+| all three | 1,112 | 48 | 139 | 0.26 | **0.22** | 242 |
 
-On this residue, co-occurrence proposed 246 pairs the string ladder did not and
-none were real duplicates. **That is a fact about the residue, not about the
-signal.** See the retraction above for why the two are not the same claim.
+**The conclusion held.** Co-occurrence still contributes almost nothing on its
+own: 1 true positive the string ladder could not reach, against 129 false
+positives. Raw precision 0.015.
 
-One observation that does survive independently, because it is structural
-rather than measured: two spellings of one person rarely share a chunk, since a
-scribe picks one spelling per entry and uses it throughout. `DREWYER` (265
-mentions) and `GEORGE DROUILLARD` (63) have largely disjoint chunk sets. That is
-a reason to *expect* co-occurrence to struggle here, and it is worth saying —
-but expecting a result and having measured it are different things, and only one
-of them belongs on a slide.
+**And then adjudication changes the verdict completely.** Running the LLM over
+those 131 scoreable co-occurrence pairs:
 
-The query-time `cooccurrence` strategy is unaffected by any of this. It answers
-a different question ("which chunks share entities with this chunk") and on
-`shoshone-horses` it beat vector by 25 points of recall at 22 ms. That result
-stands on its own and belongs in section 8's benchmark.
+| | pairs kept | TP | FP | precision |
+|---|---|---|---|---|
+| co-occurrence, raw | 131 | 2 | 129 | **0.015** |
+| after adjudication | 2 | 2 | 0 | **1.000** |
 
-Whatever the rerun shows, the section 10 takeaway *measure on your own corpus*
-now has a first-hand example attached — including the part where the first
-measurement was set up wrong.
+**Adjudication rejected 129 of 131 — every false positive, no true ones.** And
+the pair only co-occurrence could find is the one that matters:
+
+> `INDIAN WOMAN  ~  SACAGAWEA`
+
+No string signal reaches that, ever. Jaro-Winkler, token containment and
+metaphone are all hopeless on it. It is the exact case the section's intuition
+was about, and it is real.
+
+**So the original framing was right, and the section survives — with a sharper
+point than it started with.** Co-occurrence is not a *decision* procedure and it
+is terrible when used as one. It is a **recall instrument**, and its output is
+only usable behind a precision stage. That is precisely the architecture
+`disambiguate.py` already has, and it is why the honest note in the section
+below is the load-bearing sentence, not a caveat:
+
+> The algorithm's job isn't to decide — it's to shrink the candidate set from
+> O(n²) to something adjudication can afford.
+
+Now with numbers behind it:
+
+| | |
+|---|---|
+| Person nodes | 795 |
+| All possible pairs | **315,615** |
+| Proposed by all three signals | **1,112** — 0.35% |
+| Reduction | **284×** |
+| Adjudicated at gpt-4o-mini | fractions of a cent |
+
+That is the section. Not "graph structure beats string matching" — it doesn't,
+on its own, on this corpus — but **"the algorithm makes an unaffordable problem
+affordable, and buys you the cases nothing else can reach."**
+
+> ##### How `rawgraph` was built, and why it is the right baseline
+>
+> ```
+> CREATE DATABASE rawgraph                     -- nothing deleted; neo4j untouched
+> ALTER USER neo4j SET HOME DATABASE rawgraph  -- corps scripts call session()
+>                                              -- with no database. Restored after.
+> python ingest.py                             -- Gutenberg -> 2,913 chunks
+> EXTRACTION_CONCURRENCY=10 python extract.py   -- ~45 min, a few dollars
+> python fix_waterbody_labels.py
+> python flag_generic_locations.py
+> python cleanup_relationships.py
+> ```
+>
+> **Skipped deliberately, because each is itself entity resolution:**
+>
+> | skipped | why |
+> |---|---|
+> | `resolve_mentions.py` | LLM re-routes single-word Person mentions onto full-name nodes and deletes the emptied ones — it absorbs exactly the `SHIELDS`/`JOHN SHIELDS` pairs under test |
+> | `enrich_sacagawea.py` | hand-written alias linking; writes `aliases` directly, pre-solving the hardest semantic case |
+> | `disambiguate.py` | the thing being measured |
+> | `add_taxonomy.py` | time only — Taxon nodes have no `MENTIONED_IN` edges, so they cannot enter the co-occurrence projection |
+>
+> **One caveat that matters, and is worth a sentence on stage.** There is no
+> such thing as a fully unresolved graph from this pipeline. `extract.py`
+> resolves *as it extracts*: the LLM assigns a canonical name to each mention
+> and files the raw surface form as an alias, so a freshly extracted node
+> already carries `Capt. Lewis`, `Chabonah`, `Sergt. Pryor`. 217 Person nodes in
+> `rawgraph` have populated alias arrays before any resolution step runs.
+>
+> So `rawgraph` is *post-extraction, pre-disambiguation* — which is exactly the
+> state `disambiguate.py` is designed to operate on, and therefore the correct
+> place to evaluate its signals. It is not "raw entities" in an absolute sense,
+> and the slide should not claim it is.
+>
+> Both databases are kept, so before/after resolution can be shown side by side
+> without a reload: `NEO4J_DATABASE=rawgraph python scripts/demo_resolution.py`.
 
 #### 3. Transitive closure is the sharpest demo material
 
@@ -395,9 +381,8 @@ catches it (XPN vs XRPN, JW ≈ 0.925). Show the ladder of string signals — bu
 frame it as a losing battle, because it is.
 
 **You have more information than you think — and then you measure it.**
-⚠️ *Open question. An earlier draft of these notes claimed the measurement
-refuted this; that claim is retracted — see "Section 4 findings" above. Do not
-write this part of the section until the pre-disambiguation rerun has happened.*
+✅ *Settled on a clean pre-disambiguation graph; see "Section 4 findings" above
+for the numbers and for the retraction this went through first.*
 
 The intuition is reasonable: two names appearing alongside the same people,
 places and dates are probably the same entity, and that signal is already in
@@ -407,16 +392,19 @@ the graph at zero token cost.
 - `gds.nodeSimilarity.filtered` — cosine over co-occurrence vectors, same-label
 - Union the graph signal with the string and alias signals
 
-Then show the measurement, live — whatever it turns out to be. There is a real
-structural reason to expect co-occurrence to struggle on *this* corpus (a scribe
-uses one spelling per entry, so two spellings of one person rarely share a
-chunk), and a real reason to expect it to work on corpora shaped differently
-(the same entity named differently in the same context — two systems describing
-one customer on one transaction).
+Then show the measurement, live, and let it complicate the story — because it
+does. On its own the graph signal is *bad*: 2 true positives against 129 false
+ones, precision 0.015. Someone in the room is about to conclude it is useless.
 
-Which of those the journals actually are is not yet established. Run
-`demo_resolution.py --compare-signals` on a pre-disambiguation graph first, then
-write this part.
+Then run adjudication over exactly those pairs and show 129 of 131 rejected,
+both true positives kept, precision 1.00 — including `INDIAN WOMAN ~ SACAGAWEA`,
+which no string signal on earth reaches.
+
+That is the beat the section is built around: **a signal with 1.5% precision is
+not a broken signal if something downstream can afford to filter it.** 315,615
+possible pairs become 1,112 — a 284× cut — and the LLM cleans up what is left
+for fractions of a cent. Recall is what the algorithm is for; precision is what
+the adjudicator is for.
 
 **WCC, and what it is actually for.** Sharpen this, because it's usually taught
 wrong: WCC answers *"are these connected at all"*, not *"are these a topic."*

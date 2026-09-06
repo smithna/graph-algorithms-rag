@@ -386,14 +386,13 @@ def compare_signals(
     if _already_disambiguated():
         console.print(
             "  [bold yellow]![/] This graph has already been through "
-            "[bold]disambiguate.py[/] — entity nodes carry `aliases`, so the "
-            "duplicates left are\n    the ones the original run missed. That run's "
-            "Jaro-Winkler and metaphone branches were\n    inverted and never fired, "
-            "while its co-occurrence branch worked and swept the corpus.\n"
-            "  [bold yellow]![/] The numbers above therefore flatter the string "
-            "ladder and penalise co-occurrence, by construction.\n"
-            "    Rebuild through step 9 of build_graph.py, stopping before "
-            "disambiguation, to measure this honestly.\n"
+            "[bold]disambiguate.py[/], so the duplicates left are the ones that "
+            "run missed.\n    Its Jaro-Winkler and metaphone branches were "
+            "inverted and never fired, while its co-occurrence\n    branch worked "
+            "and swept the corpus — so these numbers flatter the string ladder "
+            "and\n    penalise co-occurrence, by construction.\n"
+            "    Build a pre-disambiguation graph to measure this honestly; see "
+            "docs/talk-outline.md.\n"
         )
 
     # The comparison that matters: does the graph signal reach anything the
@@ -424,22 +423,28 @@ def compare_signals(
 
 
 def _already_disambiguated() -> bool:
-    """Has disambiguate.py run on this graph?
+    """Has `disambiguate.py` run on this graph?
 
-    `merge_component` writes an `aliases` array onto every surviving node, and
-    phase 2 deletes the `IS_SAME_ENTITY_AS` relationships behind it. A graph with
-    populated alias arrays and no such relationships has been through the merge.
+    The obvious test — "do entity nodes carry `aliases`?" — does not work, and
+    the reason is worth knowing: `extract.py` populates `aliases` itself. The
+    extractor assigns a canonical name per mention and files the raw surface
+    form alongside it, so even a freshly extracted graph has `Capt. Lewis` and
+    `Chabonah` sitting in alias arrays. There is no state in this pipeline where
+    entities are wholly unresolved.
+
+    What does discriminate is `corpsMember`, which `tag_corps_members.py` sets
+    in step 14 — after both disambiguation passes. Its presence means the whole
+    build ran; its absence means the graph stopped short of it.
     """
     row = res.read_query(
         """
-        CALL { MATCH (n) WHERE NOT n:Chunk AND n.aliases IS NOT NULL
-                             AND size(n.aliases) > 0
-               RETURN count(n) AS merged }
+        CALL { MATCH (p:Person) WHERE p.corpsMember IS NOT NULL
+               RETURN count(p) AS tagged }
         CALL { MATCH ()-[r:IS_SAME_ENTITY_AS]->() RETURN count(r) AS pending }
-        RETURN merged, pending
+        RETURN tagged, pending
         """
     )[0]
-    return row["merged"] > 0 and row["pending"] == 0
+    return row["tagged"] > 0 and row["pending"] == 0
 
 
 # ── Roster check ──────────────────────────────────────────────────────────────

@@ -55,48 +55,66 @@ The three signals
 ``alias``         shared alias arrays, or one node's alias matching the other's
                   canonical name. Receipts from resolution passes already run.
 
-Careful with `--compare-signals` on the shipped dump
-───────────────────────────────────────────────────
-Running the signal comparison against the corps-of-discovery release dump does
-**not** tell you what each signal is worth in general, and the trap is subtle
-enough to be worth spelling out.
+What each signal is actually worth
+─────────────────────────────────
+Measured on a purpose-built pre-disambiguation graph (see "Which database to
+measure on" below), Person label, against the identity gold set in
+`questions/corps_members.yaml`:
 
-That dump is the *post-pipeline* graph: `build_graph.py` runs `disambiguate.py`
-twice before cutting it. So the duplicates still present are the ones the
-original run failed to find — and the original run's signals were not equally
-alive. Because of the inverted comparison documented at `JARO_CUTOFF` above, its
-Jaro-Winkler and double-metaphone branches never fired at all, while its
-co-occurrence branch (cosine, correctly thresholded) worked fine and swept the
-corpus.
+    signals              pairs    TP    FP   precision   recall
+    string + alias         915    47    13        0.78     0.21
+    co-occurrence only     207     2   129        0.02     0.01
+    all three            1,112    48   139        0.26     0.22
 
-What is left is therefore close to *the complement of what co-occurrence can
-find*, handed to a string ladder that was never allowed to run. Measured there,
-co-occurrence looks worthless and the string ladder looks excellent. Both
-readings are artifacts of the order the signals ran in during the build, not
-properties of the signals.
+Taken at face value the co-occurrence row is damning: 2 right, 129 wrong. As a
+*decision* procedure it is useless, and it stays useless at every support floor
+and similarity cutoff worth trying.
 
-To measure this honestly, run against a graph built through step 9 of
-`build_graph.py` and stopped before `disambiguate.py`, scored against the
-identity gold set in `questions/corps_members.yaml` — which is independent of
-the pipeline, having been assembled from observed surface forms and the
-historical roster rather than from what the pipeline chose to merge.
+But it is not a decision procedure. Run the adjudicator over exactly those 131
+scoreable pairs and it rejects 129 — every false positive, no true ones —
+leaving precision 1.00. And one of the two survivors is:
 
-One structural fact does hold regardless of that experiment, and it is a reason
-to expect co-occurrence to be weak *on this particular corpus*:
+    INDIAN WOMAN  ~  SACAGAWEA
 
-    Two spellings of one person rarely occur in the same chunk.
+which no string signal reaches. Jaro-Winkler, token containment and metaphone
+are all hopeless on it; the only evidence that those are one person is that they
+appear alongside the same people, places and dates.
 
-A scribe writing an entry picks one spelling and uses it throughout, so
-"DREWYER" and "GEORGE DROUILLARD" have largely disjoint chunk sets. Compounding
-it, every member of the corps co-occurs with every other, so the neighbourhoods
-that do overlap overlap for everyone — `MERIWETHER LEWIS` and `WILLIAM CLARK`
-have nearly parallel co-occurrence vectors, and only the string signal's
-disagreement keeps them apart. Expecting a result is not the same as having
-measured it.
+So the shape of the thing is:
+
+    recall is what the algorithm is for
+    precision is what the adjudicator is for
+
+795 Person nodes make 315,615 possible pairs. The three signals propose 1,112 of
+them — a 284x cut — and gpt-4o-mini cleans up what is left for fractions of a
+cent. A signal with 1.5% precision is not a broken signal when something
+downstream can afford to filter it. That is why this module returns candidates
+and verdicts as *values* and decides nothing itself.
+
+Which database to measure on
+────────────────────────────
+Not the shipped release dump. That is the *post*-pipeline graph —
+`build_graph.py` runs `disambiguate.py` twice before cutting it — so the
+duplicates left in it are the ones that run failed to find. And its signals were
+not equally alive: because of the inverted comparison documented at
+`JARO_CUTOFF` above, its Jaro-Winkler and metaphone branches never fired, while
+co-occurrence worked and swept the corpus. What remains is close to the
+complement of what co-occurrence can find, handed to a string ladder that never
+got to run. Measured there, co-occurrence looks worthless *by construction* —
+and the numbers above are meaningfully different from the ones that graph gives.
+
+`demo_resolution.py --compare-signals` detects this and says so.
+
+Note also that there is no fully unresolved state in this pipeline: `extract.py`
+resolves as it extracts, assigning a canonical name per mention and filing the
+raw surface form as an alias, so freshly extracted nodes already carry
+"Capt. Lewis" and "Chabonah". The right baseline is *post-extraction,
+pre-disambiguation* — which is exactly the state `disambiguate.py` operates on,
+and therefore the right place to judge its signals.
 
 None of this touches the query-time use of the same algorithm. "Which chunks
-share entities with this chunk" is a different question, it is not affected by
-any of the above, and it does real work — that is `graphrank/cooccurrence.py`.
+share entities with this chunk" is a different question and does real work —
+that is `graphrank/cooccurrence.py`.
 """
 
 from __future__ import annotations
