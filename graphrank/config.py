@@ -61,6 +61,20 @@ def settings() -> Settings:
     )
 
 
+#: Server-side notifications that are noise during a live demo.
+#:
+#: ``DEPRECATION`` fires on every ``id()`` call. This repo uses ``id()`` on
+#: purpose: GDS streams results keyed by Neo4j's internal node id, so ``id(n)``
+#: is what joins an algorithm result back to a node. ``elementId()`` returns a
+#: string and does not match. Until GDS streams element ids, the deprecation is
+#: not actionable — and six stack-trace-shaped warnings per query projected on a
+#: conference screen are worse than the thing they warn about.
+#:
+#: ``UNRECOGNIZED`` fires when a query names a label that does not exist yet,
+#: which is a normal outcome for the probe queries in the write audit.
+_SILENCED_NOTIFICATIONS = ["DEPRECATION", "UNRECOGNIZED"]
+
+
 @lru_cache(maxsize=1)
 def driver():
     """Shared Neo4j driver."""
@@ -68,7 +82,9 @@ def driver():
 
     cfg = settings()
     return GraphDatabase.driver(
-        cfg.neo4j_uri, auth=(cfg.neo4j_user, cfg.neo4j_password)
+        cfg.neo4j_uri,
+        auth=(cfg.neo4j_user, cfg.neo4j_password),
+        notifications_disabled_classifications=_SILENCED_NOTIFICATIONS,
     )
 
 
@@ -82,6 +98,10 @@ def gds():
         cfg.neo4j_uri, auth=(cfg.neo4j_user, cfg.neo4j_password)
     )
     client.set_database(cfg.neo4j_database)
+    # The client's tqdm progress bars redraw by carriage return, which a
+    # captured or projected terminal renders as one long smear of half-finished
+    # bars. The algorithms here run in seconds; the bar earns nothing.
+    client.set_show_progress(False)
     return client
 
 
@@ -89,6 +109,29 @@ def query(cypher: str, **params) -> list[dict]:
     """Run a read/write query and return plain dicts."""
     cfg = settings()
     with driver().session(database=cfg.neo4j_database) as session:
+        return [record.data() for record in session.run(cypher, **params)]
+
+
+def read_query(cypher: str, **params) -> list[dict]:
+    """Run a query in an explicit **read** transaction.
+
+    The difference from :func:`query` is not stylistic. A session opened with
+    ``READ_ACCESS`` makes the *server* reject any write in the transaction:
+
+        Neo.ClientError.Statement.AccessMode:
+        Writing in read access mode not allowed.
+
+    That turns "this code does not write" from a claim about the code into a
+    property the database enforces. Section 4's entity resolution runs entirely
+    through this function, so its zero-write guarantee does not depend on
+    anyone having read the Cypher carefully.
+    """
+    from neo4j import READ_ACCESS
+
+    cfg = settings()
+    with driver().session(
+        database=cfg.neo4j_database, default_access_mode=READ_ACCESS
+    ) as session:
         return [record.data() for record in session.run(cypher, **params)]
 
 

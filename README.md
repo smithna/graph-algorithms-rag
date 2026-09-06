@@ -26,6 +26,8 @@ there.
 
 | Technique | Module | What it fixes |
 |---|---|---|
+| Entity resolution, read-only | [`graphrank/resolution.py`](graphrank/resolution.py) | `CAPT. CLARK` and `WILLIAM CLARK` are separate nodes, so retrieval for Clark misses most of Clark. Node similarity + WCC find the duplicates — without writing anything. |
+| Node similarity retrieval | [`graphrank/cooccurrence.py`](graphrank/cooccurrence.py) | "Chunks that share entities with this chunk" is a different question from "chunks that sound like it", and catches passages embeddings miss. |
 | Personalized PageRank rerank | [`graphrank/pagerank.py`](graphrank/pagerank.py) | Vector top-k ranks by wording. PPR ranks by how central a passage is *to this question's* neighbourhood. |
 | Louvain community detection | [`graphrank/communities.py`](graphrank/communities.py) | Vector top-k returns eight restatements of one thing. Community caps force the window to cover the question. |
 | Yen's k-shortest paths | [`graphrank/paths.py`](graphrank/paths.py) | Similarity says two concepts are both relevant. Paths say *how they are connected*, with the passage evidencing each hop. |
@@ -101,7 +103,38 @@ Projection is the expensive step and it is amortised — this is the performance
 argument in the talk. Once the graph is in the GDS catalog, a personalized
 PageRank run is milliseconds. Add `--force` to rebuild after changing weights.
 
-### 2. Personalized PageRank reranking
+### 2. Entity resolution (read-only)
+
+```bash
+python scripts/demo_resolution.py                      # the whole pipeline
+python scripts/demo_resolution.py --compare-signals    # what each signal is worth
+python scripts/demo_resolution.py --signals string alias
+python scripts/demo_resolution.py --check-roster       # gold names vs the graph
+python scripts/demo_resolution.py --adjudicate --max-calls 25   # costs money
+```
+
+Finds duplicate entity nodes with three signals — chunk co-occurrence similarity,
+a string ladder (Jaro-Winkler, token containment, double metaphone), and shared
+aliases — then runs real `gds.wcc.stream` over the candidate pairs to get
+transitive closure. `DREWYER` and `GEORGE DROUILLARD` are the same man with 328
+mentions split between them.
+
+**It writes nothing, and proves it.** Candidate pairs are carried as node-id
+tuples rather than name tuples, which is what lets WCC run over a graph
+projected from `UNWIND $pairs` instead of over `IS_SAME_ENTITY_AS`
+relationships that would have to be created first. Every query runs in a read
+transaction, so the server rejects a write outright. The run ends by diffing
+node and relationship counts, per-label and per-type totals, and a sample of
+`aliases` arrays against a snapshot taken before it started.
+
+`--compare-signals` is the one to run first. On this corpus the co-occurrence
+signal contributes zero unique true positives and costs 48 points of precision
+— a result worth reproducing before trusting the intuition behind it.
+
+Adjudication is off by default. When enabled it is capped, disk-cached, and
+still writes nothing to the database.
+
+### 3. Personalized PageRank reranking
 
 ```bash
 python scripts/demo_pagerank.py "How did the corps acquire horses from the Shoshone?"
@@ -120,7 +153,7 @@ Knobs worth turning on stage:
 --candidate-k 100  # deeper recall for the graph to rerank
 ```
 
-### 3. Community detection
+### 4. Community detection
 
 ```bash
 python scripts/demo_communities.py                        # the corpus's themes
@@ -136,7 +169,7 @@ compares redundancy between plain vector top-k and community-capped retrieval.
 flag because it modifies your database — but once it is there you can explore
 communities in Browser and Bloom, which demos well.
 
-### 4. Path exploration
+### 5. Path exploration
 
 ```bash
 python scripts/demo_paths.py --from Sacagawea --to Shoshone
@@ -148,7 +181,7 @@ reports the journal entry it was extracted from, so the path is a citation
 trail rather than an assertion. The shortest route is often a trivial
 co-occurrence — the second and third are usually where the mechanism lives.
 
-### 5. Benchmark
+### 6. Benchmark
 
 ```bash
 python scripts/verify_questions.py   # do this first — see the warning below
@@ -201,6 +234,9 @@ graphrank/
 ├── resolve.py       # phrase -> node, via full-text or vector index
 ├── projection.py    # the GDS projection and its IDF weighting
 ├── baseline.py      # pure vector search — the control
+├── resolution.py    # read-only entity resolution: signals, WCC, scoring, audit
+├── adjudicate.py    # LLM pair adjudication — opt-in, capped, disk-cached
+├── cooccurrence.py  # node similarity as a query-time retrieval strategy
 ├── pagerank.py      # personalized PageRank reranking
 ├── communities.py   # Louvain detection, summarization, diversification
 ├── paths.py         # Yen's k-shortest paths + evidence assembly
@@ -210,6 +246,7 @@ graphrank/
 scripts/
 ├── check_setup.py       # verify the environment first
 ├── project_graph.py     # project once, reuse everywhere
+├── demo_resolution.py   # duplicate entities, zero writes
 ├── demo_pagerank.py     # before/after reranking
 ├── demo_communities.py  # themes + diversification
 ├── demo_paths.py        # explanatory routes with citations

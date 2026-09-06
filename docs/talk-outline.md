@@ -12,42 +12,178 @@ before the section's slides can be written honestly.
 
 | # | Section | Code | Status |
 |---|---|---|---|
-| — | **Step 0: verify repo against a live DBMS** | all existing scripts | ⛔ **Blocked** — `.env` still has placeholder `NEO4J_PASSWORD` / `OPENAI_API_KEY` |
-| 0 | Cold open — the failure | `baseline.py` | written, unverified |
+| — | **Step 0: verify repo against a live DBMS** | all existing scripts | ✅ **Done** — dump restored, every script runs clean |
+| 0 | Cold open — the failure | `baseline.py` | ✅ verified live |
 | 1 | What is a graph? | none | not started |
 | 2 | What is Graph RAG / evidence | none (sources gathered) | not started |
 | 3 | Roadmap | none | not started |
-| 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | **next up** — designed, not written |
-| 5 | Ranking is wrong → personalized PageRank | `pagerank.py`, `demo_pagerank.py` | written, unverified; needs hub visibility |
-| 6 | Context is redundant → communities | `communities.py`, `demo_communities.py` | written, unverified; needs Leiden + conductance |
-| 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | written, unverified |
-| 8 | Does this help? | `benchmark.py`, `metrics.py` | written, unverified; gold labels unchecked |
+| 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ **built and verified** — but see *Section 4 findings*, the thesis changed |
+| 5 | Ranking is wrong → personalized PageRank | `pagerank.py`, `demo_pagerank.py` | ✅ runs live; still needs hub visibility |
+| 6 | Context is redundant → communities | `communities.py`, `demo_communities.py` | ✅ runs live; still needs Leiden + conductance |
+| 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | ✅ runs live (needed a resolution fix — see below) |
+| 8 | Does this help? | `benchmark.py`, `metrics.py` | runs; **4 gold labels still unresolved** |
 | 9 | How to implement | docs only | not started |
 | 10 | Takeaways | none | not started |
-| — | **Step 6: the deck** | reveal.js, vendored offline | not started — blocked until demos run and numbers exist |
+| — | **Step 6: the deck** | reveal.js, vendored offline | not started — section 4's numbers now exist |
 
-**Nothing in this repo has been executed against a live database yet.** Every
-timing estimate below is provisional, and the gold labels in
-`questions/questions.yaml` are unverified guesses until `verify_questions.py`
-runs clean.
+### Step 0 results (2026-09-06)
+
+The `.env` credentials were real but the database was **empty** — the corps
+dump had never been restored. Restored `lewis-clark-graphrag.dump` from the
+v1.0 release into the Desktop-managed Enterprise 2026.07.1 DBMS via
+`neo4j-admin database load` (the `neo4j` database stopped, the DBMS left
+running). Live shape:
+
+| | |
+|---|---|
+| Chunk nodes | 2,913 |
+| Entity nodes | 3,992 |
+| MENTIONED_IN | 16,518 |
+| GDS projection | 6,959 nodes / 49,040 rels in **267 ms** |
+| GDS / APOC | 2026.7.0, all required procedures present |
+
+Every outline compatibility risk resolved: `gds.nodeSimilarity.filtered` is GA
+(no `beta.` fallback needed), `gds.leiden` and `gds.conductance` both exist,
+`client.chat.completions.parse` exists in openai 3.8.0, `pydantic` and a
+`graphdatascience<2` pin are now in `requirements.txt`.
+
+**Two real breakages found and fixed:**
+
+1. **`demo_paths.py` returned nothing for Sacagawea → Shoshone.** There are two
+   `SHOSHONE` nodes: the real `:NativeNation` with 205 mentions, and a stray
+   `:Person` with 1. Lucene scored the stray *higher* (7.32 vs 6.66), because
+   full-text scoring rewards rarity within an index and knows nothing about how
+   much the corpus talks about a node. Resolution picked the stray, which has no
+   extracted relationships, so every path query through it returned empty —
+   silently. `resolve.py` now breaks near-ties on mention count. This is the
+   entity-resolution failure of section 4 breaking section 7's demo, live, and
+   it is worth one sentence from the stage.
+2. **Notification and progress-bar noise.** `id()` deprecation warnings fired
+   six times per query as multi-line blocks, and the GDS client's tqdm bars
+   redraw into a smear when captured. Both silenced in `config.py`; `id()` is
+   used deliberately, since GDS streams internal node ids and `elementId()` will
+   not join to them.
+
+Still outstanding: `verify_questions.py` reports **4 unresolved gold labels**
+(`CAMAS` → `CAMASSIA QUAMASH`, `PRAIRIE DOG`, and two others). That is Step 5,
+not section 4, and no benchmark number should be quoted until it runs clean.
+
+### Section 4 findings — read before writing these slides
+
+Section 4's code is built, runs read-only against the live database, and
+produces real numbers. Two of those numbers change the argument the outline
+below currently makes. **The section is stronger for it, but it is a different
+section than the one drafted.**
+
+#### 1. The string ladder in `disambiguate.py` is inverted
+
+`apoc.text.jaroWinklerDistance` returns a **distance**, not a similarity:
+
+```
+apoc.text.jaroWinklerDistance('SHIELDS', 'SHIELDS')  =  0.0
+apoc.text.jaroWinklerDistance('MARTHA',  'MARHTA')   =  0.0389   → 1 − x = 0.961
+```
+
+The source pipeline tests `jw >= 0.92` against that distance directly, which
+asks for strings that are maximally *unlike* each other. So its Jaro-Winkler
+and metaphone signals never fired on the pairs they were written to catch:
+`BRATTON`/`BRATTEN` scores 0.057, `SHIELDS`/`SHEILDS` 0.038, identical
+metaphone codes 0.000 — all rejected by a 0.92 floor.
+
+This is a large part of why so many duplicates survived two resolution passes,
+and it is a genuinely good five seconds of stage time: the bug is invisible,
+the function name is the trap, and the fix is `1 - x`. Corrected in
+`graphrank/resolution.py`; the string signal went from 10 Person pairs to 895.
+
+*(The corps repo still has the inverted version. Worth a PR, separately.)*
+
+#### 2. Co-occurrence similarity does not find duplicates in this corpus
+
+Measured, Person label, against the identity gold set
+(`demo_resolution.py --compare-signals`):
+
+| signals | pairs | TP | FP | precision | recall | largest WCC |
+|---|---|---|---|---|---|---|
+| string + alias | 901 | 64 | 19 | **0.77** | **0.25** | 54 |
+| co-occurrence only | 252 | 2 | 136 | 0.01 | 0.01 | 78 |
+| all three | 1,147 | 64 | 154 | 0.29 | 0.25 | 249 |
+
+Co-occurrence proposed **246 pairs the string ladder did not, and zero of them
+were real duplicates.** Adding the signal left recall exactly where it was and
+cut precision from 0.77 to 0.29. Sweeping the support floor (≥3, ≥5, ≥10
+mentions) and the cosine cutoff (0.6, 0.8, 0.9) never produces a unique true
+positive.
+
+The reason is structural and is the better talk beat:
+
+> **Two spellings of one person almost never occur in the same chunk.**
+
+A scribe picks one spelling per entry and uses it throughout, so `DREWYER` (265
+mentions) and `GEORGE DROUILLARD` (63) have nearly disjoint chunk sets. Worse,
+every member of the corps co-occurs with every other member, so the
+neighbourhoods that *do* overlap overlap for everyone. The signal cannot
+separate "same person" from "same expedition" — `MERIWETHER LEWIS` and
+`WILLIAM CLARK` have near-parallel co-occurrence vectors and only the string
+signal's disagreement keeps them apart.
+
+**What to do with the section.** The honest version is narrower and more
+useful than "you have more information than you think":
+
+- Co-occurrence is a recall instrument for corpora where **the same entity is
+  named differently in the same context** — two source systems describing the
+  same customer on the same transaction. The journals are not that shape.
+- Say that out loud. It is the same move as the section 8 "maybe you don't need
+  this" slide and the section 2 conflict-of-interest disclosure, and it is what
+  makes the rest of the talk credible.
+- The algorithm is not wrong. It answered the question it was asked on data
+  where that question does not discriminate. **The same algorithm pointed at a
+  different question does real work** — that is the query-time `cooccurrence`
+  strategy, which is unaffected and still belongs in section 8's benchmark.
+
+This also strengthens the section 10 takeaway: *measure on your own corpus*
+now has a first-hand example where the presenter's own prior was wrong.
+
+#### 3. Transitive closure is the sharpest demo material
+
+WCC over unadjudicated candidates produces one 54-node component containing
+both captains, Sacagawea, York and most of the sergeants. Over string+alias
+only it is legible and the failure is visible in miniature:
+
+```
+GEORGE DREWYER + GEORGE DROUILLARD + GEORGE SHANNON
+JOHN B. THOMPSON + JOHN SHEILDS + JOHN SHIELDS
+```
+
+Two correct edges plus one wrong edge on a shared given name, and Shannon is
+permanently Drouillard. That is the argument for adjudication, shown rather
+than asserted — and `--adjudicate` then produces clean components live.
+
+Real duplicates still in the graph after two resolution passes, for the slides:
+`DREWYER`/`GEORGE DROUILLARD` (328 mentions split), `CRUZATTE` in 11 forms,
+`LABICHE` in 11, `BRATTEN`(24)/`BRATTON`(23) split almost evenly.
 
 ### Design notes not yet folded into the sections
 
-- **Section 4 has a full implementation design** (read-only port of
-  `disambiguate.py`): carry candidate pairs as node-id tuples rather than name
-  tuples, which is what lets real `gds.wcc.stream` run with zero database
-  writes. Project candidate pairs via `gds.graph.cypher.project` with
-  `UNWIND $pairs` — the client runs Cypher projections in a **read**
-  transaction, so it is a stronger zero-write guarantee than the source had.
-- **Gold set for section 4**: the ~40-name `CORPS_MEMBERS` roster in
-  `corps-of-discovery-graph-rag/tag_corps_members.py`. Precision from pairs
-  where both endpoints are on the roster; recall replayed from the `aliases`
-  arrays of already-merged nodes.
-- **Known compatibility risks**: `openai` 3.8.0 moved
-  `client.beta.chat.completions.parse` → `client.chat.completions.parse`;
-  `pydantic` is used but missing from `requirements.txt`; `graphdatascience`
-  should be pinned `<2`; `gds.nodeSimilarity.filtered` needs a `beta.` fallback
-  below GDS 2.5.
+- ~~**Section 4 has a full implementation design**~~ — **built.** Candidate
+  pairs are carried as node-id tuples, projected via `gds.graph.cypher.project`
+  over `UNWIND $pairs`, and real `gds.wcc.stream` runs against them. Confirmed
+  in the client source that Cypher projections run with `QueryMode.READ`, and
+  every other query goes through a new `config.read_query()` that opens a read
+  transaction — so a write is rejected by the *server*
+  (`Neo.ClientError.Statement.AccessMode`), not merely avoided by the code. The
+  write audit at the end of every run diffs node/relationship counts, per-label
+  and per-type totals, and six sampled `aliases` arrays. It reports zero changes.
+- ~~**Gold set for section 4**: the ~40-name roster~~ — **replaced, and the
+  reason is itself a slide.** The roster uses modern canonical spellings; the
+  graph uses the journals'. Ten of the 41 roster names do not exist as nodes at
+  all — there is no `PIERRE CRUZATTE` node, there are eleven differently-spelled
+  ones. `questions/corps_members.yaml` now carries 35 **identities** (a person
+  plus every surface form of them actually observed in the graph), 29 malformed
+  nodes and 4 uncertain ones excluded from scoring, and 9 hard negatives. That
+  makes precision *and* recall computable against a real denominator: 24 corps
+  members are still split across multiple nodes, giving 252 duplicate pairs the
+  pipeline should have merged and did not.
+- ~~**Known compatibility risks**~~ — **all resolved.** See Step 0 results above.
 
 
 ## Context
@@ -179,15 +315,26 @@ Jaro-Winkler scores that below threshold. Double-metaphone on the surname
 catches it (XPN vs XRPN, JW ≈ 0.925). Show the ladder of string signals — but
 frame it as a losing battle, because it is.
 
-**You have more information than you think.** This is the section's real point.
-Two names that keep appearing alongside the same people, places, and dates are
-probably the same entity — *even when the strings disagree entirely.* That
-signal is already sitting in the graph as co-occurrence, and it costs no LLM
-tokens to read.
+**You have more information than you think — and then you measure it.**
+⚠️ *Rewritten after building the code. See "Section 4 findings" above for the
+numbers; the original claim did not survive contact with the corpus.*
+
+The intuition is reasonable: two names appearing alongside the same people,
+places and dates are probably the same entity, and that signal is already in
+the graph at zero token cost.
 
 - Project entity↔entity co-occurrence weighted by shared chunk count
 - `gds.nodeSimilarity.filtered` — cosine over co-occurrence vectors, same-label
 - Union the graph signal with the string and alias signals
+
+Then show the measurement, live: on these journals co-occurrence adds **zero**
+true positives over the string ladder and drops precision from 0.77 to 0.29,
+because two spellings of one person almost never share a chunk, and everyone
+in the corps co-occurs with everyone else. Name the corpus shape it *does*
+work on — the same entity named differently in the same context — and move on.
+
+This is the most valuable ninety seconds in the talk. Everyone in the room has
+shipped a feature on an intuition like this one.
 
 **WCC, and what it is actually for.** Sharpen this, because it's usually taught
 wrong: WCC answers *"are these connected at all"*, not *"are these a topic."*
@@ -200,14 +347,21 @@ giant component and some dust.
 "find chunks that sound like this chunk," and it catches things embeddings
 miss. Carried into the benchmark in section 8 as the `cooccurrence` strategy.
 
-**Demo** — `demo_resolution.py`, read-only:
+**Demo** — `demo_resolution.py`, read-only, runs in ~2 s:
 - the `aliases` arrays as receipts of what past resolution already merged
-- live candidate generation finding duplicates that **survived both passes**
-- precision/recall against the 40-name corps-member gold set
+  (`JOSEPH FIELD` absorbed 44 surface forms; `SACAGAWEA` 21)
+- live candidate generation finding duplicates that **survived both passes** —
+  `DREWYER`/`GEORGE DROUILLARD`, 328 mentions split down the middle
+- `--compare-signals`: precision and recall per signal mix, the table that
+  refutes the intuition above
+- transitive closure contaminating an identity in three names:
+  `GEORGE DREWYER + GEORGE DROUILLARD + GEORGE SHANNON`
+- `--adjudicate` to clean it up, and the write audit proving zero writes
 
 **Honest note.** An LLM adjudicates the candidate pairs. The algorithm's job
 isn't to decide — it's to shrink the candidate set from O(n²) to something
-adjudication can afford.
+adjudication can afford. Adjudication is off by default, disk-cached, and hard-
+capped, so the demo is free and byte-for-byte repeatable after the first run.
 
 ### 5. "Your ranking is wrong" → personalized PageRank (10 min) · 0:23
 

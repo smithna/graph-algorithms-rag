@@ -1,6 +1,12 @@
 neo4j>=5.18
-graphdatascience>=1.12
+# graphdatascience 2.x reworks the client surface this repo builds on
+# (graph.cypher.project, nodeSimilarity.filtered.stream). Verified against 1.22.
+graphdatascience>=1.12,<2
 openai>=1.30
+# Structured output for graphrank/adjudicate.py. Imported lazily there, so a run
+# with adjudication switched off does not need it — but the pipeline it ports
+# from used it without declaring it, which is why it is pinned here.
+pydantic>=2.0
 python-dotenv>=1.0
 pandas>=2.0
 PyYAML>=6.0

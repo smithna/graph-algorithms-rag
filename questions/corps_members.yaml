@@ -1,0 +1,357 @@
+# Gold set for entity resolution (talk section 4).
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# WHY THIS FILE IS SHAPED THE WAY IT IS
+#
+# The obvious gold set is the ~40-name CORPS_MEMBERS roster from the
+# corps-of-discovery-graph-rag repo's `tag_corps_members.py`. That roster is
+# still here, under `roster`, and it is still useful — but on its own it is
+# nearly unusable as a gold set, for a reason that is itself the point of the
+# talk:
+#
+#     The roster uses modern canonical spellings. The graph uses the journals'
+#     spellings. Ten of the 41 roster names do not exist as nodes at all.
+#
+# There is no PIERRE CRUZATTE node. There are eleven nodes — CRUZATTE, CRUSAT,
+# PETER CRUSAT, CRUZATT, P. CRUSAT, CRUZAT, PETER CRUZAT, CRUSATT, PETE CRUSAT,
+# PETER CRUSATT — none of which is spelled the way the roster spells him.
+#
+# So the gold set is built from `identities` instead: groups of surface forms
+# that the graph actually contains and that denote one person. Every group was
+# read off the live database, not invented. That makes both numbers real:
+#
+#   precision  a proposed pair whose endpoints belong to two DIFFERENT
+#              identities is a false positive
+#   recall     of all within-identity pairs that exist in the graph, how many
+#              did candidate generation actually propose
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# Run
+#
+#     python scripts/demo_resolution.py --check-roster
+#
+# to see which names in this file are present in your database. Names absent
+# from the graph are excluded from scoring rather than counted as misses.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+# ── The reference roster ──────────────────────────────────────────────────────
+# Modern canonical spellings, from tag_corps_members.py. Used to report coverage
+# and to name each identity below. Not used directly for scoring.
+roster:
+  - MERIWETHER LEWIS
+  - WILLIAM CLARK
+  - JOHN ORDWAY
+  - PATRICK GASS
+  - NATHANIEL PRYOR
+  - CHARLES FLOYD            # died August 1804
+  - JOSEPH FIELD
+  - REUBIN FIELD
+  - GEORGE SHANNON
+  - JOHN COLTER
+  - WILLIAM BRATTON
+  - JOHN COLLINS
+  - PIERRE CRUZATTE
+  - ROBERT FRAZER
+  - SILAS GOODRICH
+  - HUGH HALL
+  - THOMAS HOWARD
+  - FRANCOIS LABICHE
+  - JEAN BAPTISTE LEPAGE     # joined at Fort Mandan
+  - HUGH MCNEAL
+  - JOHN POTTS
+  - GEORGE GIBSON
+  - JOHN SHIELDS
+  - JOHN B. THOMPSON
+  - PETER WEISER
+  - JOSEPH WHITEHOUSE
+  - ALEXANDER WILLARD
+  - RICHARD WINDSOR
+  - WERNER                   # William Werner
+  - HOWARD                   # Thomas P. Howard
+  - GEORGE DROUILLARD
+  - YORK
+  - TOUSSAINT CHARBONNEAU
+  - SACAGAWEA
+  - JEAN BAPTISTE CHARBONNEAU  # "Pomp", born during the expedition
+  - JOHN NEWMAN              # discharged for mutinous expression
+  - MOSES REED               # deserted, returned
+  - JOHN DAME
+  - EBENEZER TUTTLE
+  - ISAAC WHITE
+  - RICHARD WARFINGTON       # led the return keelboat party
+
+
+# ── Identities ────────────────────────────────────────────────────────────────
+# Each group is one person, listed under every surface form that exists in the
+# graph as its own node. Read off the live database — every name here was
+# observed, none inferred.
+#
+# Groups with more than one member are unresolved duplicates: the entity
+# resolution pipeline ran twice and left these behind. They are the true
+# positives the demo should re-find.
+identities:
+  - person: GEORGE DROUILLARD
+    names: [DREWYER, GEORGE DROUILLARD, GEORGE DREWYER, DREWYERS]
+    why: >
+      The expedition's chief hunter and sign-language interpreter. DREWYER is
+      Clark's phonetic spelling and carries 265 mentions; GEORGE DROUILLARD
+      carries 63. One man, 328 mentions, split across two nodes that no string
+      signal will ever join — Jaro-Winkler on "DREWYER" vs "DROUILLARD" is far
+      below threshold and the metaphone codes differ. This is the headline pair
+      for the section: only co-occurrence finds it.
+
+  - person: PIERRE CRUZATTE
+    names:
+      [CRUZATTE, CRUSAT, PETER CRUSAT, CRUZATT, P. CRUSAT, CRUZAT,
+       PETER CRUZAT, CRUSATT, PETE CRUSAT, PETER CRUSATT]
+    why: >
+      Boatman and fiddler; the man who shot Lewis by accident. Eleven nodes.
+      "Peter" is the journals' anglicisation of Pierre.
+
+  - person: FRANCOIS LABICHE
+    names:
+      [LABIECH, LABEECH, LABIESH, LABIECHE, LABICH, LABEACH, LABEASH,
+       LABIACH, LABICHE, FRANCIS LABICHE, FRANCIS LABIECH]
+    why: Interpreter. Eleven spellings, no two journal entries agreeing.
+
+  - person: WILLIAM BRATTON
+    names:
+      [BRATTEN, BRATTON, WILLIAM BRATTON, WILLIAM BRATTEN, W. BRATTIN,
+       W BRATTEN, WILL BRATTIN, WILLIAM BRATTIN, WM BRATTEN]
+    why: >
+      Blacksmith. BRATTEN (24 mentions) and BRATTON (23) are near-equal halves
+      of one man — a case where the split is almost perfectly even, so neither
+      node looks obviously wrong on its own.
+
+  - person: JOHN SHIELDS
+    names: [SHIELDS, JOHN SHIELDS, SHEILDS, J. SHIELDS, JOHN SHEILDS, J SHIELDS, SHEILDES]
+    why: Gunsmith. The "ie"/"ei" transposition recurs throughout.
+
+  - person: JOHN COLTER
+    names: [COLTER, JOHN COLTER, COALTER]
+    why: >
+      Later famous for Colter's Run. COLUMBUS COLTER and JOSEPH COLTER also
+      exist in the graph but are listed under `uncertain` — the given names are
+      wrong for this man and it is not clear whether they are misreadings of
+      John or a different person entirely.
+
+  - person: PETER WEISER
+    names: [WISER, PETER WISER, P. WISER]
+    why: Cook. The roster's "WEISER" spelling appears nowhere in the graph.
+
+  - person: ROBERT FRAZER
+    names: [FRAZIER, FRAZER, FRAZIERS, FRAZUR, ROBERT FRAZIER, ROBERT FRAZURE]
+    why: Kept his own journal, later published.
+
+  - person: THOMAS HOWARD
+    names: [HOWARD, THOMAS P. HOWARD, T. P. HOWARD]
+    why: >
+      The roster lists both HOWARD and THOMAS HOWARD as separate entries, which
+      is the roster itself recording a duplicate it could not merge. The graph
+      has a third form, T. P. HOWARD.
+
+  - person: WILLIAM WERNER
+    names: [WERNER, WILLIAM WERNER, WARNER, WILLIAM WARNER]
+    why: Werner/Warner alternate freely; both spellings carry mentions.
+
+  - person: JEAN BAPTISTE LEPAGE
+    names: [LAPAGE, LA PAGE, LEPAGE, BAPTIEST LA PAGE, BAPTIEST LAPAGE, BAPTEIST LAPAGE]
+    why: >
+      Joined at Fort Mandan. The space in "LA PAGE" defeats token containment,
+      which compares token sets — one name has two tokens where the other has one.
+
+  - person: MOSES REED
+    names: [M B REED, MOSES B. REED, REED, MR. REED]
+    why: Deserted in August 1804, court-martialled, returned with the keelboat.
+
+  - person: JOSEPH WHITEHOUSE
+    names: [WHITEHOUSE, JOSEPH WHITEHOUSE, JO WHITEHOUSE]
+    why: Also kept a journal.
+
+  - person: SILAS GOODRICH
+    names: [GOODRICH, GUTRICH, SILAS GOODRICH, SILAS GUTRICH]
+    why: >
+      The expedition's best angler. GOODRICH vs GUTRICH is the double-metaphone
+      case in miniature — the strings diverge, the phonetic codes do not.
+
+  - person: HUGH MCNEAL
+    names: [MCNEAL, H. MCNEAL, HUE MCNEAL, HUGH MCNEAL]
+    why: >
+      HUE for HUGH is a phonetic spelling, not a different man.
+
+  - person: JOHN B. THOMPSON
+    names: [JOHN B. THOMPSON, THOMPSON]
+    why: Surveyor.
+
+  - person: ALEXANDER WILLARD
+    names: [WILLARD, ALEXANDER WILLARD]
+    why: Blacksmith. WILLARD alone carries 52 mentions.
+
+  - person: RICHARD WINDSOR
+    names: [WINDSOR, RICHARD WINDSOR]
+    why: Hunter.
+
+  - person: GEORGE GIBSON
+    names: [GIBSON, GEORGE GIBSON]
+    why: Hunter and fiddler.
+
+  - person: JOHN POTTS
+    names: [POTTS, JOHN POTTS]
+    why: >
+      JOSEPH POTTS also exists and is listed under `uncertain` — John Potts is
+      the corps member, and whether "Joseph Potts" is a misreading is not
+      something this gold set should assert.
+
+  - person: SACAGAWEA
+    names: [SACAGAWEA, INDIAN WOMAN, THE SQUAR, SHABONOS WIFE]
+    why: >
+      Already partly resolved by `enrich_sacagawea.py`, which is why her node
+      carries 21 aliases. These four survived as separate nodes anyway. No
+      string signal connects "SACAGAWEA" to "THE SQUAR"; only co-occurrence does.
+
+  - person: MERIWETHER LEWIS
+    names: [MERIWETHER LEWIS]
+  - person: WILLIAM CLARK
+    names: [WILLIAM CLARK]
+  - person: JOHN ORDWAY
+    names: [JOHN ORDWAY]
+  - person: PATRICK GASS
+    names: [PATRICK GASS]
+  - person: NATHANIEL PRYOR
+    names: [NATHANIEL PRYOR]
+  - person: CHARLES FLOYD
+    names: [CHARLES FLOYD]
+  - person: JOSEPH FIELD
+    names: [JOSEPH FIELD]
+  - person: REUBIN FIELD
+    names: [REUBIN FIELD, REUBIN FIELDS, REUBIN FEILDS, RUBEN FIELDS, RUBIN FIELDS]
+    why: Five spellings of the younger Field brother.
+  - person: GEORGE SHANNON
+    names: [GEORGE SHANNON, G. SHANNON]
+  - person: JOHN COLLINS
+    names: [JOHN COLLINS]
+  - person: HUGH HALL
+    names: [HUGH HALL]
+  - person: YORK
+    names: [YORK]
+  - person: TOUSSAINT CHARBONNEAU
+    names: [TOUSSAINT CHARBONNEAU, SHARBONO, SHABONO]
+    why: >
+      The journals write Charbonneau as Chabonah, Shabono, Sharbono. This is the
+      pair the outline calls out: raw Jaro-Winkler scores it below threshold,
+      but double-metaphone on the surname (XPN vs XRPN) sits at about 0.925.
+  - person: JOHN NEWMAN
+    names: [JOHN NEWMAN]
+
+
+# ── Malformed nodes ───────────────────────────────────────────────────────────
+# Extraction artifacts: two or three surnames run together into one node,
+# usually from a journal line listing a party. They belong to no single
+# identity, so they are excluded from scoring in both directions — counting them
+# as either hits or misses would measure the extractor, not the resolver.
+malformed:
+  - SHANNON HOWARD
+  - LABEECH SHANNON
+  - LABECH SHABONO
+  - SHANNON LABIESHE
+  - COLLINS LABEESH
+  - CANE LABEECHE
+  - W. LABEECH
+  - WILLIAM LABIECH
+  - WILLIAM LABIECHE
+  - MR. LABER
+  - CRUSATT LAPAGE
+  - SHABONO LAPAGE
+  - WILLARD WISER
+  - PATRICK WISER
+  - WISER MCNEAL
+  - GASS MCNEAL
+  - THOMPSON MCNEAL
+  - GIBSON BRATTEN
+  - GIBSON COLLINS
+  - SHANNON COLLINS SHIELDS
+  - SHEILDS R. FIELDS
+  - SHANNON COLTER
+  - SHANNON DREWYER
+  - DREWYER JOS
+  - DREWYER FRASURE
+  - COLINS WHITEHOUSE
+  - THE TWO FIELDS
+  - THE TWO FIELDSES
+  - LABEECH SHANNON
+  - JO WHITEHOUSE
+
+
+# ── Uncertain ─────────────────────────────────────────────────────────────────
+# Nodes that are probably misreadings of a listed identity, but where asserting
+# it would be guessing. Excluded from scoring. Listed so the demo can say why a
+# plausible-looking pair is not counted either way.
+uncertain:
+  - name: COLUMBUS COLTER
+    probably: JOHN COLTER
+  - name: JOSEPH COLTER
+    probably: JOHN COLTER
+  - name: JOSEPH POTTS
+    probably: JOHN POTTS
+  - name: JOHN PRYOR
+    probably: NATHANIEL PRYOR
+
+
+# ── Hard negatives ────────────────────────────────────────────────────────────
+# Genuinely different people that a naive signal fuses. Each names the signal it
+# defeats — these are the slides.
+never_merge:
+  - names: [JOSEPH FIELD, REUBIN FIELD]
+    defeats: string
+    why: >
+      Brothers. Jaro-Winkler on the full names is very high, and they appear
+      together in nearly every hunting party, so co-occurrence agrees with the
+      string signal. Both are wrong. This is the pair that shows why an
+      adjudication step exists at all.
+
+  - names: [TOUSSAINT CHARBONNEAU, JEAN BAPTISTE CHARBONNEAU]
+    defeats: string
+    why: >
+      Father and son. Identical surname, and the son is an infant carried by his
+      mother, so the two co-occur constantly.
+
+  - names: [MERIWETHER LEWIS, WILLIAM CLARK]
+    defeats: cooccurrence
+    why: >
+      The worst case for the graph signal in this corpus. The captains are
+      mentioned together across a large fraction of all chunks, so their
+      co-occurrence vectors are nearly parallel. Strings disagree completely,
+      which is the only thing saving them. Proof that co-occurrence must be
+      corroborated, never trusted alone.
+
+  - names: [PATRICK GASS, NATHANIEL PRYOR]
+    defeats: string
+    why: >
+      Both sergeants. In raw journal text they appear as "Sergt. Gass" and
+      "Sergt. Pryor", sharing a high-weight leading token — and Jaro-Winkler
+      weights shared prefixes especially heavily. This pair is why the string
+      ladder strips TITLE_TOKENS before comparing.
+
+  - names: [JOHN SHIELDS, JOHN COLLINS]
+    defeats: string
+    why: Shared given name, different men. Prefix-weighted similarity over-scores it.
+
+  - names: [JOHN NEWMAN, JOHN POTTS]
+    defeats: string
+    why: Shared given name. Same failure mode as Shields/Collins.
+
+  - names: [JOSEPH WHITEHOUSE, JOSEPH FIELD]
+    defeats: string
+    why: Shared given name, both privates in the permanent party.
+
+  - names: [GEORGE SHANNON, GEORGE GIBSON]
+    defeats: string
+    why: Shared given name; both hunters who co-occur constantly.
+
+  - names: [GEORGE DROUILLARD, GEORGE SHANNON]
+    defeats: string
+    why: >
+      Observed live: the string ladder proposes this pair on the shared given
+      name, and WCC then welds Shannon into the Drouillard identity. A single
+      wrong edge is all transitive closure needs.
