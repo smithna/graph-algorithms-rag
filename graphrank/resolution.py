@@ -193,7 +193,31 @@ COSINE_CUTOFF = 0.70
 #: these cutoffs are similarities in the ordinary sense.
 JARO_CUTOFF = 0.92
 METAPHONE_CUTOFF = 0.85
-MIN_CHUNK_COUNT = 2  # minimum chunk co-occurrences before an edge is projected
+#: Minimum shared chunks before an entity-entity edge is projected.
+#:
+#: The source pipeline used 2. That looks like sensible noise control and is
+#: actively harmful here, because it is the *rare* surface forms that need
+#: resolving and they are exactly the ones a floor removes. Thirteen of the
+#: nineteen nodes that refer to Sacagawea appear in a single chunk, so at a
+#: floor of 2 they have no edges at all and are invisible to node similarity —
+#: unreachable, not merely low-scoring.
+#:
+#: Dropping it to 1 improves every measure at once, which is rare enough to be
+#: worth stating plainly (Person, `rawluna`, OVERLAP/idfWeighted):
+#:
+#:     minCount   pairs   TP    FP   precision   recall   unique TPs
+#:            2   1,028    8   467       0.017    0.024            4
+#:            1   1,359   10   242       0.040    0.030           10
+#:
+#: More candidates, *half* the false positives, 2.4x the precision, and 2.5x the
+#: true positives that no string signal can reach. The denser graph is also
+#: better conditioned: with more neighbours per node, fewer pairs achieve the
+#: trivial OVERLAP score of 1.0 that comes from one tiny neighbourhood sitting
+#: inside a larger one.
+#:
+#: Costs a bigger projection — 5,123 nodes / 156,062 relationships versus
+#: 1,441 / 26,908 — which still projects in seconds.
+MIN_CHUNK_COUNT = 1
 
 #: Neighbours per source node kept by nodeSimilarity.
 #:
@@ -415,7 +439,7 @@ def drop_graph(name: str) -> None:
         pass
 
 
-def build_cooccurrence_graph():
+def build_cooccurrence_graph(min_count: int | None = None):
     """Project entity↔entity co-occurrence, weighted by shared chunk count.
 
     All labels go in together so cross-label edges enrich the vectors — that a
@@ -431,7 +455,7 @@ def build_cooccurrence_graph():
     graph, _ = gds().graph.cypher.project(
         COOCCURRENCE_PROJECTION,
         graphName=COOCCURRENCE_GRAPH,
-        minCount=MIN_CHUNK_COUNT,
+        minCount=MIN_CHUNK_COUNT if min_count is None else min_count,
         totalChunks=total,
     )
     return graph

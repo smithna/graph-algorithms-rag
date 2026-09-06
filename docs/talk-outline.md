@@ -391,6 +391,62 @@ it gives the best precision in the sweep, and it makes the Sacagawea match rest
 on Charbonneau at 48% rather than on the two captains at 79%. Right answer for
 the right reason.)*
 
+#### 3. The headline result: replacing an external data source with corpus evidence
+
+The corps pipeline resolves Sacagawea with `enrich_sacagawea.py` — a script that
+**scrapes a curated list of 13 surface forms from lewis-clark.org**. A
+third-party website someone had to find, trust, and maintain, hard-coded into
+the build. It is the least reproducible thing in the pipeline.
+
+`rawluna` was built *without* that script. And node similarity plus WCC recover
+the identity from evidence inside the corpus alone.
+
+**What the extractor leaves behind.** Sacagawea is named directly in 8 chunks
+and referred to indirectly far more often, across **19 separate nodes** — almost
+none sharing a token with "SACAGAWEA":
+
+```
+SACAGAWEA · INDIAN WOMAN · THE INDIAN WOMAN · OUR INDIAN WOMAN
+THE INDIAN WOMAN WITH US · SQUAR · THE SQUAR · THE SQUAW · HIS SQUAR
+SQUARWIFE · SQUAR INTERPRETRESS · SQUAR WIFE TO SHABONO · JANEY
+THE WIFE OF SHABONO · WIFE OF SHABONO · SHABONOS WIFE · SNAKE INDIAN WIFE
+INTERPRETERS WIFE · OUR INTERPRETER THE SNAKE WOMAN
+```
+
+**What co-occurrence + adjudication + WCC recover, unaided:**
+
+| stage | result |
+|---|---|
+| co-occurrence candidates | 252 scoreable pairs, 10 true, 242 false — precision **0.040** |
+| after adjudication | 10 kept, **10 true, 0 false** — precision **1.000** |
+| after WCC | **one 10-node component** |
+
+```
+INDIAN WOMAN + INTERPRETERS WIFE + SACAGAWEA + SQUAR INTERPRETRESS
++ SQUAR WIFE TO SHABONO + THE INDIAN WOMAN + THE INDIAN WOMAN WITH US
++ THE SQUAR + THE SQUAW + THE WIFE OF SHABONO
+```
+
+Ten surface forms, one entity, **zero false positives**, no external list. The
+hub of the cluster is `SQUAR INTERPRETRESS` — a one-chunk node that links to
+eight of the others at similarity 1.000, because a single passage puts it in
+company nothing else shares.
+
+**This is the section's strongest claim, and it is a different claim than the
+one the outline started with.** Not "graph structure beats string matching" — it
+loses that contest badly. It is:
+
+> Graph structure reaches identities that **no string method and no amount of
+> hand-curation from the open web** will give you, because the evidence is in
+> how the corpus uses the names, not in the names themselves.
+
+**Say the caveat too.** Nine of the nineteen forms are still missed — `JANEY`,
+`SNAKE INDIAN WIFE`, `OUR INDIAN WOMAN`, `HIS SQUAR` among them — mostly
+one-chunk nodes whose single passage shares too little with the rest. The
+external list still beats the algorithm on raw coverage. What the algorithm
+gives you is coverage that is *derived*, reproducible, and works on a corpus
+nobody has written a website about.
+
 #### 4. The default model is three generations stale
 
 Benchmarked over 187 labelled Person pairs, `gpt-4o-mini` — the default in both

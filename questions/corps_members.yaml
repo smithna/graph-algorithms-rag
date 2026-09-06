@@ -204,11 +204,32 @@ identities:
       something this gold set should assert.
 
   - person: SACAGAWEA
-    names: [SACAGAWEA, INDIAN WOMAN, THE SQUAR, SHABONOS WIFE]
+    names:
+      [SACAGAWEA, INDIAN WOMAN, THE INDIAN WOMAN, OUR INDIAN WOMAN,
+       THE INDIAN WOMAN WITH US, SQUAR, THE SQUAR, THE SQUAW, HIS SQUAR,
+       SQUARWIFE, SQUAR INTERPRETRESS, SQUAR WIFE TO SHABONO,
+       THE WIFE OF SHABONO, WIFE OF SHABONO, SHABONOS WIFE,
+       SNAKE INDIAN WIFE, OUR INTERPRETER THE SNAKE WOMAN, JANEY,
+       INTERPRETERS WIFE]
     why: >
-      Already partly resolved by `enrich_sacagawea.py`, which is why her node
-      carries 21 aliases. These four survived as separate nodes anyway. No
-      string signal connects "SACAGAWEA" to "THE SQUAR"; only co-occurrence does.
+      The single most fragmented identity in the corpus: nineteen surface forms,
+      almost none of which share a token with "SACAGAWEA". She is named directly
+      only 8 times and referred to indirectly far more often.
+
+      This list is the reason the identity matters for the talk. The
+      corps-of-discovery pipeline resolves her with `enrich_sacagawea.py`, a
+      hand-written script that scrapes a curated list of 13 surface forms from
+      lewis-clark.org — an **external, third-party dependency** that someone had
+      to find, maintain, and trust. If co-occurrence recovers the same cluster
+      from evidence inside the corpus, the external list is replaceable, and the
+      forms below were read off the graph rather than off that website.
+
+      Deliberately excluded as genuinely ambiguous, not merely hard:
+      INTERPRETER / OUR INTERPRETER / THE INTERPRETER (Charbonneau was the
+      interpreter; Sacagawea was the *interpretress*), HIS WIFE (context-
+      dependent — it is her in the passages near Charbonneau, but the string
+      alone does not say so), and JUSSOMS SQUAR (Jessaume's wife, a different
+      woman). These are in `uncertain` below so they score neither way.
 
   - person: MERIWETHER LEWIS
     names: [MERIWETHER LEWIS]
@@ -296,6 +317,14 @@ uncertain:
     probably: JOHN POTTS
   - name: JOHN PRYOR
     probably: NATHANIEL PRYOR
+  - name: HIS WIFE
+    probably: SACAGAWEA
+  - name: INTERPRETER
+    probably: TOUSSAINT CHARBONNEAU
+  - name: OUR INTERPRETER
+    probably: TOUSSAINT CHARBONNEAU
+  - name: THE INTERPRETER
+    probably: TOUSSAINT CHARBONNEAU
 
 
 # ── Hard negatives ────────────────────────────────────────────────────────────
