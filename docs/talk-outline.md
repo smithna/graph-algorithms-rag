@@ -496,8 +496,9 @@ enumerated exhaustively. Any aggregate recall number is mostly hers.
 **So what survives, and can go on a slide:**
 
 - ✅ The Sacagawea cluster — ten named nodes, shown on screen, checkable by eye
-- ✅ The *ordering* of signals and metrics (OVERLAP > COSINE > JACCARD), which
-  follows from the metric definitions and is not a close empirical call
+- ✅ *How* OVERLAP works — one diagram of the two neighbourhoods, plus a
+  throwaway line that other metrics may suit other corpora. **Not** the
+  comparison table; there is no stage time for it and it is not the point
 - ✅ Counts of what a given run proposed, kept and closed — those are exact
 - ❌ Any precision or recall percentage
 - ❌ "co-occurrence finds N% of duplicates"
@@ -760,10 +761,44 @@ same people, places and dates are probably the same entity — and that signal i
 already in the graph, at zero token cost.
 
 - Project entity↔entity co-occurrence weighted by shared chunk count
-- `gds.nodeSimilarity.filtered` with **OVERLAP**, not cosine — duplicates are
-  asymmetric (a rare form has few neighbours, the common form has many), and
-  overlap asks *is the rare name's context contained in the common one's?*
+- `gds.nodeSimilarity.filtered` with **OVERLAP** — one diagram, below
 - Union it with the string and alias signals
+
+**One visual, then move on.** No metric comparison table — there isn't time, and
+it isn't the point. Draw the two neighbourhoods as overlapping circles, with the
+real numbers from this corpus:
+
+```
+   SACAGAWEA                        INDIAN WOMAN
+   appears alongside                appears alongside
+   51 other entities                174 other entities
+
+            ╭──────────╮
+            │  33      │╭────────────────────────╮
+            │   SACA   ││  18 shared  │   156    │
+            │          │╯  CAMEAHWAIT ╰──────────╯
+            ╰──────────╯  HIDATSA · DREWYER · HORSES
+                          CAMASSIA QUAMASH · CANOES …
+
+   OVERLAP  = 18 / 51  = 0.35   ← divide by the SMALLER circle
+   JACCARD  = 18 / 207 = 0.09   ← divide by EVERYTHING
+```
+
+The whole idea in one line: **a rare name and a common name for the same person
+have lopsided neighbourhoods, so divide by the smaller one.** Jaccard divides by
+the union and punishes her for being rare; overlap asks the question we actually
+mean — *is the rare name's world contained in the common name's?*
+
+Then one throwaway sentence and move on: *"Overlap fits this corpus because the
+duplicates are lopsided. If yours aren't, try the others — GDS gives you cosine
+and Jaccard on the same call."* That is the whole treatment. No table, no
+benchmark.
+
+*(Footnote for us, not the slide: the implementation also weights each shared
+neighbour by inverse chunk frequency, so a shared mention of Charbonneau counts
+far more than one of Lewis. The real score is therefore not the raw set ratio
+above — the diagram teaches the shape of the formula, not the arithmetic GDS
+runs.)*
 
 **The payoff, live.** Running that on a graph built *without* the scraper, the
 algorithm proposes candidates, the LLM adjudicates them, and WCC closes them:
