@@ -136,25 +136,27 @@ the hand-built identity gold set:
 | signals | pairs | TP | FP | precision | recall | largest WCC |
 |---|---|---|---|---|---|---|
 | string + alias | 802 | 29 | 8 | **0.78** | 0.16 | 37 |
-| co-occurrence only | 323 | 1 | 175 | 0.01 | 0.01 | 76 |
-| all three | 1,116 | 30 | 180 | 0.14 | **0.17** | 247 |
+| co-occurrence only | 1,028 | 7 | 446 | 0.02 | 0.04 | 96 |
+| all three | 1,814 | 32 | 450 | 0.07 | **0.18** | 265 |
 
-*(The same run on the retired `rawgraph` gave 915/47/13 at precision 0.78 and
-207/2/129 for co-occurrence — same shape, which is the replication.)*
+⚠️ These are the **final** numbers, after the metric and threshold corrections
+in 2c below. The first pass used COSINE at 0.5 and `topK=10`, which gave
+co-occurrence 1 true positive instead of 7 — read 2c before quoting anything
+from this table.
 
-**The conclusion held.** Co-occurrence contributes almost nothing on its own: 1
-true positive the string ladder could not reach, against 175 false positives.
+**The conclusion held.** Co-occurrence is hopeless on its own: 7 true positives
+against 446 false ones.
 
 **And then adjudication changes the verdict completely.** Running the LLM over
-the 176 scoreable co-occurrence pairs:
+the 453 scoreable co-occurrence pairs:
 
 | | pairs kept | TP | FP | precision |
 |---|---|---|---|---|
-| co-occurrence, raw | 176 | 1 | 175 | **0.006** |
-| after adjudication | 1 | 1 | 0 | **1.000** |
+| co-occurrence, raw | 453 | 7 | 446 | **0.015** |
+| after adjudication | 8 | 7 | 1 | **0.875** |
 
-**Adjudication rejected 175 of 176 — every false positive, no true ones.** And
-the pair only co-occurrence could find is the one that matters:
+**Adjudication rejected 445 of 453, keeping every true positive.** And the pairs
+only co-occurrence can find are the ones that matter:
 
 > `INDIAN WOMAN  ~  SACAGAWEA`
 
@@ -178,8 +180,8 @@ Now with numbers behind it:
 |---|---|
 | Person nodes | 811 |
 | All possible pairs | **328,455** |
-| Proposed by all three signals | **1,116** — 0.34% |
-| Reduction | **294×** |
+| Proposed by all three signals | **1,814** — 0.55% |
+| Reduction | **181×** |
 | Adjudicated at gpt-4o-mini | fractions of a cent |
 
 That is the section. Not "graph structure beats string matching" — it doesn't,
@@ -291,78 +293,103 @@ names entities differently (99 of the gold forms present, versus 110 in
 *unique contribution* comparison is unaffected, because both signals are scored
 on the same forms within each graph.
 
-#### 2c. The hub fix that saves PageRank does *not* save node similarity
+#### 2c. Metric and threshold matter more than weighting — OVERLAP wins
 
-Worth running, worth reporting, and it did not work — which is more useful for
-the talk than if it had, because it draws a sharp line between two failure modes
-the audience will otherwise conflate.
+Three corrections came out of reviewing the IDF experiment, and together they
+roughly **sevenfold** the co-occurrence signal's true positives.
 
-**Why it looked promising.** The one true positive co-occurrence finds,
-`SACAGAWEA ~ INDIAN WOMAN`, is found for largely the wrong reason. The two names
-never share a chunk — not once. They match through four shared neighbours, and
-under the source pipeline's raw `chunkCount` weighting the similarity breaks
-down as:
+**Correction 1 — the IDF test was confounded.** It changed the weighting while
+holding the cutoff at 0.5, so it measured weighting *and* threshold jointly and
+blamed the weighting. Re-swept, COSINE's best operating point is 0.35 raw /
+0.30 IDF, not 0.5 — and at their own optima the two weightings are identical
+(precision 0.011 both). The original conclusion survived, but for the wrong
+reason.
 
-| shared neighbour | df | share of the cosine |
-|---|---|---|
-| WILLIAM CLARK | 505 | 40.9% |
-| MERIWETHER LEWIS | 820 | 37.8% |
-| TOUSSAINT CHARBONNEAU | 55 | 16.5% |
-| HIDATSA | 147 | 4.7% |
+**Correction 2 — COSINE was the wrong metric.** Duplicate surface forms are
+*asymmetric*: `SACAGAWEA` has 5 co-occurrence neighbours, `INDIAN WOMAN` has 38.
+Swept against the gold set on `rawluna`:
 
-**79% of the evidence is the two captains** — who co-occur with nearly everyone
-and therefore say almost nothing about identity. Only Charbonneau (her husband)
-and Hidatsa (her nation) actually identify her, and together they are a fifth of
-the score. That is the section 5 hub trap, appearing one stage earlier.
+| metric | weight | thr | pairs | TP | FP | precision | recall |
+|---|---|---|---|---|---|---|---|
+| COSINE | chunkCount | 0.35 | 363 | 4 | 359 | 0.011 | 0.022 |
+| COSINE | idfWeighted | 0.30 | 371 | 4 | 367 | 0.011 | 0.022 |
+| JACCARD | chunkCount | 0.10 | 253 | 1 | 252 | 0.004 | 0.006 |
+| JACCARD | idfWeighted | 0.05 | 313 | 2 | 311 | 0.006 | 0.011 |
+| OVERLAP | chunkCount | 0.95 | 202 | 6 | 196 | 0.030 | 0.033 |
+| **OVERLAP** | **idfWeighted** | 0.95 | 148 | 6 | 142 | **0.041** | 0.033 |
 
-**The fix, and what it did.** IDF-weighting the co-occurrence edges by
-`chunkCount * log(1 + N/df1) * log(1 + N/df2)` — the same discount
-`projection.py` already applies to `MENTIONS`. The composition flips exactly as
-intended:
+The ordering is not luck, it is the metric definitions:
 
-| shared neighbour | raw | IDF-weighted |
-|---|---|---|
-| TOUSSAINT CHARBONNEAU | 16.5% | **48.4%** |
-| WILLIAM CLARK | 40.9% | 27.6% |
-| MERIWETHER LEWIS | 37.8% | 16.0% |
-| HIDATSA | 4.7% | 8.0% |
-| **cosine** | **0.647** | **0.501** |
+> **JACCARD** divides by the union, so it *punishes* the size mismatch that is
+> the signature of a duplicate. Worst metric here; loses the pair outright.
+> **COSINE** tolerates it. **OVERLAP** divides by `min(|A|,|B|)` and therefore
+> asks the question duplicate detection actually wants: *is the rare name's
+> context contained in the common name's?*
 
-Charbonneau becomes the dominant contributor. The match is now made for the
-right reason.
+**Correction 3 — `topK` was silently truncating.** At the pipeline's `topK=10`,
+and at 25, `SACAGAWEA ~ INDIAN WOMAN` does not appear in OVERLAP output **at
+all** — because 138 other labelled pairs score a perfect 1.0 and saturate the
+list. Those perfect scores are trivial containment: any 2-neighbour node sits
+entirely inside a 38-neighbour node. At `topK=100` the pair returns at 0.725.
 
-**And it buys nothing.**
+**Result of all three, on `rawluna`:**
 
-| graph | weighting | pairs | TP | FP | precision |
+| signals | pairs | TP | FP | precision | recall |
 |---|---|---|---|---|---|
-| `rawluna` | chunkCount | 323 | 1 | 175 | 0.006 |
-| `rawluna` | idfWeighted | 218 | 1 | 142 | 0.007 |
-| `rawgraph` | chunkCount | 207 | 2 | 129 | 0.015 |
-| `rawgraph` | idfWeighted | 174 | 1 | 126 | **0.008** |
+| string + alias | 802 | 29 | 8 | 0.78 | 0.16 |
+| co-occurrence only | 1,028 | **7** | 446 | 0.02 | 0.04 |
+| all three | 1,814 | 32 | 450 | 0.07 | 0.18 |
 
-A third fewer candidates, essentially unchanged precision, and on `rawgraph` it
-*lost* a true positive. Worse, it drags the surviving match down to **0.501
-against a 0.5 cutoff** — the fix that makes the reasoning sound very nearly
-throws the answer away.
+Co-occurrence goes from 1 unique true positive to **3** — and the three are the
+whole Sacagawea identity:
 
-**Why it fails, and this is the slide.** The two algorithms fail for different
-reasons, so the same fix does not serve both:
+```
+INDIAN WOMAN  ~  THE SQUAR    1.000
+SACAGAWEA     ~  THE SQUAR    1.000
+INDIAN WOMAN  ~  SACAGAWEA    0.725
+```
 
-> **PageRank's problem is hubs.** A ubiquitous node creates shortcuts between
-> everything, so the walk drowns. Down-weight the hub and the problem is gone.
->
-> **Node similarity's problem here is sparsity.** `SACAGAWEA` has five
-> neighbours. Cosine over a five-dimensional vector is high whenever three or
-> four of them happen to overlap, no matter how those dimensions are weighted.
-> Reweighting redistributes evidence; it does not create any.
+Three surface forms with nothing in common as strings, handed to WCC, which
+closes them into one entity. **That is the demo.** Adjudication over the 453
+scoreable pairs rejects 445 and keeps 7 of 7 true positives plus one false one —
+precision 0.015 → 0.875.
 
-IDF fixes *which* neighbours count. It cannot fix *how few* there are. That is
-why 175 false positives survive it — they are overwhelmingly low-degree nodes
-whose handful of neighbours coincide.
+#### 2d. Why the signal is weak — stated correctly this time
 
-Both weightings stay available (`COOCCURRENCE_WEIGHTS`), with `chunkCount` the
-default, since IDF showed no measured benefit. The negative result is the
-deliverable.
+An earlier draft claimed the problem was that two spellings of one person rarely
+share a chunk. That is true and **irrelevant** — node similarity compares
+neighbourhoods, not chunks, so a direct edge was never needed. Duplicates coming
+from different authors and different entries is the normal case, and
+second-order similarity is precisely the right instrument for it.
+
+The real limitation is **sparsity, and it is self-inflicted by the problem
+shape.** A rare spelling variant appears in few chunks, so it has few
+neighbours — `SACAGAWEA` has five. Similarity over five elements is unstable
+whichever metric computes it.
+
+And the obvious remedy makes things worse, which is the finding worth showing:
+
+| min neighbours | 0 | 3 | 4 | 5 | 8 |
+|---|---|---|---|---|---|
+| true positives | **7** | 3 | 2 | 1 | **0** |
+| false positives | 446 | 338 | 316 | 294 | 228 |
+
+Requiring a minimum neighbourhood size strips true positives faster than false
+ones, **because the duplicates are themselves the sparse nodes**. The signal is
+structurally weakest exactly where it is needed.
+
+That is the honest case for an adjudicator, and a far better line than the hub
+story it replaces. It also draws the distinction the audience needs:
+
+> PageRank's failure mode is **hubs** — down-weight the hub and it is fixed.
+> Node similarity's failure mode here is **sparsity** — reweighting
+> redistributes evidence, it cannot create any. Same-looking problem, same-
+> looking fix, different disease.
+
+*(The IDF weighting is kept as the default anyway: at OVERLAP's operating point
+it gives the best precision in the sweep, and it makes the Sacagawea match rest
+on Charbonneau at 48% rather than on the two captains at 79%. Right answer for
+the right reason.)*
 
 #### 4. The default model is three generations stale
 

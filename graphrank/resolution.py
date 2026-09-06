@@ -63,30 +63,32 @@ database to measure on" below), Person label, against the identity gold set in
 
     signals              pairs    TP    FP   precision   recall
     string + alias         802    29     8        0.78     0.16
-    co-occurrence only     323     1   175        0.01     0.01
-    all three            1,116    30   180        0.14     0.17
+    co-occurrence only   1,028     7   446        0.02     0.04
+    all three            1,814    32   450        0.07     0.18
 
-Taken at face value the co-occurrence row is damning: 2 right, 129 wrong. As a
-*decision* procedure it is useless, and it stays useless at every support floor
-and similarity cutoff worth trying.
+Taken at face value the co-occurrence row is damning: 7 right, 446 wrong. As a
+*decision* procedure it is useless.
 
-But it is not a decision procedure. Run the adjudicator over exactly those 176
-scoreable pairs and it rejects 175 — every false positive, no true ones —
-leaving precision 1.00. The single survivor is:
+But it is not a decision procedure. Run the adjudicator over those 453 scoreable
+pairs and it rejects 445, keeping 7 of the 7 true positives and one false one —
+precision 0.015 -> 0.875. And three of the survivors are pairs no string signal
+can reach:
 
-    INDIAN WOMAN  ~  SACAGAWEA
+    INDIAN WOMAN  ~  THE SQUAR     1.000
+    SACAGAWEA     ~  THE SQUAR     1.000
+    INDIAN WOMAN  ~  SACAGAWEA     0.725
 
-which no string signal reaches. Jaro-Winkler, token containment and metaphone
-are all hopeless on it; the only evidence that those are one person is that they
-appear alongside the same people, places and dates.
+That is the complete Sacagawea identity — three surface forms with nothing in
+common as strings — handed to WCC, which closes them into one entity. It is the
+single best demonstration in the section, and only the graph signal produces it.
 
 So the shape of the thing is:
 
     recall is what the algorithm is for
     precision is what the adjudicator is for
 
-811 Person nodes make 328,455 possible pairs. The three signals propose 1,116 of
-them — a 294x cut — and the adjudicator cleans up what is left for fractions of
+811 Person nodes make 328,455 possible pairs. The three signals propose 1,814 of
+them — a 181x cut — and the adjudicator cleans up what is left for fractions of
 a cent. A signal with 1.5% precision is not a broken signal when something
 downstream can afford to filter it. That is why this module returns candidates
 and verdicts as *values* and decides nothing itself.
@@ -144,7 +146,29 @@ LABELS = [
     "Event",
 ]
 
-COSINE_CUTOFF = 0.5
+#: Similarity metric and its cutoff, chosen together — changing one without
+#: re-tuning the other measures the pair, not the change.
+#:
+#: The source pipeline used COSINE at 0.5. Swept against the gold set on
+#: `rawluna` (Person, best operating point per metric):
+#:
+#:     metric    weight        thr   pairs  TP   FP   precision  recall
+#:     COSINE    chunkCount   0.35     363   4  359      0.011    0.022
+#:     COSINE    idfWeighted  0.30     371   4  367      0.011    0.022
+#:     JACCARD   chunkCount   0.10     253   1  252      0.004    0.006
+#:     JACCARD   idfWeighted  0.05     313   2  311      0.006    0.011
+#:     OVERLAP   chunkCount   0.95     202   6  196      0.030    0.033
+#:     OVERLAP   idfWeighted  0.95     148   6  142      0.041    0.033
+#:
+#: OVERLAP wins, and the reason is structural rather than empirical. Duplicate
+#: surface forms are *asymmetric*: `SACAGAWEA` occurs in 8 chunks and has 5
+#: co-occurrence neighbours, `INDIAN WOMAN` occurs in 24 and has 38. JACCARD
+#: divides by the union and so punishes that mismatch — it is the worst metric
+#: here, and it loses the pair entirely. COSINE tolerates it. OVERLAP, which
+#: divides by min(|A|,|B|), asks the question duplicate detection actually wants:
+#: *is the rare name's context contained in the common name's?*
+SIMILARITY_METRIC = "OVERLAP"
+COSINE_CUTOFF = 0.70
 
 #: Jaro-Winkler **similarity** cutoffs — 1.0 is identical.
 #:
@@ -170,7 +194,16 @@ COSINE_CUTOFF = 0.5
 JARO_CUTOFF = 0.92
 METAPHONE_CUTOFF = 0.85
 MIN_CHUNK_COUNT = 2  # minimum chunk co-occurrences before an edge is projected
-TOP_K = 10
+
+#: Neighbours per source node kept by nodeSimilarity.
+#:
+#: Not a cosmetic knob. At the source pipeline's TOP_K=10 — and at 25 — the
+#: `SACAGAWEA ~ INDIAN WOMAN` pair does not appear in OVERLAP output *at all*,
+#: because 138 other labelled pairs score a perfect 1.0 and saturate the list.
+#: Those perfect scores are trivial containment: any 2-neighbour node sits
+#: entirely inside a 38-neighbour node. Raising TOP_K to 100 restores the pair
+#: at 0.725. Anything above 100 changes nothing.
+TOP_K = 100
 
 COOCCURRENCE_GRAPH = "entity-cooccurrence"
 PAIR_GRAPH = "resolution-candidates"
@@ -409,12 +442,16 @@ def cooccurrence_candidates(
     inventory: dict[int, EntityRef],
     label: str,
     *,
-    weight: str = "chunkCount",
+    weight: str = "idfWeighted",
+    metric: str = SIMILARITY_METRIC,
+    cutoff: float = COSINE_CUTOFF,
+    top_k: int = TOP_K,
 ) -> list[CandidatePair]:
-    """Filtered cosine similarity over co-occurrence vectors, same-label only.
+    """Filtered similarity over co-occurrence vectors, same-label only.
 
-    ``weight`` selects which edge property to score on — see
-    :data:`COOCCURRENCE_WEIGHTS`.
+    ``weight`` selects the edge property (:data:`COOCCURRENCE_WEIGHTS`);
+    ``metric`` is one of COSINE / JACCARD / OVERLAP — see
+    :data:`SIMILARITY_METRIC` for why the default is OVERLAP.
     """
     if weight not in COOCCURRENCE_WEIGHTS:
         raise ValueError(f"weight must be one of {COOCCURRENCE_WEIGHTS}")
@@ -422,9 +459,9 @@ def cooccurrence_candidates(
         graph,
         sourceNodeFilter=label,
         targetNodeFilter=label,
-        topK=TOP_K,
-        similarityCutoff=COSINE_CUTOFF,
-        similarityMetric="COSINE",
+        topK=top_k,
+        similarityCutoff=cutoff,
+        similarityMetric=metric,
         relationshipWeightProperty=weight,
     )
 
@@ -560,7 +597,8 @@ def candidates(
     inventory: dict[int, EntityRef] | None = None,
     use_cooccurrence: bool = True,
     apply_person_gate: bool = True,
-    weight: str = "chunkCount",
+    weight: str = "idfWeighted",
+    metric: str = SIMILARITY_METRIC,
 ) -> list[CandidatePair]:
     """All candidate duplicate pairs for one label, unioned across signals.
 
@@ -574,7 +612,9 @@ def candidates(
 
     proposed: list[CandidatePair] = []
     if use_cooccurrence and graph is not None:
-        proposed += cooccurrence_candidates(graph, inventory, label, weight=weight)
+        proposed += cooccurrence_candidates(
+            graph, inventory, label, weight=weight, metric=metric
+        )
     proposed += string_candidates(inventory, label)
     proposed += alias_candidates(inventory, label)
 
