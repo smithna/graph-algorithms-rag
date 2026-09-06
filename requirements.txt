@@ -1,0 +1,7 @@
+neo4j>=5.18
+graphdatascience>=1.12
+openai>=1.30
+python-dotenv>=1.0
+pandas>=2.0
+PyYAML>=6.0
+rich>=13.0

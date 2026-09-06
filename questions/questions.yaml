@@ -1,0 +1,165 @@
+# Benchmark question bank.
+#
+# `gold` is the set of entities a correct answer must be grounded in. Recall is
+# measured by checking whether each gold entity — or any alias the graph knows
+# for it — appears in the context a strategy assembled.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# IMPORTANT: every `gold` value below must match a `canonicalName` in your
+# graph exactly. These were written against the documented schema but have NOT
+# been checked against a live database. Run:
+#
+#     python scripts/verify_questions.py
+#
+# which reports every gold name that does not resolve and suggests the closest
+# match in the graph. Fix them before trusting a benchmark number.
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Fields:
+#   id        stable key, used by `--only`
+#   question  the query as a user would ask it
+#   gold      canonical entity names a correct answer requires
+#   anchors   optional pair for the `paths` strategy; inferred if omitted
+#   kind      which retrieval property the question is designed to stress
+#   notes     why this question is in the bank
+
+# ── Connection questions: the answer is a relationship, not a passage ─────────
+
+- id: shoshone-horses
+  question: How did the Corps of Discovery obtain horses from the Shoshone?
+  kind: connection
+  anchors: [Sacagawea, Shoshone]
+  gold:
+    - SACAGAWEA
+    - SHOSHONE
+    - MERIWETHER LEWIS
+    - WILLIAM CLARK
+  notes: >
+    The mechanism spans several entries and hinges on Sacagawea's kinship tie.
+    Vector search finds passages about horses; it does not assemble the chain.
+
+- id: sacagawea-interpreting
+  question: Which Native nations did Sacagawea interpret for, and how did that work?
+  kind: connection
+  anchors: [Sacagawea, Shoshone]
+  gold:
+    - SACAGAWEA
+    - SHOSHONE
+    - TOUSSAINT CHARBONNEAU
+  notes: >
+    Sacagawea is rarely named directly. Alias-aware recall is the point here —
+    canonical-name-only matching badly understates every strategy.
+
+- id: charbonneau-role
+  question: What was Toussaint Charbonneau's role on the expedition?
+  kind: connection
+  anchors: [Toussaint Charbonneau, Hidatsa]
+  gold:
+    - TOUSSAINT CHARBONNEAU
+    - SACAGAWEA
+    - HIDATSA
+  notes: Tests whether a path through a spouse relationship surfaces context.
+
+# ── Authority questions: many passages match, few are load-bearing ────────────
+
+- id: grizzly-encounters
+  question: What happened when the expedition encountered grizzly bears?
+  kind: authority
+  gold:
+    - GRIZZLY BEAR
+    - MERIWETHER LEWIS
+  notes: >
+    Dozens of passages mention bears. Personalized PageRank should favour the
+    entries that are structurally central to the bear-encounter cluster.
+
+- id: great-falls-portage
+  question: What made the portage around the Great Falls so difficult?
+  kind: authority
+  gold:
+    - GREAT FALLS
+    - MISSOURI RIVER
+    - MERIWETHER LEWIS
+  notes: Long multi-week episode; vector top-k tends to land on one day of it.
+
+- id: fort-clatsop-winter
+  question: What were conditions like during the winter at Fort Clatsop?
+  kind: authority
+  gold:
+    - FORT CLATSOP
+    - WILLIAM CLARK
+    - CLATSOP
+  notes: Tests whether reranking pulls the whole winter rather than one entry.
+
+# ── Thematic questions: the answer needs breadth, not depth ───────────────────
+
+- id: trade-goods
+  question: What goods did the expedition trade with Native nations along the route?
+  kind: thematic
+  gold:
+    - MANDAN
+    - SHOSHONE
+    - NEZ PERCE
+    - CLATSOP
+  notes: >
+    A correct answer spans nations and geography. Vector top-k typically
+    returns eight near-duplicate passages about one trading session.
+
+- id: food-sources
+  question: How did the expedition feed itself across different stretches of the journey?
+  kind: thematic
+  gold:
+    - BISON
+    - SALMON
+    - ELK
+    - CAMAS
+  notes: Community diversification should beat plain similarity clearly here.
+
+- id: illness-and-injury
+  question: What illnesses and injuries did the corps deal with?
+  kind: thematic
+  gold:
+    - CHARLES FLOYD
+    - WILLIAM CLARK
+    - MERIWETHER LEWIS
+  notes: Spread thinly across the whole corpus rather than clustered.
+
+# ── Sequence questions: order matters ─────────────────────────────────────────
+
+- id: before-floyd-death
+  question: What was happening in the days before Sergeant Floyd died?
+  kind: sequence
+  gold:
+    - CHARLES FLOYD
+    - MISSOURI RIVER
+  notes: >
+    NEXT_CHUNK edges in the projection let PageRank flow along the journal's own
+    reading order, which plain similarity has no access to.
+
+- id: pacific-arrival
+  question: What did the party record when they first reached the Pacific?
+  kind: sequence
+  gold:
+    - PACIFIC OCEAN
+    - WILLIAM CLARK
+    - COLUMBIA RIVER
+  notes: A well-known moment — a fair test of whether graph methods hurt easy cases.
+
+# ── Control questions: plain vector search should already win ────────────────
+
+- id: keelboat-return
+  question: When was the keelboat sent back down the Missouri?
+  kind: control
+  gold:
+    - MISSOURI RIVER
+    - FORT MANDAN
+  notes: >
+    Narrow factual lookup. If a graph strategy loses badly here, the ranking
+    blend is over-weighted toward structure. Control questions keep the
+    benchmark honest.
+
+- id: prairie-dog
+  question: How did the expedition describe the prairie dog?
+  kind: control
+  gold:
+    - PRAIRIE DOG
+  notes: Single distinctive entity, single cluster of passages. Vector is enough.
