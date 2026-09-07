@@ -132,8 +132,16 @@
     - CHARLES FLOYD
     - MISSOURI RIVER
   notes: >
-    NEXT_CHUNK edges in the projection let PageRank flow along the journal's own
-    reading order, which plain similarity has no access to.
+    ⚠️ MEASURED FALSE (2026-09-07). This note used to claim NEXT_CHUNK edges let
+    PageRank flow along the journal's reading order. They do not help here.
+    Floyd died 1804-08-20; 18 passages exist for 08-13..08-20. Cosine's top-8
+    contains 3 of them. So does every graph variant tried, including
+    lc-retrieval with NEXT_CHUNK at damping 0.85 — 3/18 in the top-8 and 3/18
+    in the top-20. Fifteen of the eighteen are ordinary daily entries whose
+    vocabulary and entity structure say nothing about Floyd; only the DATE does.
+    A date-filtered Cypher query returns all 18 in one hop.
+    This is a text2cypher question, not a graph-algorithm question. Do not use
+    it to evaluate PageRank.
 
 - id: pacific-arrival
   question: What did the party record when they first reached the Pacific?

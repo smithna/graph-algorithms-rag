@@ -992,6 +992,48 @@ redundancy nearly doubling (0.054 → 0.096) is a real cost that hands section 6
 its setup: more structure pulls in more passages about the same episode, which
 is precisely what community diversification is for.
 
+#### 5c. Coverage questions are not section 5's business — measured
+
+Nathan's point, and it holds: cosine does badly when the answer spans **more
+than one chunk**, and the arbitrary top-k cutoff is the mechanism. The surprise
+is that the graph does not help either.
+
+`before-floyd-death` — Floyd died 1804-08-20, and 18 passages exist for
+08-13..08-20:
+
+| retrieval mode | in top-8 | in top-20 |
+|---|---|---|
+| cosine only | **3 / 18** | 3 / 18 |
+| blend + `lc-mentions` (shipped) | 3 / 18 | 3 / 18 |
+| blend + `lc-retrieval` (has `NEXT_CHUNK`) | 3 / 18 | 3 / 18 |
+| blend + `lc-retrieval`, damping 0.85 | 3 / 18 | 3 / 18 |
+| **date-filtered Cypher** | **18 / 18** in one hop | — |
+
+Fifteen of the eighteen are ordinary daily entries about weather and hunting.
+Neither their vocabulary nor their entity structure marks them as "the days
+before Floyd died" — **only the date does**, and only a filter can express that.
+
+Two consequences:
+
+1. **`questions.yaml`'s note on this question was false and is corrected.** It
+   claimed `NEXT_CHUNK` in the projection lets PageRank flow along the journal's
+   reading order. It does not. `kind: sequence` questions must not be used to
+   evaluate PageRank.
+2. **This is the measured basis for a multi-tool framing.** Three retrieval
+   modes with three distinct failure profiles:
+
+   | mode | good at | blind to |
+   |---|---|---|
+   | cosine | topical resemblance | enumeration; anything needing an arbitrary cutoff |
+   | multi-seed PPR | connection, corroboration | ordering, completeness, dates |
+   | text2cypher / filters | exact enumeration when the constraint is expressible | anything not expressible as a constraint |
+
+   Neither of the first two dominates. Section 5's honest job is to teach what
+   structure adds *and* name what it does not — the choice is per question.
+
+*(Constraint from Nathan, 2026-09-07: **do not modify the community-days demo
+repo** unless specifically instructed. Any agent/tool work stays a proposal.)*
+
 #### 6. Damping: shorter walks win monotonically
 
 Share of walk mass within `k` steps is `1 − d^(k+1)`.
