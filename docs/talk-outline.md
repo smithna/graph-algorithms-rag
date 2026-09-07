@@ -1121,18 +1121,71 @@ So the structure that would answer this question was never built. **No retrieval
 algorithm over this graph can find it by structure**, and that bound is set by
 extraction, not by ranking.
 
-##### And the algebraic limit — PPR cannot express conjunction, ever
+##### The algebraic limit — stated correctly on the second attempt
 
-This retires the "conjunction" framing on principle rather than on evidence.
-PPR is **linear in the restart distribution**. A chunk connected to two seeds
-receives the *sum* of two contributions — there is no bonus for being connected
-to **both**. A linear combination cannot represent AND. A chunk strongly tied to
-one seed beats a chunk moderately tied to two, every time.
+*(An earlier version of this finding claimed "PPR can never do conjunction."
+That runs together two separate claims and the second one was not established.
+Corrected below.)*
 
-> **The same property gives you the 3× speedup and the hard expressive limit.**
-> Linearity is why the whole seed set batches into one `sourceNodes` call, and
-> it is why diffusion can never do conjunction. Conjunction is a *pattern match*
-> — which is Cypher's job, not PageRank's.
+**What is provable.** PPR is **linear in the restart distribution**, so a
+multi-seed call computes `w_A·PPR_A(c) + w_B·PPR_B(c)`. A weighted sum has **no
+interaction term** — `∂²score/∂a∂b = 0` — so it never asks whether *both*
+values are non-zero:
+
+| | near A | near B | sum | product | min |
+|---|---|---|---|---|---|
+| chunk X | 1.0 | 0.0 | **1.0** | 0.0 | 0.0 |
+| chunk Y | 0.5 | 0.5 | **1.0** | 0.25 | 0.5 |
+
+The sum is indifferent between concentration and spread. Conjunction is exactly
+the requirement that Y beat X, which is non-linear by construction. So **a single
+`sourceNodes` call cannot express AND.** Verified numerically: batched equals the
+sum of the single-seed runs to 4e-07.
+
+**What is NOT true, and what I wrongly concluded.** That conjunction is
+therefore unreachable. `combine_seeds()` returns the per-seed vectors, so they
+can be combined any way one likes — product, min, geometric mean. The additivity
+belongs to PPR-as-called, not to the architecture. My first test of this ran
+`MIN` only on `shoshone-horses` — the one question whose answering passage has
+**no horse entity attached** — so there was no conjunctive structure to find and
+the 0/8 result said nothing about the combiner.
+
+**Tested fairly**, on the two questions where the structure does exist:
+
+| combiner | charbonneau-role | sacagawea-interpreting |
+|---|---|---|
+| SUM (what PPR gives) | 7 promoted | 7 promoted |
+| MIN / PRODUCT / GEO-MEAN | **6 of 7 identical** | 5-6 of 7 identical |
+
+**The combiner barely matters, and the reason is the same one that makes seed
+weighting a no-op.** Per-seed PPR vectors on this graph are highly correlated —
+mean pairwise `r` of +0.64 to +0.78 — and a deliberately far-apart pair
+(`EQUUS CABALLUS` + `SHOSHONE`) comes out at **+0.670, no less correlated than
+the near-synonyms.** On a bipartite graph over 2,913 chunks every entity's
+diffusion floods the same well-connected middle, so orthogonal PPR vectors are
+not obtainable here. Any symmetric combination of near-parallel vectors gives
+nearly the same ranking.
+
+*(Those `r` values are computed on percentile ranks and are inflated by a large
+near-zero tail whose ordering reflects general connectivity rather than the
+seed. The direct evidence is the near-identical top-8s.)*
+
+**So the honest statement is:**
+
+> PPR's own multi-seed scoring is additive and cannot represent AND. Conjunction
+> needs a non-linear combiner applied outside the algorithm — and on a graph
+> this small and this well-connected, that combiner has almost nothing to work
+> with. Conjunction is a *pattern match*, which is Cypher's job.
+
+And for `shoshone-horses` specifically the binding constraint is still
+extraction, not combination: no combiner can select a chunk that is in neither
+seed's neighbourhood, and the Aug 18 1805 passage is in neither because it has
+no horse.
+
+> **One property, two consequences, both worth stage time.** Linearity is why the
+> whole seed set batches into one `sourceNodes` call (3-8× faster) *and* why the
+> algorithm itself cannot conjoin. The speedup and the expressive limit are the
+> same fact.
 
 ##### What section 5 can honestly claim, after all this
 
