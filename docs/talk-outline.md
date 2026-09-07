@@ -1252,6 +1252,63 @@ going to matter — the sum had already done it better.
 why the whole seed set goes into one `sourceNodes` call *and* why the seeds
 self-weight by informativeness. One property, two benefits.
 
+##### 5d-bis. Edge weighting: what cancels, and the one variant that helps
+
+Nathan's suggestion — weight the relationships by inverse entity degree before
+running PPR, to fix the degree imbalance above. Tested, and it produced a real
+improvement, though not the one intended.
+
+**Inverse entity degree does nothing, and the reason is worth knowing.** A
+weight that is a function of the **entity alone** cancels out of that entity's
+own mass distribution: all 192 of `SHOSHONE`'s edges carry the same number, so
+its outflow divides 192 ways regardless. Mean PPR mass on SHOSHONE's chunks:
+
+| weight | mean mass per chunk |
+|---|---|
+| uniform 1.0 | 0.001439 |
+| **1 / df** (inverse degree) | 0.001497 |
+| IDF (ships) | 0.001449 |
+
+Four percent apart. Which also explains what the shipped IDF *is* doing: it acts
+on the **chunk's** outflow, steering mass toward rare entities. That is why it
+collapses entity-level hub dominance (4.47/8 → 0.60/8) while leaving seed
+mass-per-chunk untouched. Two different effects that look like one knob.
+
+**So the weight has to vary across the seed's own edges.** Term frequency would
+qualify — but there is none to use: of 14,799 (entity, chunk) pairs only **131**
+have more than one edge, max 3, mean 1.009. The extractor emits one mention edge
+per pair.
+
+**Entity density is the available substitute** — the seed's share of the chunk's
+entities. Measured against the hand-read passages of finding 5d:
+
+| weighting | `charbonneau-role` ranks | `sacagawea-interpreting` Nov-4 rank |
+|---|---|---|
+| `idf` (default) | 7, 3, 5 | **8** |
+| **`idf_over_entities`** | 5, 6, 3 | **3** |
+| `inverse_entities` | 5, 6, 4 | 3 |
+
+The decisive Nov-4 passage moves from rank **8 — one slot from falling out of
+the window — to rank 3.** It is 305 characters holding three entities, so
+Sacagawea is a third of it; a 2,000-character entry holding twenty gives each a
+twentieth. Note `1/ec` alone ≈ `idf/ec`, so the chunk normalisation is doing the
+work, not the IDF term.
+
+**It does not fix conjunction.** `SHOSHONE`+`EQUUS CABALLUS` both/onlyHorse goes
+4/8 → 10/6, slightly worse. This is a retrieval improvement, not an answer to
+the degree imbalance.
+
+**Not shipped as the default**, on n=4 hand-judged passages. Added as
+`MENTION_WEIGHT` (`idf` | `idf_over_entities` | `inverse_entities` | `uniform`)
+with the reasoning in `projection.py`, so the next person can settle it against
+a wider read or a repaired gold set instead of re-deriving it.
+
+**The remaining honest option for the degree imbalance** is degree-proportional
+seed *bias* — `sourceNodes: [[id, degree], ...]` — which equalises what each
+seed contributes per chunk. Untested, and it carries an obvious cost: it
+elevates all 192 of a hub's chunks to the level of a rare entity's 14, which is
+the hub trap arriving through a different door. Worth measuring before believing.
+
 ##### What section 5 can honestly claim, after all this
 
 Not conjunction. Not "better chunks". This:

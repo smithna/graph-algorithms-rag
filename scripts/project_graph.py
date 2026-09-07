@@ -81,7 +81,12 @@ def main() -> int:
         f"{mentions.projection_ms:,.0f} ms" if mentions.projection_ms else "reused",
     )
     table.add_row("Relationship types", "MENTIONS, NEXT_CHUNK, RELATED", "MENTIONS")
-    table.add_row("MENTIONS weight", "log(1 + totalChunks / df)", "log(1 + totalChunks / df)")
+    from graphrank.projection import MENTION_WEIGHTS
+    table.add_row(
+        "MENTIONS weight",
+        "log(1 + totalChunks / df)",
+        f"{cfg.mention_weight}: {MENTION_WEIGHTS[cfg.mention_weight]}",
+    )
     table.add_row("NEXT_CHUNK weight", f"{cfg.next_chunk_weight}", "—")
     table.add_row("RELATED weight", f"{cfg.related_weight}", "—")
     console.print(table)

@@ -107,12 +107,61 @@ RETURN gds.graph.project(
 # It matters far more than it looks: naive, the walk decides every question is
 # about Lewis, Clark, Drouillard and deer (entity top-8 overlap across
 # questions 4.53/8); IDF-weighted, that falls to 0.60/8.
+#: Selectable weight expressions for the mentions projection. ``df`` is the
+#: entity's chunk frequency; ``ec`` is how many entities the chunk holds.
+#:
+#: ── Why the choice matters, and why one obvious idea does nothing ──────────
+#:
+#: A weight that is a function of the **entity alone** cancels out of that
+#: entity's own mass distribution: all of SHOSHONE's 192 edges carry the same
+#: number, so its outflow divides 192 ways regardless. Measured — mean PPR mass
+#: on SHOSHONE's chunks under three schemes:
+#:
+#:     uniform 1.0              0.001439
+#:     1 / df   (inverse degree) 0.001497
+#:     IDF                       0.001449
+#:
+#: So ``idf`` does **not** equalise what a seed contributes per chunk. What it
+#: does do is act on the *chunk's* outflow, steering mass toward rare entities —
+#: which is why it collapses entity-level hub dominance (cross-question top-8
+#: overlap 4.47/8 -> 0.60/8) while leaving seed mass-per-chunk alone.
+#:
+#: To change a seed's mass split, the weight has to vary **across that seed's
+#: edges**. Term frequency would, but there is none to use: of 14,799
+#: (entity, chunk) pairs only 131 have more than one edge, max 3, mean 1.009.
+#: ``idf_over_entities`` uses entity density as the TF substitute instead — the
+#: seed's share of the chunk's entities. A 305-character passage holding three
+#: entities gives each a third; a 2,000-character entry holding twenty gives
+#: each a twentieth.
+#:
+#: Measured against the hand-read passages of finding 5d (n=4, so promising
+#: rather than settled):
+#:
+#:     weighting               charbonneau ranks   sacagawea Nov-4 rank
+#:     idf (default)                    7, 3, 5                      8
+#:     idf_over_entities                5, 6, 3                      3
+#:
+#: It does not help conjunction — SHOSHONE+EQUUS both/onlyHorse goes 4/8 to
+#: 10/6 — so it is a retrieval change, not a fix for the degree imbalance
+#: described in the outline's finding 5d.
+MENTION_WEIGHTS = {
+    "idf": "log(1.0 + toFloat($totalChunks) / df)",
+    "idf_over_entities": "log(1.0 + toFloat($totalChunks) / df) / ec",
+    "inverse_entities": "1.0 / ec",
+    "uniform": "1.0",
+}
+
 MENTIONS_PROJECTION_QUERY = """
 MATCH (e)-[:MENTIONED_IN]->(seen:Chunk)
 WHERE NOT e:Chunk AND NOT e:GenericLocation
 WITH e, count(DISTINCT seen) AS df
 MATCH (e)-[:MENTIONED_IN]->(c:Chunk)
 WITH DISTINCT e, c, df
+CALL (c) {
+    MATCH (x)-[:MENTIONED_IN]->(c)
+    WHERE NOT x:Chunk AND NOT x:GenericLocation
+    RETURN count(DISTINCT x) AS ec
+}
 RETURN gds.graph.project(
     $graphName,
     e,
@@ -121,11 +170,12 @@ RETURN gds.graph.project(
         sourceNodeLabels: labels(e),
         targetNodeLabels: labels(c),
         relationshipType:  'MENTIONS',
-        relationshipProperties: {weight: log(1.0 + toFloat($totalChunks) / df)}
+        relationshipProperties: {weight: __WEIGHT__}
     },
     {undirectedRelationshipTypes: ['MENTIONS']}
 )
 """
+
 
 
 @dataclass
@@ -251,8 +301,15 @@ def project_mentions(name: str | None = None, *, force: bool = False) -> Project
             )
         drop_graph(name)
 
+    scheme = settings().mention_weight
+    if scheme not in MENTION_WEIGHTS:
+        raise ValueError(
+            f"MENTION_WEIGHT={scheme!r} is not one of {sorted(MENTION_WEIGHTS)}"
+        )
     graph, result = gds().graph.cypher.project(
-        MENTIONS_PROJECTION_QUERY, graphName=name, totalChunks=total_chunks()
+        MENTIONS_PROJECTION_QUERY.replace("__WEIGHT__", MENTION_WEIGHTS[scheme]),
+        graphName=name,
+        totalChunks=total_chunks(),
     )
     return ProjectionStats(
         name=name,
