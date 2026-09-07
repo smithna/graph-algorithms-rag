@@ -1309,6 +1309,86 @@ seed contributes per chunk. Untested, and it carries an obvious cost: it
 elevates all 192 of a hub's chunks to the level of a rare entity's 14, which is
 the hub trap arriving through a different door. Worth measuring before believing.
 
+##### 5d-ter. Rare seeds dominate — and the seeder has cosine's disease
+
+Nathan's concern: pick four or five seeds matching the question, one of them
+rare and a weaker match, and the rare one dominates PageRank. **Confirmed as a
+mechanism, and it explains more than it was aimed at.**
+
+PPR normalises each single-seed run to sum ≈ 1, so **every seed receives the
+same total mass regardless of degree** — and mass *per chunk* therefore goes as
+`1/degree`. A degree-1 seed puts essentially all its mass on its single chunk:
+about 62× what a degree-62 seed gives each of its own. Actual seed degrees:
+
+| question | seed degrees |
+|---|---|
+| `charbonneau-role` | 62, **1**, **1** |
+| `sacagawea-interpreting` | 64, **1** |
+| `shoshone-horses` | **2, 1, 1** — the entire entity signal is four chunks |
+
+And the top of the entity ranking is then mechanical rather than retrieved:
+`1806-05-10` took **99.9%** of its score from one degree-1 seed; `1806-04-25`
+likewise. That is the deeper reason `shoshone-horses` failed — not just that the
+seeder chose topical Events, but that those Events are degree-1 nodes each
+spiking one arbitrary passage.
+
+**Semantic match cannot police this.** Match scores span ~2% across the seeds;
+degree spans 62×. `seed_weighting` is three orders of magnitude too weak to
+compensate — the same reason weighting measured as a no-op in finding #5.
+
+**A degree-1 seed is a confident bet, not automatically a bad one.**
+`BIRTH OF JEAN BAPTISTE CHARBONNEAU` (degree 1) spikes `1805-02-11`, the birth
+passage, genuinely relevant. `JEAN BAPTISTE CHARBONNEAU` (degree 1) spikes
+`1806-05-27`, which is not. All of the mass on one passage, no hedging: precise
+when extraction put the entity in the right place, a confident error when it
+did not.
+
+**Why this has not hurt more, and it is not reassuring.** Cosine's 60% is
+masking the spikes. Push the blend to cosine 0.3 and `charbonneau-role` goes
+**3/3 → 2/3**. So the blend weight is doing double duty — combining signals
+*and* suppressing seed-degree artifacts. "Tune the blend" is partly "tune how
+much seed noise you tolerate," which is not a clean design.
+
+**Two remedies tested, neither a fix:**
+
+| min_seed_degree | `charbonneau` | `sacagawea` | `shoshone` Aug-1805 | seeds selected |
+|---|---|---|---|---|
+| **0** (ships) | **3/3** | 1/1 [8] | 1/8 | the degree-1 ones |
+| 3 | 2/3 | 1/1 [7] | 2/8 | + `ST. CHARLES` |
+| 5 | 2/3 | 1/1 [6] | 2/8 | + `WISDOM RIVER`, `SAGITTARIA LATIFOLIA` |
+| 10 | **3/3** | 1/1 [6] | 2/8 | `TOUSSAINT CHARBONNEAU` alone |
+
+Degree-proportional seed bias measured equivalent to filtering, and both are
+marginal. Filtering at 3 and 5 makes `charbonneau-role` **worse**, and only
+recovers at 10 — where the threshold is strict enough that one clean seed
+survives. **What helps is fewer, better seeds; not the degree filter.**
+
+##### And the finding underneath all of it
+
+Look at what the filter admits in place of the degree-1 seeds: `WISDOM RIVER`
+and `SAGITTARIA LATIFOLIA`, for a question about Sacagawea interpreting.
+`ST. CHARLES`, for a question about Charbonneau.
+
+> **The entity seeder is itself a cosine retrieval step, and it has cosine's
+> disease.** It matches a whole-question embedding against entity names and
+> returns things that are vaguely expedition-flavoured. The remedy for co-typed
+> substitution is being delivered by a mechanism that suffers from co-typed
+> substitution.
+
+So the leverage in this pipeline is not in edge weights, seed weights, or degree
+filters — all three measured as no-ops or marginal. It is in **seed selection**,
+and doing that properly means *naming* the entities the question is about rather
+than embedding-matching the question as a whole. That is question decomposition
+— an NER or parse step, or the agent Nathan described choosing entities
+explicitly — and it is the single highest-leverage untested change to this
+section's pipeline.
+
+`min_seed_degree` is added and documented, **default 0**, with the measurement
+and the caveat that it can empty the seed set (all three `shoshone-horses` seeds
+are discarded at a threshold of 5; the code falls back rather than returning
+nothing). n=4 hand-judged passages throughout, so these are directions, not
+verdicts.
+
 ##### What section 5 can honestly claim, after all this
 
 Not conjunction. Not "better chunks". This:

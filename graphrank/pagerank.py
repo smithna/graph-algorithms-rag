@@ -291,6 +291,47 @@ class ExpandConfig:
 
     #: How many survive into the context window
     k: int = 8
+    #: Discard entity seeds mentioned in fewer than this many chunks. 0 = keep all.
+    #:
+    #: ── Why this knob exists ────────────────────────────────────────────────
+    #:
+    #: PPR normalises each single-seed run to sum ~1, so **every seed gets the
+    #: same total mass regardless of degree** — and therefore mass *per chunk*
+    #: goes as 1/degree. A degree-1 seed puts essentially all of its mass on its
+    #: single chunk: ~62x what a degree-62 seed gives each of its own.
+    #:
+    #: This is not hypothetical. Measured seed degrees:
+    #:
+    #:     charbonneau-role        62,  1,  1
+    #:     sacagawea-interpreting  64,  1
+    #:     shoshone-horses          2,  1,  1     <- the whole signal is 4 chunks
+    #:
+    #: and the top of the entity ranking is then mechanical rather than
+    #: retrieved — 1806-05-10 took 99.9% of its score from one degree-1 seed.
+    #: Semantic match cannot police this: match scores span ~2% across seeds
+    #: while degree spans 62x, so `seed_weighting` is three orders of magnitude
+    #: too weak to compensate. It is the same reason weighting measured as a
+    #: no-op.
+    #:
+    #: **But a degree-1 seed is a confident bet, not automatically a bad one.**
+    #: `BIRTH OF JEAN BAPTISTE CHARBONNEAU` (degree 1) spikes 1805-02-11, which
+    #: is the birth passage and genuinely relevant. `JEAN BAPTISTE CHARBONNEAU`
+    #: (degree 1) spikes 1806-05-27, which is not. High variance either way.
+    #:
+    #: Measured against the hand-read passages of finding 5d (n=4, so a
+    #: direction rather than a verdict) — filtering and degree-proportional bias
+    #: come out equivalent, and both are marginal:
+    #:
+    #:     variant             charbonneau (cos .6 / .3)   sacagawea (.6 / .3)
+    #:     keep all (default)  3/3 [7,3,5]  2/3 [13,2,4]   [8]  [6]
+    #:     bias by degree      3/3 [8,3,4]  2/3 [11,2,3]   [7]  [6]
+    #:     drop degree < 5     3/3 [8,3,4]  2/3 [11,2,3]   [7]  [6]
+    #:
+    #: **Default is 0 (off)** because the evidence is four passages, and because
+    #: a filter can empty the seed set outright: at 5, all three
+    #: `shoshone-horses` seeds are discarded and the entity signal disappears
+    #: silently. If you raise this, check for that.
+    min_seed_degree: int = 0
     #: Entity seeds drawn from question-to-entity semantic match.
     #: 1 -> 2 is the single biggest structural win in this pipeline (+64%
     #: conjunction passages in the top-8); 2-8 is a plateau in the blend. Three
@@ -416,6 +457,25 @@ def entity_seeds(
         )
 
     rows = [r for r in rows if r["nodeId"] in in_graph]
+    if config.min_seed_degree > 0:
+        keep = {
+            r["nodeId"]
+            for r in read_query(
+                """
+                UNWIND $ids AS nid
+                MATCH (e)-[:MENTIONED_IN]->(c:Chunk) WHERE id(e) = nid
+                WITH nid, count(DISTINCT c) AS df
+                WHERE df >= $minDf
+                RETURN nid AS nodeId
+                """,
+                ids=list({r["nodeId"] for r in rows}),
+                minDf=config.min_seed_degree,
+            )
+        }
+        filtered = [r for r in rows if r["nodeId"] in keep]
+        # Never hand back an empty seed set silently — see the note on
+        # min_seed_degree; shoshone-horses loses every seed at a threshold of 5.
+        rows = filtered or rows
     rows.sort(key=lambda r: -r["score"])
 
     seen: set[int] = set()
