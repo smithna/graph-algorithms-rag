@@ -43,7 +43,7 @@ from graphrank.pagerank import (
     SEED_WEIGHTINGS,
     ExpandConfig,
     _percentile,
-    combine_seeds,
+    batched_pagerank,
     entity_seeds,
 )
 from graphrank.projection import all_chunk_node_ids, mentions_membership, project_mentions
@@ -120,14 +120,14 @@ class Fixture:
         out = {}
         for q in self.questions:
             seeds = entity_seeds(q["embedding"], config=config)
+            # Same code path expand() uses: one biased GDS call per signal.
             entity = (
-                combine_seeds([(s.node_id, s.weight) for s in seeds], config=config)
+                batched_pagerank([(s.node_id, s.weight) for s in seeds], config=config)
                 .reindex(self.chunk_index)
                 .fillna(0.0)
             )
-            share = 1.0 / len(q["passage_seeds"]) if q["passage_seeds"] else 0.0
             passage = (
-                combine_seeds([(n, share) for n in q["passage_seeds"]], config=config)
+                batched_pagerank(q["passage_seeds"], config=config)
                 .reindex(self.chunk_index)
                 .fillna(0.0)
             )

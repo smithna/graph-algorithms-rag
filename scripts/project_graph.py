@@ -4,8 +4,8 @@
 Run this once per session. Every algorithm script reuses the projections, so
 the projection cost is amortised — 289 ms and 94 ms respectively.
 
-That is not the same as queries being free: section 5's retrieval runs eight
-PPR calls at ~55 ms each, so a fresh question is ~580 ms. See the note in
+That is not the same as queries being free: section 5's retrieval runs two PPR
+calls at ~55 ms each, so a fresh question is ~196 ms. See the note in
 ``graphrank/projection.py``.
 
 **Two projections, on purpose.** A projection is not neutral infrastructure —

@@ -893,25 +893,89 @@ Shipped defaults: `seed_weighting="proportional"` (principled, free, harmless),
 `entity_seed_k=3` (inside the blended plateau and near the pure-structure peak,
 so robust across both regimes rather than best in either).
 
-#### 5b. Latency: the outline's "milliseconds" claim was wrong
+#### 5b. Latency — and a retracted measurement of my own
 
-| | measured |
+The outline used to claim "per-query PPR against a projected graph is
+milliseconds." True of *one* PPR call, and the first implementation here made
+eight of them — one per seed — for no reason, as it turns out.
+
+**First attempt, and it was wrong.** I measured five separate single-seed runs
+at 58 ms total against one five-source call at 53 ms, and concluded batching
+does not help. The seed list came from
+`MATCH (e)-[:MENTIONED_IN]->(c:Chunk) RETURN id(c) LIMIT 5`, which returns **the
+same chunk five times** — so four of the five "runs" were cache hits. A second
+measurement in the same session said 53 ms per seed and contradicted it; the
+contradiction is what exposed the bug.
+
+**Measured properly**, with distinct real seeds:
+
+| seeds | 1 call, N sources | N calls, 1 source | ratio |
+|---|---|---|---|
+| 1 | 52.4 ms | 53.4 ms | 1.02× |
+| 2 | 54.9 ms | 107.8 ms | 1.96× |
+| 3 | 53.8 ms | 165.0 ms | 3.07× |
+| 5 | 54.8 ms | 273.5 ms | 4.99× |
+| 8 | 56.2 ms | 440.6 ms | 7.84× |
+
+Near-linear in the number of seeds, because the cost is per-call fixed overhead
+— graph setup plus streaming 6,270 rows — not the source count. The pandas
+weighted sum was never the cost either: 0.3 ms.
+
+**End-to-end effect:**
+
+| | one call per seed | one call per signal |
+|---|---|---|
+| `expand`, fresh question | ~580 ms | **196 ms** |
+| entity PPR (3 seeds) | 187 ms | 72 ms |
+| passage PPR (5 seeds) | 273 ms | 53 ms |
+| cosine over 2,913 chunks | 39 ms | 39 ms |
+
+The whole retrieval is now **two** PPR calls, one per structural signal,
+regardless of how many seeds each restarts from.
+
+Retrieval quality is unchanged — every conjunction median stayed within noise,
+and several bests improved.
+
+**Why batching is safe — and I got the reason wrong first.** My initial fix
+assumed `sourceNodes` only took a flat list, so I reasoned that batching
+required a *uniform* restart distribution, which was acceptable only because
+seed weighting had measured as a no-op. Nathan pointed at the
+[GDS PageRank syntax](https://neo4j.com/docs/graph-data-science/current/algorithms/page-rank/),
+which documents node-bias pairs:
+
+> To use different bias for different source nodes, use the syntax:
+> `[[nodeId1, bias1], [nodeId2, bias2], …]`
+
+So there was never a trade-off. Measured against GDS 2026.7.0, since the docs
+do not say:
+
+| question | answer |
 |---|---|
-| `lc-mentions` projection | 94 ms, once |
-| plain cosine top-8 | 4 ms |
-| `ppr` (candidate-gated rerank) | 79 ms p50 |
-| `expand`, fresh question | **~580 ms** |
-| `expand`, repeat question (seeds cached) | ~105 ms |
+| Is the pair syntax accepted? | yes |
+| Is bias the linear weight? | **yes** — `sourceNodes=[[n,w],…]` equals `Σ w·PPR(n)` to 7e-07 |
+| Are biases normalised? | **no** — doubling every bias doubles every score exactly |
+| Is a flat list equivalent to bias 1.0? | yes, to 1.7e-18 |
 
-About **55 ms per PPR run**, and the shipped config makes eight of them (3
-entity seeds + 5 passage seeds). Batching them into one multi-source GDS call
-does *not* help — 53 ms for five sources in one call versus 58 ms for five
-separate calls — so per-seed caching is free and buys reuse across questions.
+That last one is why a flat batched run is the **sum** of the single-seed runs
+and not their mean: GDS gives each source node its own unit of restart mass. A
+mean-normalised comparison differs by a factor of `|S|` — 0.385 on a 3-seed
+question — which is what first made me think linearity had failed. It had not;
+Spearman between the two is 0.999992 and the top-5 are identical.
 
-Projection really is amortised, so that half of the original claim stands. The
-per-query half does not, and the slide has been rewritten to say ~580 ms and
-argue it is invisible beside the generation call rather than pretend it is
-milliseconds.
+`seed_weighting` therefore stays at `proportional`, the principled default,
+rather than being pushed to `uniform` to buy speed that was never at stake.
+`combine_seeds()` is kept only to make the linearity claim checkable, and its
+docstring now says so.
+
+**The transferable lesson**, and it is better than the fix: I designed around a
+limitation the parameter list does not have, and then measured a trade-off that
+does not exist. Read the signature first.
+
+
+Projection really is amortised, so that half of the original claim stands.
+
+Also from the benchmark harness, and **directional only** — the gold set still
+has the defects in finding #10, so these are not quotable:
 
 Also from the benchmark harness, and **directional only** — the gold set still
 has the defects in finding #10, so these are not quotable:
@@ -1454,10 +1518,26 @@ aggregated over every path rather than the shortest one.
   `SHOT` carries no importance semantics at all). Dropping `NEXT_CHUNK` stops
   mass leaking to passages that are merely adjacent in time.
 
-**PPR is linear in the restart distribution.** `PPR(w₁v₁ + w₂v₂)` is *exactly*
-`w₁·PPR(v₁) + w₂·PPR(v₂)`. So run one PPR per seed, cache them, and blend
-afterwards — you get every weighting from one set of runs and can re-weight live
-on stage without recomputing.
+**PPR is linear in the restart distribution**, and GDS hands you that directly.
+`PPR(w₁v₁ + w₂v₂)` is *exactly* `w₁·PPR(v₁) + w₂·PPR(v₂)`, and
+[`sourceNodes`](https://neo4j.com/docs/graph-data-science/current/algorithms/page-rank/)
+takes **node-bias pairs** — `[[nodeId1, bias1], [nodeId2, bias2], …]` — where
+the bias *is* the linear weight (verified to 7e-07). So an arbitrarily weighted
+multi-seed walk is **one** call, and the whole retrieval is two: one per
+structural signal.
+
+Two measured details the docs do not state, both worth a moment on screen
+because they will bite someone:
+
+- **Biases are not normalised.** Double every bias and every score doubles. A
+  flat list is identical to every bias being 1.0, so GDS gives each source node
+  its own unit of restart mass — meaning a flat batched run is the **sum** of
+  the single-seed runs, not their mean. Compare a batched score against an
+  averaged one and you see a factor of `|S|` and conclude, wrongly, that
+  linearity failed. *(I did exactly that.)*
+- **Seed count is nearly free.** One call with eight sources costs 56 ms; eight
+  separate calls cost 441 ms. The cost is per-call overhead, not source count.
+
 
 **Keep the walk short.** Damping is the horizon: the share of walk mass within
 `k` steps is `1 − d^(k+1)`. Measured, shorter is strictly better, and the value
@@ -1521,32 +1601,34 @@ the slider pushed to pure structure. Show both: the passage that most needs the
 graph is the one cosine's weight costs the most, which is the honest way to
 introduce the blend rather than claiming a free lunch.
 
-**Cost — and be straight about it, because the old claim was wrong.** The
-outline used to say "per-query PPR against a projected graph is milliseconds."
-That is true of a single PPR run and false of this design, which makes eight of
-them.
+**Cost, and the one-line fix that mattered.** Pass the whole seed set to
+`sourceNodes` in a single call — with biases if you want them. It is almost free
+in the number of seeds, because the cost is per-call fixed overhead:
+
+| seeds | 1 call, N sources | N calls, 1 source | ratio |
+|---|---|---|---|
+| 1 | 52.4 ms | 53.4 ms | 1.02× |
+| 3 | 53.8 ms | 165.0 ms | **3.07×** |
+| 5 | 54.8 ms | 273.5 ms | **4.99×** |
+| 8 | 56.2 ms | 440.6 ms | **7.84×** |
 
 | | measured |
 |---|---|
 | `lc-mentions` projection | **94 ms**, once per session, amortised |
 | plain cosine top-8 | **4 ms** |
 | candidate-gated rerank (`ppr`) | **79 ms** p50 |
-| `expand`, fresh question | **~580 ms** — cosine 40, entity PPR 190 (3 seeds), passage PPR 275 (5 seeds) |
-| `expand`, repeat question, seeds cached | **~105 ms** |
+| `expand`, fresh question | **~196 ms** — cosine 39, entity PPR 72, passage PPR 53 |
+| *(first implementation, one call per seed)* | *~580 ms* |
 
-Roughly **55 ms per seed**, and eight seeds is eight GDS calls. Two things worth
-saying:
+**~50× plain vector, and it still does not matter**, because the generation call
+that follows dwarfs 200 ms. That is the honest framing for a latency slide: not
+"it's free", but "it's invisible next to the LLM you are about to call."
 
-- **A single multi-source call is not faster** — 53 ms for five sources in one
-  call versus 58 ms for five separate calls. GDS per-call overhead is small, so
-  per-seed caching costs nothing and buys cross-question reuse.
-- **145× plain vector still does not matter here**, because the generation call
-  that follows dwarfs it. That is the honest framing for a latency slide: not
-  "it's free", but "it's invisible next to the LLM you are about to call."
+And because bias is supported, there is **no trade-off between weighting the
+seeds and batching them.** That is the useful shape of the lesson, and it is
+worth saying out loud: I designed around a limitation the signature does not
+have. Read the parameter list first.
 
-*(Since seed weighting turned out to be a no-op, the "reweight for free"
-benefit of per-seed caching is moot. The cache earns its place on repeat seeds
-across questions instead.)*
 
 ### 6. "Your context is redundant" → community detection (6 min) · 0:33
 

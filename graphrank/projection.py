@@ -3,12 +3,13 @@
 Projection is a one-time cost and it is amortised: 289 ms for ``lc-retrieval``,
 94 ms for ``lc-mentions``, once per session.
 
-Be careful with the follow-on claim, though. *One* PPR run against a projected
-graph costs about 55 ms — but section 5's retrieval makes eight of them (three
-entity seeds plus five passage seeds), so a fresh question is ~580 ms end to
-end, against 4 ms for plain cosine. Cached seeds bring a repeat question to
-~105 ms. The honest performance argument is not that the graph work is free,
-it is that ~580 ms is invisible beside the generation call that follows.
+Be careful with the follow-on claim, though. A PPR call against a projected
+graph costs about 55 ms almost regardless of how many seeds it restarts from,
+because the cost is per-call overhead rather than source count. Section 5's
+retrieval makes two such calls — one per structural signal — so a fresh
+question is ~196 ms end to end, against 4 ms for plain cosine. The honest
+performance argument is not that the graph work is free, it is that ~200 ms is
+invisible beside the generation call that follows.
 
 Three relationship types go into the projection:
 

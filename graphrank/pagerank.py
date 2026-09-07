@@ -220,8 +220,10 @@ def rerank(
 #
 #     PPR(w1*v1 + w2*v2)  ==  w1*PPR(v1) + w2*PPR(v2)
 #
-# exactly, not approximately. So one run per seed, cached, blended afterwards —
-# and every reweighting is free after the first pass.
+# exactly, not approximately — verified on this graph to 7e-07. GDS exposes that
+# directly: ``sourceNodes`` takes node-bias pairs, and the bias *is* the linear
+# weight. So an arbitrarily weighted multi-seed walk is **one** call, and the
+# whole retrieval is two (one per structural signal), not one per seed.
 
 from .config import read_query
 from .projection import (
@@ -306,7 +308,9 @@ class ExpandConfig:
     cosine_weight: float = 0.6
     #: How the entity PPR and passage PPR halves divide the structural weight
     entity_share: float = 0.5
-    #: One of :data:`SEED_WEIGHTINGS`. Measured a no-op — see the note above.
+    #: One of :data:`SEED_WEIGHTINGS`. Measured a no-op for retrieval quality,
+    #: and free either way — GDS takes per-seed bias in the same single call —
+    #: so this is kept at the principled default rather than the cheap one.
     seed_weighting: str = "proportional"
     #: Temperature for ``softmax`` weighting. Smaller is sharper.
     softmax_temperature: float = 0.01
@@ -478,13 +482,79 @@ def seed_pagerank(node_id: int, *, config: ExpandConfig | None = None) -> pd.Ser
 def combine_seeds(
     weighted_seeds: list[tuple[int, float]], *, config: ExpandConfig | None = None
 ) -> pd.Series:
-    """Weighted sum of single-seed PPR runs — exact, by linearity."""
+    """Weighted sum of single-seed PPR runs — exact, by linearity.
+
+    **Prefer :func:`batched_pagerank`.** This existed to get weighted seeds,
+    which turned out to be unnecessary: GDS ``sourceNodes`` accepts node-bias
+    pairs, so a weighted multi-seed walk is one call rather than N. What is left
+    here is a per-seed cache, useful only when the same seed recurs across many
+    questions, and a direct demonstration that linearity holds.
+
+    Kept because it makes the linearity claim checkable rather than asserted —
+    the equality against a single biased call is a two-line test.
+    """
     config = config or ExpandConfig()
     total: pd.Series | None = None
     for node_id, weight in weighted_seeds:
         contribution = seed_pagerank(node_id, config=config) * weight
         total = contribution if total is None else total.add(contribution, fill_value=0.0)
     return total if total is not None else pd.Series(dtype=float)
+
+
+def batched_pagerank(
+    seeds: list[int] | list[tuple[int, float]], *, config: ExpandConfig | None = None
+) -> pd.Series:
+    """PPR from a whole seed set in **one** GDS call, with optional per-seed bias.
+
+    ``seeds`` is either a flat list of node ids (uniform restart) or a list of
+    ``(node_id, bias)`` pairs. GDS ``sourceNodes`` accepts both — the biased
+    form is the documented ``[[nodeId1, bias1], [nodeId2, bias2], ...]`` syntax:
+
+        https://neo4j.com/docs/graph-data-science/current/algorithms/page-rank/
+
+    Two things measured against GDS 2026.7.0, because the docs do not say:
+
+    1. **Bias is the unnormalised linear weight.** ``sourceNodes=[[n, w], ...]``
+       equals ``sum(w * PPR(n))`` to 7e-07. Biases are *not* rescaled to sum to
+       one — doubling every bias doubles every output score exactly. A flat list
+       is identical to every bias being 1.0 (diff 1.7e-18), which means GDS
+       gives each source node its own unit of restart mass, so a flat batched
+       run is the **sum** of the single-seed runs, not their mean.
+    2. **One call is near-free in the seed count**, because the cost is per-call
+       fixed overhead — graph setup plus streaming 6,270 rows — not the number
+       of sources:
+
+           seeds     1 call, N sources     N calls, 1 source     ratio
+           1                    52.4 ms               53.4 ms   1.02x
+           2                    54.9 ms              107.8 ms   1.96x
+           3                    53.8 ms              165.0 ms   3.07x
+           5                    54.8 ms              273.5 ms   4.99x
+           8                    56.2 ms              440.6 ms   7.84x
+
+    Together those mean weighted multi-seed PPR costs exactly one call. There is
+    no speed/expressiveness trade-off to make here, which is worth knowing:
+    :func:`combine_seeds` looks like it buys expressiveness and does not.
+    """
+    config = config or ExpandConfig()
+    if not seeds:
+        return pd.Series(dtype=float)
+
+    if isinstance(seeds[0], tuple):
+        source_nodes = [[int(node), float(bias)] for node, bias in seeds]  # type: ignore[misc]
+    else:
+        source_nodes = [int(node) for node in seeds]  # type: ignore[arg-type]
+
+    params: dict = {
+        "sourceNodes": source_nodes,
+        "dampingFactor": config.damping_factor,
+        "maxIterations": config.max_iterations,
+        "tolerance": config.tolerance,
+    }
+    if config.weighted:
+        params["relationshipWeightProperty"] = "weight"
+
+    frame = gds().pageRank.stream(get_mentions_graph(), **params)
+    return frame.set_index("nodeId")["score"]
 
 
 def _percentile(values: pd.Series) -> pd.Series:
@@ -544,9 +614,13 @@ def expand(
     # ── 2. Entity-seeded PPR ─────────────────────────────────────────────────
     t0 = time.perf_counter()
     seeds = entity_seeds(embedding, config=config)
-    entity_scores = combine_seeds(
-        [(s.node_id, s.weight) for s in seeds], config=config
-    ).reindex(chunk_index).fillna(0.0)
+    # One call, biased by seed weight. GDS bias == the linear weight exactly, so
+    # any weighting is free; see batched_pagerank.
+    entity_scores = (
+        batched_pagerank([(s.node_id, s.weight) for s in seeds], config=config)
+        .reindex(chunk_index)
+        .fillna(0.0)
+    )
     entity_ms = (time.perf_counter() - t0) * 1000
 
     # ── 3. Passage-seeded PPR ────────────────────────────────────────────────
@@ -554,10 +628,12 @@ def expand(
     passage_seed_ids = [
         r["nodeId"] for r in rows if r["nodeId"] in in_graph
     ][: config.passage_seed_k]
-    share = 1.0 / len(passage_seed_ids) if passage_seed_ids else 0.0
-    passage_scores = combine_seeds(
-        [(n, share) for n in passage_seed_ids], config=config
-    ).reindex(chunk_index).fillna(0.0)
+    # Always uniform — the top cosine hits are not ranked against each other.
+    passage_scores = (
+        batched_pagerank(passage_seed_ids, config=config)
+        .reindex(chunk_index)
+        .fillna(0.0)
+    )
     passage_ms = (time.perf_counter() - t0) * 1000
 
     # ── 4. Blend on percentile ranks ─────────────────────────────────────────
