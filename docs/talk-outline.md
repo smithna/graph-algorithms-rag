@@ -81,14 +81,40 @@ independently built graphs:
 
 | database | what it is | status |
 |---|---|---|
-| `neo4j` | the demo graph — restored dump, fully disambiguated | **keep** — what the demos run against |
-| `rawluna` | pre-disambiguation, `gpt-5.6-luna` extraction | **keep** — the canonical measurement baseline |
-| `rawgraph` | pre-disambiguation, `gpt-4o-mini` extraction | retired — superseded by `rawluna` |
+| `rawluna` | pre-disambiguation, `gpt-5.6-luna` extraction | **keep, frozen** — the section-4 measurement baseline |
+| `lewisclark` | clone of `rawluna`, then the rest of the pipeline | **keep** — the new demo graph |
+| `neo4j` | the v1.0 dump — `gpt-4o-mini` extraction throughout | retiring, once `lewisclark` verifies |
+| `rawgraph` | pre-disambiguation, `gpt-4o-mini` extraction | retired |
 
-**`rawluna` is the baseline for all measurement from here on.** `rawgraph` was
-an earlier build on the stale extraction model; its numbers are retained below
-only where they establish that a result *replicates* across independent builds,
-which is evidence worth keeping. Nothing new should be measured on it.
+**Why `neo4j` is being replaced rather than kept as the "after" graph.** It is
+not a better graph, only an older one — its entities and relationships come from
+a `gpt-4o-mini` extraction that we measured as producing 39% fewer mention edges
+and roughly four times as many malformed concatenated-name nodes. Finishing
+`rawluna` gives a demo graph on the better extraction; `rawluna` itself stays
+frozen so the pre-disambiguation baseline survives.
+
+**The resolution steps were run on corrected copies**, not the shipped scripts —
+`disambiguate.py` with the Jaro-Winkler inversion fixed, `gpt-5.6-luna` as the
+judge, and OVERLAP/idfWeighted/topK=100/minCount=1 from finding 2c. Running it
+as shipped would have baked both known defects straight into the demo graph.
+
+**Sacagawea provenance is now recorded in the graph.** `enrich_sacagawea.py`
+still runs — the demo graph should retrieve her as well as possible — but the
+patched copy tags every relationship it creates:
+
+```
+(:Person {canonicalName:'SACAGAWEA'})-[r:MENTIONED_IN]->(:Chunk)
+    r.source       = 'lewis-clark.org'   -- the scraped list supplied it
+    r.externalOnly = true                -- only the website found it
+    r.alsoExternal = true                -- corpus AND website found it
+```
+
+plus `p.externalAliases` holding the 13 scraped surface forms. Before
+resolution the split is **56 external-only / 4 both / 4 corpus-only**, so the
+website is doing nearly all the work at that point. The number that matters is
+the same split *after* resolution has merged her other eighteen nodes — that is
+the honest measure of how much of a hand-curated external source the algorithm
+actually replaces, and it can be queried live on stage.
 
 All findings below are settled. Finding #2 went through a retraction on the way
 — the first version of that experiment was biased — and the history is kept,
@@ -507,6 +533,60 @@ enumerated exhaustively. Any aggregate recall number is mostly hers.
 random sample: take ~100 proposed pairs regardless of labelling, judge them, and
 estimate from that. It is unbiased and far cheaper than labelling 811 nodes.
 Not needed for the talk as scoped.
+
+#### 3c. Tuning for recall is unsafe once WCC merges the result — learned the hard way
+
+Worth a slide, because it was an actual failure on this project rather than a
+hypothetical, and it sharpens the WCC danger point from an anecdote into a rule.
+
+**What happened.** The OVERLAP/`idfWeighted`/`topK=100`/`MIN_CHUNK_COUNT=1`
+settings from finding 2c were measured on **Person**, against a Person gold set,
+in a **read-only** setting where every candidate pair was adjudicated
+independently and nothing was merged. On that basis they were a clear
+improvement — 1 unique true positive became 10.
+
+Those settings were then ported into `disambiguate.py`, which is a very
+different machine: it runs over **all eight labels** and it **merges** using
+**WCC transitive closure**. The result on a full pipeline run:
+
+| | |
+|---|---|
+| `SACAGAWEA` | 168 aliases, 417 chunks — absorbed `George Drouillard`, `George Drewyer`, `Windsor` |
+| one `NativeNation` node | **498 aliases** — Kickapoo, Sioux and most other nations welded together |
+| clusters over 20 aliases | 15 |
+
+**Why.** `MIN_CHUNK_COUNT=1` admits every one-chunk node. OVERLAP divides by
+`min(|A|,|B|)`, so two one-chunk nodes that share a couple of incidental
+neighbours score near 1.0. `Place` is full of one-off island names, so it
+produced pairs like `GOOD HOPE ISLAND ~ ROCK ISLAND` — **zero shared chunks**.
+The judge confirmed some of them (an 1804 island name is genuinely ambiguous
+without a map), and then WCC chained every confirmed false positive into a
+mega-cluster.
+
+**The rule, and it is the slide:**
+
+> A precision error costs you **one bad pair** if a human or an LLM reviews each
+> pair independently. Under transitive closure it costs you **an entire merged
+> identity, permanently** — and one bad edge is enough. So the operating point
+> that is right for generating candidates is not automatically right for
+> generating *merges*. Tune recall where a judge sees each pair alone; tune
+> precision where a closure algorithm will chain them.
+
+This is also the concrete answer to "why does adjudication run *before* WCC and
+not after". It is not an implementation detail. Closure amplifies whatever
+precision you hand it.
+
+**What the pipeline runs now:** the original conservative candidate generation
+(COSINE, cutoff 0.5, `minCount` 2, `topK` 10), keeping only the two changes that
+are correct regardless of context — the Jaro-Winkler inversion fix and the
+`gpt-5.6-luna` judge. The aggressive settings stay in `graphrank/resolution.py`,
+which is read-only and never merges, where they are safe and measurably better.
+
+**And a process lesson worth one line:** the run now has an automated gate after
+each pass that aborts if any cluster exceeds 120 aliases, if the Person count
+collapses, or if Drouillard turns up in Sacagawea's aliases. A pipeline that can
+silently weld two identities together should refuse to continue when it starts
+doing so.
 
 #### 4. The default model is three generations stale
 
