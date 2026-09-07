@@ -153,7 +153,13 @@
 > Question mentions a tree. Your graph has four `POPULUS` species.
 > **Which do you seed?**
 >
-> ## Wrong question. Seed all four.
+> ## You may not have to choose.
+
+> *(Speaker honesty note: I cannot show you that seeding all four beats picking
+> the best one. I tried to measure it and my metric wasn't sensitive enough to
+> tell — see the outline's finding 5d-quinquies. What I **can** show you is the
+> next slide, which is the weaker and more interesting claim: picking the
+> **wrong duplicate** costs you nothing.)*
 
 **Slide — the live receipt.** Seeds chosen for a Sacagawea question, from the
 question alone:
@@ -168,8 +174,11 @@ CAPTURE OF SACAGAWEA (Event)
 > need to. Take an argmax over entity candidates and you have built a single
 > point of failure into retrieval that fails *silently* when it picks wrong.
 >
-> **This is section 4's callback.** You do not have to fix your entities before
-> this works. You just do better when you have.
+> **This is section 4's callback.** It seeds both Sacagawea nodes and the result
+> is fine — and even if you sharpen down to *one* seed, it picks the mislabelled
+> duplicate and still works, because both nodes land in the same neighbourhood.
+> You do not have to fix your entities before this works. You just do better
+> when you have.
 
 **Slide — and the passage that proves the mechanism.** Cosine rank **22**,
 305 characters, and it **never says her name**:

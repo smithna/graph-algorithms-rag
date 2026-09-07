@@ -1318,6 +1318,11 @@ self-weight by informativeness. One property, two benefits.
 
 ##### 5d-bis. Edge weighting: what cancels, and the one variant that helps
 
+> ⚠️ **The ranking comparisons in this finding measure noise** — the judged
+> passages saturate the entity percentile, and the top-8 threshold amplifies
+> one-position drift. See **5d-quinquies**. The *mechanisms* here hold; the
+> conclusions about which setting is better do not.
+
 Nathan's suggestion — weight the relationships by inverse entity degree before
 running PPR, to fix the degree imbalance above. Tested, and it produced a real
 improvement, though not the one intended.
@@ -1374,6 +1379,11 @@ elevates all 192 of a hub's chunks to the level of a rare entity's 14, which is
 the hub trap arriving through a different door. Worth measuring before believing.
 
 ##### 5d-ter. Rare seeds dominate — and the seeder has cosine's disease
+
+> ⚠️ **The ranking comparisons in this finding measure noise** — the judged
+> passages saturate the entity percentile, and the top-8 threshold amplifies
+> one-position drift. See **5d-quinquies**. The *mechanisms* here hold; the
+> conclusions about which setting is better do not.
 
 Nathan's concern: pick four or five seeds matching the question, one of them
 rare and a weaker match, and the rare one dominates PageRank. **Confirmed as a
@@ -1455,6 +1465,11 @@ verdicts.
 
 ##### 5d-quater. Sharpened bias helps — and it argues for ONE seed, not several
 
+> ⚠️ **The ranking comparisons in this finding measure noise** — the judged
+> passages saturate the entity percentile, and the top-8 threshold amplifies
+> one-position drift. See **5d-quinquies**. The *mechanisms* here hold; the
+> conclusions about which setting is better do not.
+
 Nathan's proposal: inverse entity degree in the projection, plus sharpened
 biases prioritising stronger cosine similarity. Tested as a cross-product. The
 sharpening helps; the projection change does not.
@@ -1528,6 +1543,91 @@ four and let structure sort it out."
 in 5d-bis, 5d-ter and 5d-quater is a direction, not a verdict. What would settle
 them is a wider hand read over the `kind: connection` questions, which is also
 what would let the earlier sweeps be re-scored honestly.
+
+##### 5d-quinquies. ⚠️ THE TUNING FINDINGS ABOVE MEASURE NOISE — read this first
+
+Nathan pushed on "five different bias schemes giving identical output can't be
+right." He was right, and running it down invalidated my own last three
+conclusions. **Read this before believing 5d-bis, 5d-ter or 5d-quater.**
+
+**First, the small correction.** Bias *is* applied under `inverse_degree` —
+`[1,0,0]` vs `[0,0,1]` differ by 6.17e-01, and 4 of the top-20 slots change
+across bias schemes. "Sharpening is inert under `inverse_degree`" is
+**withdrawn**; it was never inert.
+
+**Then the real problem.** The four hand-judged passages sit at entity
+percentile **0.97–0.999 under every configuration tested**:
+
+```
+1805-03-18   cosine rank 21   entity pct 0.9832..0.9842   final ranks [7, 8, 8]
+1804-12-18   cosine rank 15   entity pct 0.9969..0.9990   final ranks [3, 3, 3]
+1805-08-25   cosine rank 22   entity pct 0.9952..0.9983   final ranks [5, 4, 4]
+1804-11-04   cosine rank 22   entity pct 0.9715..0.9787   final ranks [8, 7, 5]
+```
+
+They are **pinned at the ceiling of the entity ranking.** Varying the seed
+weighting moves a percentile from 0.983 to 0.984, which shifts the blended score
+by `0.2 × 0.001`. Their final position is then decided by cosine, which does not
+change. The metric cannot see entity-side tuning.
+
+**And the metric was binary.** "In top-8", on four passages whose ranks cluster
+around 8. A one-position drift flips the count:
+
+| finding | what I claimed | what it rests on |
+|---|---|---|
+| 5d-bis | `idf_over_entities` helps (Nov-4: 8 → 3) | a 5-position move on a saturated metric — the largest seen, still not distinguishable from noise at n=4 |
+| 5d-ter | filtering at 3–5 makes `charbonneau-role` **worse**, 3/3 → 2/3 | **one passage moving rank 8 → 9**, crossing an arbitrary threshold |
+| 5d-quater | one seed as good as or better than several | [7,3,5] vs [8,3,4] — *identical rank sum* |
+
+**So `5d-ter`'s headline is a threshold artifact**, and slide 5.4 does **not**
+need rewriting on that basis. The "seed all the candidates" claim is
+*unsupported*, not *refuted* — there is no evidence either way.
+
+##### What survives, and it is the part that matters
+
+**The entity signal is load-bearing, and that is measured on a sensitive
+comparison** — deleting it entirely, rather than perturbing it:
+
+| question | with entity signal | entity signal removed |
+|---|---|---|
+| `charbonneau-role` | [7, 3, 5] | **[14, 10, 11]** |
+| `sacagawea-interpreting` | [8] | **[11]** |
+
+Roughly **seven rank positions** on the charbonneau passages. That is a large,
+robust effect, and it is the whole basis of the section's claim. It is not in
+doubt.
+
+Also surviving, because none of it depends on the blended-rank metric:
+
+- **The hand read itself** (finding 5d) — 4 of 16 promotions clear the bar. A
+  judgement about passage content, not a ranking measurement.
+- **Degree-1 seeds concentrate their mass** (5d-ter's mechanism) — measured
+  directly on mass shares, exact: `1806-05-10` took 99.9% of its score from one
+  degree-1 seed.
+- **A weight that is a function of the entity alone cancels in that entity's
+  outflow** (5d-bis's mechanism) — measured on mass, not rank.
+- **Additivity is a conjunction bonus** — measured over 9 to 190 chunks per
+  group, not four.
+- **The seeder returns `WISDOM RIVER` and `SAGITTARIA LATIFOLIA` for a Sacagawea
+  question** — an observation, and the most useful thing in this whole thread.
+
+##### The methodological rule, and it is a slide
+
+> **A binary threshold on a handful of items amplifies noise into findings.** I
+> made this error four times in one sitting, having already retracted a *different*
+> metric for a *different* reason on the same section. The mechanisms I measured
+> on mass and on hundreds of chunks all held; every conclusion I drew from
+> "how many of four passages are in the top-8" was noise.
+
+**What would make tuning measurable**: many more hand-judged passages, *and*
+mean rank rather than a top-k threshold, *and* — because the judged passages
+saturate the entity percentile — a target measured on the entity component
+directly rather than through a blend that cosine dominates.
+
+**Until then**: `MENTION_WEIGHT`, `min_seed_degree` and bias sharpening are all
+implemented, documented, and **not tuned**. Defaults stay where they are.
+Nobody should read the tables in 5d-bis through 5d-quater as showing one setting
+beats another.
 
 ##### What section 5 can honestly claim, after all this
 
