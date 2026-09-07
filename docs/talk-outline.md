@@ -18,7 +18,7 @@ before the section's slides can be written honestly.
 | 2 | What is Graph RAG / evidence | none (sources gathered) | not started |
 | 3 | Roadmap | none | not started |
 | 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ **built, verified, and the section's story settled** — Sacagawea cluster is the spine; see *Section 4 findings* |
-| 5 | Ranking can't combine evidence → multi-seed PPR | `pagerank.py`, `demo_pagerank.py` | 🔄 **thesis rebuilt on live measurement** — the outline's hub story is retracted, the replacement is measured and settled; **code not yet rewritten**. See *Section 5 findings* |
+| 5 | Ranking can't combine evidence → multi-seed PPR | `pagerank.py`, `projection.py`, `demo_pagerank.py`, `sweep_pagerank.py` | ✅ **built, verified live, and the story settled** — thesis rebuilt on measurement, two claims retracted; the Floyd case is the spine. See *Section 5 findings* |
 | 6 | Context is redundant → communities | `communities.py`, `demo_communities.py` | ✅ runs live; still needs Leiden + conductance |
 | 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | ✅ runs live (needed a resolution fix — see below) |
 | 8 | Does this help? | `benchmark.py`, `metrics.py` | runs; **gold set is broken worse than reported** — 4 labels missing *and* at least 4 more silently resolving to near-empty decoy nodes. See *Section 5 findings* #10 |
@@ -823,10 +823,12 @@ optimum**: the top-8 column bounces 21→23→22→22→21→24→21 and that is
 thirteen questions. Median rank *is* monotonic in structure weight.
 
 **The demo case.** `before-floyd-death` — one passage in the corpus names both
-Charles Floyd and the Missouri River. Cosine ranks it **413 of 2,913**;
-entity-seeded PPR **17**, passage-seeded **20**, combined **16**. A 25× move on
-the single passage carrying the conjunction, and it is the section 0 cold-open
-failure closed.
+Charles Floyd and the Missouri River. Cosine ranks it **415 of 2,913**. Blended
+retrieval reaches it at **68** with the shipped 0.6/0.4 weighting and at **16**
+at pure structure. *(An earlier draft of this section quoted "413 → 16" — the
+413 was a transcription error for 415, and the 16 silently assumed pure
+structure. Both corrected.)* The blend-dependence is worth showing rather than
+hiding: this is the one passage where cosine's weight is pure cost.
 
 **The entity seeds are a demo screen in their own right:**
 
@@ -842,11 +844,89 @@ The last row seeds **both** Sacagawea nodes — the real `Person` and a mislabel
 to resolve it first" claim demonstrated live, and a better section 10 callback
 than running a second database.
 
-**Open: the proportional weighting is untested.** Raw normalisation produced
-weights of 0.203 / 0.202 / 0.201 / 0.198 — entity cosine scores cluster so
-tightly that proportional seeding is indistinguishable from uniform over the
-top-5. Testing the idea properly needs sharpening: softmax with a temperature,
-or subtracting the (k+1)th score before normalising.
+**Resolved: seed weighting does nothing. Seed *count* does everything.**
+
+Four weighting schemes, measured over the bank. ``softmax`` at temperature 0.01
+collapses to a single effective seed (1.00/0.00/0.00) and ``margin`` reaches a
+13× ratio, so the spread is real, not cosmetic:
+
+| weighting | top-8 | median rank | structure only: top-8 | median |
+|---|---|---|---|---|
+| uniform | 22 | 318 | 10 | 502 |
+| proportional | 22 | 318 | 10 | 500 |
+| softmax | 22 | 326 | 10 | 506 |
+| margin | 23 | 326 | 10 | 502 |
+
+**Nothing moves.** The mechanism: every seed for a question is semantically
+close to the question, so the seeds sit in overlapping neighbourhoods and their
+PPR distributions are nearly parallel — reweighting nearly-parallel vectors
+barely rotates the sum. Weighting *would* matter if the seeds were genuinely far
+apart in the graph, which is worth saying from the stage, because that is
+exactly the situation people reach for it in.
+
+Then vary the *number* of seeds instead:
+
+| seeds | top-8 | median rank | structure only: top-8 | median |
+|---|---|---|---|---|
+| 1 | 14 | 380 | 8 | 876 |
+| **2** | **23** | **308** | **13** | 593 |
+| 3 | 22 | 314 | 11 | 484 |
+| 4 | 22 | 310 | 12 | **438** |
+| 5 | 22 | 318 | 10 | 500 |
+| 8 | 23 | 335 | **4** | 592 |
+| 12 | 19 | 346 | **3** | 572 |
+
+**One seed to two is a 64% lift in conjunction passages reaching the top-8**,
+and everything after that is a plateau in the blend. Under pure structure the
+tail degrades hard — 8 seeds drops to 4 in the top-8 — because weak semantic
+matches start seeding unrelated neighbourhoods, and cosine's share masks that in
+the blend.
+
+So the design claim survives in a sharper and more useful form:
+
+> You do not need to *pick* the right entity, and you do not need to weight the
+> candidates cleverly. You need to stop choosing exactly **one**.
+
+All four weightings stay selectable so the demo can *show* the non-effect rather
+than assert it — `demo_pagerank.py --weighting-check` prints both tables.
+Shipped defaults: `seed_weighting="proportional"` (principled, free, harmless),
+`entity_seed_k=3` (inside the blended plateau and near the pure-structure peak,
+so robust across both regimes rather than best in either).
+
+#### 5b. Latency: the outline's "milliseconds" claim was wrong
+
+| | measured |
+|---|---|
+| `lc-mentions` projection | 94 ms, once |
+| plain cosine top-8 | 4 ms |
+| `ppr` (candidate-gated rerank) | 79 ms p50 |
+| `expand`, fresh question | **~580 ms** |
+| `expand`, repeat question (seeds cached) | ~105 ms |
+
+About **55 ms per PPR run**, and the shipped config makes eight of them (3
+entity seeds + 5 passage seeds). Batching them into one multi-source GDS call
+does *not* help — 53 ms for five sources in one call versus 58 ms for five
+separate calls — so per-seed caching is free and buys reuse across questions.
+
+Projection really is amortised, so that half of the original claim stands. The
+per-query half does not, and the slide has been rewritten to say ~580 ms and
+argue it is invisible beside the generation call rather than pretend it is
+milliseconds.
+
+Also from the benchmark harness, and **directional only** — the gold set still
+has the defects in finding #10, so these are not quotable:
+
+| strategy | recall | Δ vs vector | redundancy | p50 |
+|---|---|---|---|---|
+| vector | 74.4% | — | 0.054 | 4 ms |
+| ppr | 74.4% | **+0.0 pts** | 0.057 | 79 ms |
+| expand | 78.2% | +3.8 pts | **0.096** | 522 ms |
+
+Two things fall out even so. `ppr` scoring **exactly zero** improvement is the
+candidate-gate ceiling showing up on an independent metric. And `expand`'s
+redundancy nearly doubling (0.054 → 0.096) is a real cost that hands section 6
+its setup: more structure pulls in more passages about the same episode, which
+is precisely what community diversification is for.
 
 #### 6. Damping: shorter walks win monotonically
 
@@ -883,7 +963,7 @@ from the vector top-5 and then ranks *only the vector top-50*, so the upside is
 bounded by "what sits in positions 9–50 that belongs in 1–8." Live, that is
 **one slot in eight**. The thing PPR is good at — surfacing passages nobody
 nominated — is forbidden by the candidate gate. Section 5's new design blends
-over the whole corpus instead, which is what lets a passage at rank 413 be
+over the whole corpus instead, which is what lets a passage at rank 415 be
 reached at all.
 
 *Terminology hazard for the slides:* `RerankConfig.alpha` is the cosine/graph
@@ -1347,7 +1427,7 @@ Shown, not asserted: passages carrying two or more of a question's gold entities
 *together* sit at a median cosine rank of **524 of 2,913**. Five of thirteen
 questions have **none** in the vector top-8. `before-floyd-death` has exactly one
 passage naming both Charles Floyd and the Missouri River, and cosine ranks it
-**413**.
+**415**.
 
 **PageRank in 60 seconds** — and say the honest thing while you are there. Plain
 PageRank asks "what is important in this graph?", but on an undirected graph the
@@ -1436,11 +1516,37 @@ unresolved-entity problem for free, with no second database.
 **Demo** — `demo_pagerank.py`, rebuilt: the entity seeds chosen from the
 question (a good screen on its own — `PURCHASE OF HORSES`, `PORTAGE DIFFICULTY`,
 both `SACAGAWEA` nodes), then the `before-floyd-death` passage moving from
-cosine rank **413** to **16**, then the blend slider.
+cosine rank **415** to **68** at the shipped 0.6/0.4 blend — and to **16** with
+the slider pushed to pure structure. Show both: the passage that most needs the
+graph is the one cosine's weight costs the most, which is the honest way to
+introduce the blend rather than claiming a free lunch.
 
-**Cost.** Projection is the expensive step and it is amortised — `lc-mentions`
-projects in **94 ms**. Per-seed PPR against it is milliseconds, cacheable, and
-linearity means re-weighting is free.
+**Cost — and be straight about it, because the old claim was wrong.** The
+outline used to say "per-query PPR against a projected graph is milliseconds."
+That is true of a single PPR run and false of this design, which makes eight of
+them.
+
+| | measured |
+|---|---|
+| `lc-mentions` projection | **94 ms**, once per session, amortised |
+| plain cosine top-8 | **4 ms** |
+| candidate-gated rerank (`ppr`) | **79 ms** p50 |
+| `expand`, fresh question | **~580 ms** — cosine 40, entity PPR 190 (3 seeds), passage PPR 275 (5 seeds) |
+| `expand`, repeat question, seeds cached | **~105 ms** |
+
+Roughly **55 ms per seed**, and eight seeds is eight GDS calls. Two things worth
+saying:
+
+- **A single multi-source call is not faster** — 53 ms for five sources in one
+  call versus 58 ms for five separate calls. GDS per-call overhead is small, so
+  per-seed caching costs nothing and buys cross-question reuse.
+- **145× plain vector still does not matter here**, because the generation call
+  that follows dwarfs it. That is the honest framing for a latency slide: not
+  "it's free", but "it's invisible next to the LLM you are about to call."
+
+*(Since seed weighting turned out to be a no-op, the "reweight for free"
+benefit of per-seed caching is moot. The cache earns its place on repeat seeds
+across questions instead.)*
 
 ### 6. "Your context is redundant" → community detection (6 min) · 0:33
 
@@ -1587,25 +1693,41 @@ signals, and real `gds.wcc.stream` over in-memory candidate pairs. Plus the
 corps-member gold-set precision/recall, and the `cooccurrence` query-time
 strategy registered in `strategies.py`.
 
-**Step 2 — Section 5 code.** *Scope grew: the outline's hub story did not
-reproduce and the section's thesis was rebuilt on measurement — see
-Section 5 findings.* What the section now needs:
+**Step 2 — Section 5 code.** ✅ **Done.** *Scope grew well past "add hub
+visibility": the outline's hub story did not reproduce and the section's thesis
+was rebuilt on measurement — see Section 5 findings.* What shipped:
 
-1. A second projection, `MENTIONED_IN` only and undirected (`lc-mentions`),
-   alongside `lc-retrieval`. Two jobs, two projections — the IDF weighting that
+1. `lc-mentions`, a second projection — `MENTIONED_IN` only, undirected,
+   IDF weight kept as a switchable property. `project_graph.py` builds both and
+   prints them side by side. Two jobs, two projections: the IDF weighting that
    is right for retrieval is wrong for prominence, and `RELATED`'s direction has
-   no consistent meaning.
-2. Entity seeding by question-to-entity semantic match across the eight entity
-   vector indexes, with **sharpened** proportional weights (raw normalisation
-   comes out indistinguishable from uniform — finding #5).
-3. Multi-seed PPR exploiting linearity: one run per seed, cached, blended
-   afterwards. Passage-seeded PPR as the second signal.
-4. Corpus-wide blending with cosine on percentile ranks — **not** the current
-   candidate-gated rerank, which caps the achievable gain at "what sits in
-   positions 9–50" (finding #7).
-5. `demo_pagerank.py` rebuilt around the `before-floyd-death` case, plus the
-   entity-seed screen and the hub table.
-6. Damping default moved off `0.85`, which measured worst of six values.
+   no consistent meaning across types.
+2. `pagerank.expand()` — corpus-wide retrieval blending cosine with two
+   structural signals (entity-seeded and passage-seeded PPR) on **percentile
+   ranks**. Min-max is wrong for PPR and the code says why: PPR is power-law
+   distributed, so min-max hands the whole decision back to cosine.
+3. Entity seeding by question-to-entity semantic match across the eight entity
+   vector indexes (read from the database, not hardcoded), with four selectable
+   weighting schemes — kept so the demo can *show* that weighting does nothing.
+4. `seed_pagerank()` caches per seed node and `combine_seeds()` blends, which is
+   exact by linearity. Reweighting after the first pass is free, and seeds
+   shared between questions are reused.
+5. `demo_pagerank.py` rebuilt with four views: the Floyd comparison (default),
+   `--hubs`, `--conjunction`, `--weighting-check`, plus `--compare-rerank` to
+   make the candidate-gate point against the old path.
+6. `sweep_pagerank.py` — the measurement harness: `--weighting`, `--seeds`,
+   `--blend`, `--damping`.
+7. `questions/gold_overrides.yaml` — corrected gold targets as `(name, label)`
+   pairs chosen by mention count. **A stopgap**, with the reasoning in its
+   header; `questions.yaml` was deliberately left untouched. Folding these in
+   and teaching `verify_questions.py` to rank by mention count is Step 5.
+8. `expand` registered in `strategies.py`, so section 8 can benchmark it.
+
+**Deliberately not changed:** `RerankConfig.damping_factor` stays at `0.85`
+even though `0.85` measured worst on the mentions graph. That measurement was
+taken on a different architecture over a different projection, and section 4's
+finding 3c is the standing lesson — an operating point measured on one machine
+is not automatically right for another. `ExpandConfig` uses `0.45`.
 
 **Step 3 — Section 6 code.** Leiden alongside Louvain in `communities.py`;
 `gds.conductance` for the cohesion check. Verify GDS tier for `gds.leiden`.

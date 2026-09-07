@@ -37,6 +37,7 @@ class Settings:
     neo4j_database: str
     embedding_model: str
     graph_name: str
+    mentions_graph_name: str
     next_chunk_weight: float
     related_weight: float
 
@@ -56,6 +57,7 @@ def settings() -> Settings:
         neo4j_database=os.getenv("NEO4J_DATABASE", "neo4j"),
         embedding_model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
         graph_name=os.getenv("GRAPH_NAME", "lc-retrieval"),
+        mentions_graph_name=os.getenv("MENTIONS_GRAPH_NAME", "lc-mentions"),
         next_chunk_weight=float(os.getenv("NEXT_CHUNK_WEIGHT", "1.0")),
         related_weight=float(os.getenv("RELATED_WEIGHT", "1.0")),
     )

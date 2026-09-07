@@ -19,7 +19,7 @@ from .communities import CommunityConfig
 from .cooccurrence import CooccurrenceConfig
 from .embedding import embed
 from .models import RetrievalResult, RetrievedChunk
-from .pagerank import RerankConfig
+from .pagerank import ExpandConfig, RerankConfig
 from .paths import PathConfig
 from .projection import chunk_ids_to_node_ids
 
@@ -32,6 +32,19 @@ def ppr_strategy(question: str, k: int = 8, **options) -> RetrievalResult:
     with_graph_context = options.pop("with_graph_context", False)
     config = RerankConfig(k=k, **options)
     return pagerank.rerank(question, config=config, with_graph_context=with_graph_context)
+
+
+def expand_strategy(question: str, k: int = 8, **options) -> RetrievalResult:
+    """Score the whole corpus by blending cosine with multi-seed PPR.
+
+    The difference from ``ppr`` is not a tuning difference. ``ppr`` reranks the
+    vector top-50, so its ceiling is "what sits in positions 9-50"; this scores
+    every chunk, which is the only way a passage at cosine rank 413 can be
+    retrieved at all. Section 5's strategy.
+    """
+    with_graph_context = options.pop("with_graph_context", False)
+    config = ExpandConfig(k=k, **options)
+    return pagerank.expand(question, config=config, with_graph_context=with_graph_context)
 
 
 def community_strategy(question: str, k: int = 8, **options) -> RetrievalResult:
@@ -143,6 +156,7 @@ StrategyFn = Callable[..., RetrievalResult]
 REGISTRY: dict[str, StrategyFn] = {
     "vector": vector_strategy,
     "ppr": ppr_strategy,
+    "expand": expand_strategy,
     "community": community_strategy,
     "cooccurrence": cooccurrence_strategy,
     "paths": path_strategy,
@@ -150,7 +164,7 @@ REGISTRY: dict[str, StrategyFn] = {
 }
 
 #: Sensible order for reports — baseline first, then one idea at a time.
-DEFAULT_ORDER = ["vector", "ppr", "community", "cooccurrence", "hybrid"]
+DEFAULT_ORDER = ["vector", "ppr", "expand", "community", "cooccurrence", "hybrid"]
 
 
 def get(name: str) -> StrategyFn:

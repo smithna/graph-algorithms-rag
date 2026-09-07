@@ -1,0 +1,64 @@
+# Corrected gold-entity targets for the question bank.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# WHY THIS FILE EXISTS, AND WHY IT IS TEMPORARY
+#
+# `questions.yaml` names gold entities by common name. Several of those names
+# resolve to the WRONG NODE in the graph, and `verify_questions.py` does not
+# catch it, because its ✓ means "a node with this name exists" — not "the right
+# node". It cannot detect a decoy.
+#
+#   gold label     resolves to                should be
+#   ELK            Supply, 11 mentions        CERVUS CANADENSIS (439)
+#   BISON          AnimalSpecies, 3           BISON BISON (330)
+#   SALMON         Supply, 13                 ONCORHYNCHUS CLARKII (45) + …
+#   GREAT FALLS    Event, 2                   GREAT FALLS OF THE MISSOURI (26)
+#
+# `add_taxonomy.py` renamed the animals and plants to Latin binomials, which
+# orphaned every common-name label. Separately, 9 of 22 gold labels are
+# ambiguous — several nodes share the name — including SHOSHONE
+# (NativeNation:192 vs Person:1), which is the section 7 bug verbatim.
+#
+# So targets here are (name, label) pairs, and they are chosen by MENTION
+# COUNT: the prominence prior that `resolve.py` already uses to break its
+# near-ties, and that `verify_questions.py` still needs.
+#
+# This file is a stopgap for section 5's measurements. Step 5 should fold these
+# corrections into `questions.yaml`, teach `verify_questions.py` to rank
+# candidates by mention count, and then delete this file.
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Genuinely thin rather than mis-resolved — a real extraction gap that bounds
+# every retrieval strategy, not something a better target fixes:
+#   NEZ PERCE       2 mentions (journals say "Chopunnish", split across Person)
+#   PACIFIC OCEAN   4 mentions
+# `Supply` (634 nodes) has no embedding and no vector index, so no Supply node
+# can ever be reached by entity-seeded search.
+
+SACAGAWEA:             [[SACAGAWEA, Person]]
+SHOSHONE:              [[SHOSHONE, NativeNation]]
+MERIWETHER LEWIS:      [[MERIWETHER LEWIS, Person]]
+WILLIAM CLARK:         [[WILLIAM CLARK, Person]]
+TOUSSAINT CHARBONNEAU: [[TOUSSAINT CHARBONNEAU, Person]]
+HIDATSA:               [[HIDATSA, NativeNation]]
+CHARLES FLOYD:         [[CHARLES FLOYD, Person]]
+MISSOURI RIVER:        [[MISSOURI RIVER, WaterBody]]
+COLUMBIA RIVER:        [[COLUMBIA RIVER, WaterBody]]
+PACIFIC OCEAN:         [[PACIFIC OCEAN, WaterBody]]
+FORT MANDAN:           [[FORT MANDAN, Place]]
+MANDAN:                [[MANDAN, NativeNation]]
+CLATSOP:               [[CLATSOP, NativeNation]]
+NEZ PERCE:             [[NEZ PERCE, NativeNation]]
+
+# ── corrected: the common name pointed at a decoy or did not exist ──────────
+GRIZZLY BEAR:          [[URSUS ARCTOS HORRIBILIS, AnimalSpecies]]
+PRAIRIE DOG:           [[CYNOMYS LUDOVICIANUS, AnimalSpecies]]
+CAMAS:                 [[CAMASSIA QUAMASH, PlantSpecies]]
+ELK:                   [[CERVUS CANADENSIS, AnimalSpecies]]
+BISON:                 [[BISON BISON, AnimalSpecies]]
+GREAT FALLS:           [[GREAT FALLS OF THE MISSOURI, WaterBody]]
+FORT CLATSOP:          [[CLATSOP VILLAGE, Place]]
+# one concept, two nodes — both are real and both count
+SALMON:
+  - [ONCORHYNCHUS CLARKII, AnimalSpecies]
+  - [ONCORHYNCHUS TSHAWYTSCHA, AnimalSpecies]

@@ -24,8 +24,10 @@ Two knobs matter and both are exposed:
 
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass
+from functools import lru_cache
 
 import pandas as pd
 
@@ -33,7 +35,7 @@ from .baseline import attach_graph_context, vector_search
 from .config import gds
 from .embedding import embed
 from .models import RetrievalResult, RetrievedChunk
-from .projection import chunk_ids_to_node_ids, get_graph
+from .projection import chunk_ids_to_node_ids, get_graph, node_ids_to_chunks
 
 _GLOBAL_PAGERANK_CACHE: dict[str, pd.Series] = {}
 
@@ -186,6 +188,442 @@ def rerank(
             "promoted": [
                 c.chunk_id for c in selected if vector_rank[c.chunk_id] > config.k
             ],
+        },
+    )
+    if with_graph_context:
+        attach_graph_context(result)
+    return result
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+#  Section 5: multi-seed PPR over the mentions graph
+# ═════════════════════════════════════════════════════════════════════════════
+#
+# Everything above reranks the vector top-k. That is the safe use of PPR and it
+# is nearly a no-op on this corpus — the upside is bounded by "what sits in
+# positions 9-50 that belongs in 1-8", which measured as one slot in eight. The
+# thing PPR is actually good at, surfacing passages nobody nominated, is
+# forbidden by the candidate gate.
+#
+# What the corpus needs instead is *conjunction*. Cosine scores every passage
+# against the question independently, on vocabulary, and has no representation
+# for "this passage connects two things the question is about". Measured:
+# passages carrying two or more of a question's gold entities sit at a median
+# cosine rank of 524 of 2,913, and 5 of 13 benchmark questions have none at all
+# in the vector top-8. One passage names both Charles Floyd and the Missouri
+# River; cosine ranks it 415 of 2,913. Blended retrieval brings it to 68 at the
+# default 0.6/0.4 weighting, and to 16 at pure structure — the passage that most
+# needs the graph is the one cosine's weight costs the most.
+#
+# Multi-seed PPR is conjunction-aware for free, because PPR is **linear in the
+# restart distribution**:
+#
+#     PPR(w1*v1 + w2*v2)  ==  w1*PPR(v1) + w2*PPR(v2)
+#
+# exactly, not approximately. So one run per seed, cached, blended afterwards —
+# and every reweighting is free after the first pass.
+
+from .config import read_query
+from .projection import (
+    all_chunk_node_ids,
+    get_mentions_graph,
+    mentions_membership,
+)
+
+#: PPR result per (graph, seed, damping, weighted). Linearity means this cache
+#: is reusable across questions *and* across every seed weighting.
+_SEED_PPR_CACHE: dict[tuple, pd.Series] = {}
+
+# ── MEASURED: seed weighting does not matter on this corpus ─────────────────
+#
+# The intuition is strong — weight each seed by how well it matches the
+# question, so a better match pulls harder. It does nothing here, and the
+# negative result is worth keeping because the knob looks so plausible.
+#
+# Entity cosine scores cluster tightly (0.203/0.202/0.201/0.198 after
+# normalising), so ``proportional`` is arithmetically almost ``uniform``.
+# ``softmax`` and ``margin`` exist to *force* a spread — softmax reaches
+# 0.40/0.03, a 13x ratio — and the retrieval outcome still does not move:
+#
+#     weighting       top-8   median rank      cosine off: top-8   median
+#     uniform            22           318                     10      502
+#     proportional       22           318                     10      500
+#     softmax            22           326                     10      506
+#     margin             23           326                     10      502
+#
+# The mechanism: every seed for a question is semantically close to the
+# question, so the seeds sit in overlapping neighbourhoods and their PPR
+# distributions are highly correlated. Reweighting a set of nearly-parallel
+# vectors barely rotates the sum. Weighting would matter if the seeds were
+# *far apart* — genuinely ambiguous candidates in different parts of the graph
+# — which is worth saying, because that is exactly when you reach for it.
+#
+# All four are kept selectable so the demo can show the non-effect rather than
+# assert it. ``proportional`` stays the default: principled, free, harmless.
+#
+# ── But the seed *count* matters a great deal ───────────────────────────────
+#
+# Same measurement, varying how many entities are seeded (shipped path,
+# cosine 0.6 / structure 0.4):
+#
+#     entity_seed_k    top-8   median rank
+#     1                   14           380
+#     2                   23           308      <- the whole win is here
+#     3                   22           314
+#     5                   22           318
+#     8                   23           335
+#
+# Going from one seed to two lifts conjunction passages in the top-8 by 64%;
+# everything after that is flat. Which is the design claim, earned: you do not
+# need to *pick* the right entity, and you do not need to weight the
+# candidates cleverly — you need to stop choosing exactly one. At pure
+# structure the tail degrades further (8 seeds drops to 4 in the top-8, because
+# weak semantic matches start seeding unrelated neighbourhoods); cosine's share
+# masks that in the blend.
+SEED_WEIGHTINGS = ("uniform", "proportional", "softmax", "margin")
+
+
+@dataclass
+class ExpandConfig:
+    """Config for corpus-wide multi-seed PPR retrieval."""
+
+    #: How many survive into the context window
+    k: int = 8
+    #: Entity seeds drawn from question-to-entity semantic match.
+    #: 1 -> 2 is the single biggest structural win in this pipeline (+64%
+    #: conjunction passages in the top-8); 2-8 is a plateau in the blend. Three
+    #: is chosen because it also sits near the peak at *pure* structure, where
+    #: the tail degrades past 5 — so it is the robust choice across both
+    #: regimes rather than the best in either.
+    entity_seed_k: int = 3
+    #: Passage seeds drawn from the cosine top-N
+    passage_seed_k: int = 5
+    #: Weight on cosine; the remainder is split across the two PPR signals.
+    #: Measured plateau is broad — every value from 0.9 to 0.1 beats cosine
+    #: alone (13 conjunction passages in the top-8 at 1.0, 20-23 everywhere
+    #: else), and 0.7-0.3 are indistinguishable. The knob is forgiving; do not
+    #: read a precise optimum into it on thirteen questions.
+    cosine_weight: float = 0.6
+    #: How the entity PPR and passage PPR halves divide the structural weight
+    entity_share: float = 0.5
+    #: One of :data:`SEED_WEIGHTINGS`. Measured a no-op — see the note above.
+    seed_weighting: str = "proportional"
+    #: Temperature for ``softmax`` weighting. Smaller is sharper.
+    softmax_temperature: float = 0.01
+    #: Walk horizon. Mass within k steps is ``1 - d**(k+1)``, so 0.45 keeps 96%
+    #: of the walk inside three steps. Measured: shorter is monotonically
+    #: better here, and 0.85 was the worst of six values tested.
+    #:
+    #: Deliberately *not* ported into :class:`RerankConfig`, which runs a
+    #: different architecture over a different projection. Section 4's finding
+    #: 3c is the standing lesson: an operating point measured on one machine is
+    #: not automatically right for another one.
+    damping_factor: float = 0.45
+    max_iterations: int = 30
+    tolerance: float = 1e-8
+    #: Use the IDF weights baked into the mentions projection
+    weighted: bool = True
+
+
+@lru_cache(maxsize=1)
+def entity_index_names() -> tuple[str, ...]:
+    """Vector indexes over entities — every one except the chunk index.
+
+    Read from the database rather than hardcoded, so a new entity label with an
+    index is picked up automatically. Note ``Supply`` (634 nodes) has no
+    embedding and no index, so it can never be seeded semantically.
+    """
+    rows = read_query("SHOW VECTOR INDEXES YIELD name, labelsOrTypes")
+    return tuple(
+        row["name"]
+        for row in rows
+        if "Chunk" not in (row["labelsOrTypes"] or [])
+    )
+
+
+@dataclass
+class Seed:
+    node_id: int
+    name: str
+    label: str
+    match_score: float
+    weight: float = 0.0
+
+
+def _apply_weighting(
+    scores: list[float], weighting: str, *, temperature: float, baseline: float | None
+) -> list[float]:
+    """Turn semantic match scores into restart weights that sum to 1."""
+    n = len(scores)
+    if n == 0:
+        return []
+    if weighting == "uniform":
+        return [1.0 / n] * n
+    if weighting == "proportional":
+        total = sum(scores) or 1.0
+        return [s / total for s in scores]
+    if weighting == "softmax":
+        top = max(scores)
+        exps = [math.exp((s - top) / max(temperature, 1e-9)) for s in scores]
+        total = sum(exps) or 1.0
+        return [e / total for e in exps]
+    if weighting == "margin":
+        # Zero the scale at the first *rejected* entity, so the kept seeds are
+        # weighted by how much better than the cutoff they were. This is what
+        # gives a tightly-clustered score set any usable spread.
+        floor = baseline if baseline is not None else min(scores) * 0.999
+        gaps = [max(s - floor, 0.0) for s in scores]
+        total = sum(gaps)
+        if total <= 0:
+            return [1.0 / n] * n
+        return [g / total for g in gaps]
+    raise ValueError(f"Unknown seed_weighting {weighting!r}; expected one of {SEED_WEIGHTINGS}")
+
+
+def entity_seeds(
+    question_embedding: list[float], *, config: ExpandConfig | None = None
+) -> list[Seed]:
+    """Semantic-match the question against entity names; seed *all* the best ones.
+
+    This is the step that makes entity resolution optional rather than
+    load-bearing. You never have to decide which of two ``SACAGAWEA`` nodes is
+    the real one, or which of four tree species was meant — seed both, or all
+    four, weighted by match, and let the structure sort it out. An argmax
+    linking step fails hard when it picks wrong; proportional seeding degrades
+    gracefully.
+    """
+    config = config or ExpandConfig()
+    in_graph = mentions_membership()
+
+    rows: list[dict] = []
+    for index in entity_index_names():
+        rows += read_query(
+            """
+            CALL db.index.vector.queryNodes($index, 5, $embedding)
+            YIELD node AS n, score
+            WHERE NOT n:Chunk
+            RETURN id(n)                            AS nodeId,
+                   coalesce(n.canonicalName, n.name) AS name,
+                   head(labels(n))                  AS label,
+                   score
+            """,
+            index=index,
+            embedding=question_embedding,
+        )
+
+    rows = [r for r in rows if r["nodeId"] in in_graph]
+    rows.sort(key=lambda r: -r["score"])
+
+    seen: set[int] = set()
+    unique: list[dict] = []
+    for row in rows:
+        if row["nodeId"] in seen:
+            continue
+        seen.add(row["nodeId"])
+        unique.append(row)
+
+    kept = unique[: config.entity_seed_k]
+    # The first rejected match is the natural zero point for `margin` weighting.
+    baseline = (
+        unique[config.entity_seed_k]["score"]
+        if len(unique) > config.entity_seed_k
+        else None
+    )
+    weights = _apply_weighting(
+        [r["score"] for r in kept],
+        config.seed_weighting,
+        temperature=config.softmax_temperature,
+        baseline=baseline,
+    )
+    return [
+        Seed(
+            node_id=r["nodeId"],
+            name=r["name"],
+            label=r["label"],
+            match_score=float(r["score"]),
+            weight=float(w),
+        )
+        for r, w in zip(kept, weights)
+    ]
+
+
+def seed_pagerank(node_id: int, *, config: ExpandConfig | None = None) -> pd.Series:
+    """PPR from a single restart node, cached for the session.
+
+    Single-seed rather than multi-seed on purpose: linearity means any weighted
+    combination of seeds is a weighted sum of these, so caching per seed makes
+    reweighting free and lets seeds shared between questions be reused.
+    """
+    config = config or ExpandConfig()
+    graph = get_mentions_graph()
+    key = (graph.name(), node_id, config.damping_factor, config.weighted)
+    if key in _SEED_PPR_CACHE:
+        return _SEED_PPR_CACHE[key]
+
+    params: dict = {
+        "sourceNodes": [node_id],
+        "dampingFactor": config.damping_factor,
+        "maxIterations": config.max_iterations,
+        "tolerance": config.tolerance,
+    }
+    if config.weighted:
+        params["relationshipWeightProperty"] = "weight"
+
+    frame = gds().pageRank.stream(graph, **params)
+    series = frame.set_index("nodeId")["score"]
+    _SEED_PPR_CACHE[key] = series
+    return series
+
+
+def combine_seeds(
+    weighted_seeds: list[tuple[int, float]], *, config: ExpandConfig | None = None
+) -> pd.Series:
+    """Weighted sum of single-seed PPR runs — exact, by linearity."""
+    config = config or ExpandConfig()
+    total: pd.Series | None = None
+    for node_id, weight in weighted_seeds:
+        contribution = seed_pagerank(node_id, config=config) * weight
+        total = contribution if total is None else total.add(contribution, fill_value=0.0)
+    return total if total is not None else pd.Series(dtype=float)
+
+
+def _percentile(values: pd.Series) -> pd.Series:
+    """Rank-normalise to [0, 1].
+
+    Min-max is wrong for PPR and it is worth knowing why: PPR scores are
+    power-law distributed, so the restart nodes take almost all the mass and
+    min-max maps everything else to ~0. Blending that against cosine hands the
+    entire decision to cosine. Percentile ranks are scale-free and survive the
+    skew.
+    """
+    return values.rank(pct=True)
+
+
+def expand(
+    question: str,
+    *,
+    config: ExpandConfig | None = None,
+    with_graph_context: bool = False,
+) -> RetrievalResult:
+    """Retrieve over the **whole corpus** by blending cosine with multi-seed PPR.
+
+    Two structural signals, both over the mentions-only graph:
+
+    ``entity``   seeds are entities the question semantically matches, so the
+                 walk fans out from what the question is *about*
+    ``passage``  seeds are the top cosine hits, so the walk reinforces the
+                 entities the best semantic matches have in common
+
+    Unlike :func:`rerank`, nothing gates the candidate set — every chunk in the
+    corpus is scored. That is the point: the passage naming both Floyd and the
+    Missouri sits at cosine rank 415, so no candidate window short enough to be
+    worth having would ever have contained it.
+    """
+    config = config or ExpandConfig()
+    started = time.perf_counter()
+
+    embedding = embed(question)
+    chunk_index = pd.Index(all_chunk_node_ids())
+    in_graph = mentions_membership()
+
+    # ── 1. Cosine over the entire corpus ─────────────────────────────────────
+    t0 = time.perf_counter()
+    rows = read_query(
+        """
+        CALL db.index.vector.queryNodes('chunk_embeddings', $k, $embedding)
+        YIELD node AS c, score
+        RETURN id(c) AS nodeId, c.chunkId AS chunkId, score
+        """,
+        k=len(chunk_index),
+        embedding=embedding,
+    )
+    cosine = pd.Series({r["nodeId"]: r["score"] for r in rows}).reindex(chunk_index).fillna(0.0)
+    cosine_rank = {r["nodeId"]: i + 1 for i, r in enumerate(rows)}
+    cosine_ms = (time.perf_counter() - t0) * 1000
+
+    # ── 2. Entity-seeded PPR ─────────────────────────────────────────────────
+    t0 = time.perf_counter()
+    seeds = entity_seeds(embedding, config=config)
+    entity_scores = combine_seeds(
+        [(s.node_id, s.weight) for s in seeds], config=config
+    ).reindex(chunk_index).fillna(0.0)
+    entity_ms = (time.perf_counter() - t0) * 1000
+
+    # ── 3. Passage-seeded PPR ────────────────────────────────────────────────
+    t0 = time.perf_counter()
+    passage_seed_ids = [
+        r["nodeId"] for r in rows if r["nodeId"] in in_graph
+    ][: config.passage_seed_k]
+    share = 1.0 / len(passage_seed_ids) if passage_seed_ids else 0.0
+    passage_scores = combine_seeds(
+        [(n, share) for n in passage_seed_ids], config=config
+    ).reindex(chunk_index).fillna(0.0)
+    passage_ms = (time.perf_counter() - t0) * 1000
+
+    # ── 4. Blend on percentile ranks ─────────────────────────────────────────
+    structural = 1.0 - config.cosine_weight
+    blended = (
+        config.cosine_weight * _percentile(cosine)
+        + structural * config.entity_share * _percentile(entity_scores)
+        + structural * (1.0 - config.entity_share) * _percentile(passage_scores)
+    )
+
+    ordered = list(blended.sort_values(ascending=False).head(config.k).index)
+    texts = node_ids_to_chunks(ordered)
+
+    chunks: list[RetrievedChunk] = []
+    for node_id in ordered:
+        row = texts.get(node_id)
+        if row is None:
+            continue
+        chunks.append(
+            RetrievedChunk(
+                chunk_id=row["chunkId"],
+                text=row["text"],
+                date=row["date"],
+                author=row["author"],
+                vector_score=float(cosine.get(node_id, 0.0)),
+                graph_score=float(entity_scores.get(node_id, 0.0)),
+                final_score=float(blended.get(node_id, 0.0)),
+                source="seed" if node_id in set(passage_seed_ids) else "ppr",
+            )
+        )
+
+    result = RetrievalResult(
+        question=question,
+        strategy="expand",
+        chunks=chunks,
+        elapsed_ms=(time.perf_counter() - started) * 1000,
+        debug={
+            "cosine_weight": config.cosine_weight,
+            "entity_share": config.entity_share,
+            "seed_weighting": config.seed_weighting,
+            "damping_factor": config.damping_factor,
+            "corpus_scored": len(chunk_index),
+            "entity_seeds": [
+                {
+                    "name": s.name,
+                    "label": s.label,
+                    "match": round(s.match_score, 4),
+                    "weight": round(s.weight, 4),
+                }
+                for s in seeds
+            ],
+            "cosine_rank": {
+                row["chunkId"]: cosine_rank.get(node_id)
+                for node_id, row in ((n, texts[n]) for n in ordered if n in texts)
+            },
+            # Passages the structure pulled in from outside the cosine top-k
+            "promoted": [
+                texts[n]["chunkId"]
+                for n in ordered
+                if n in texts and (cosine_rank.get(n) or 10**9) > config.k
+            ],
+            "timings_ms": {
+                "cosine": round(cosine_ms, 1),
+                "entity_ppr": round(entity_ms, 1),
+                "passage_ppr": round(passage_ms, 1),
+            },
         },
     )
     if with_graph_context:

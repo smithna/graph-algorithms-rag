@@ -1,8 +1,14 @@
 """Project the retrieval graph into GDS once, then reuse it for every query.
 
-This is the single most important performance fact in the talk: projection is
-the expensive step, and it is amortised. A personalized PageRank run against an
-already-projected graph is milliseconds.
+Projection is a one-time cost and it is amortised: 289 ms for ``lc-retrieval``,
+94 ms for ``lc-mentions``, once per session.
+
+Be careful with the follow-on claim, though. *One* PPR run against a projected
+graph costs about 55 ms — but section 5's retrieval makes eight of them (three
+entity seeds plus five passage seeds), so a fresh question is ~580 ms end to
+end, against 4 ms for plain cosine. Cached seeds bring a repeat question to
+~105 ms. The honest performance argument is not that the graph work is free,
+it is that ~580 ms is invisible beside the generation call that follows.
 
 Three relationship types go into the projection:
 
@@ -21,8 +27,9 @@ Lewis-adjacent passages no matter what you ask. Weighting each mention edge by
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 
-from .config import gds, query, settings
+from .config import gds, query, read_query, settings
 
 # All three types are projected undirected: random walks need to flow
 # chunk -> entity -> chunk, and "what preceded this" is as useful as "what
@@ -74,6 +81,48 @@ RETURN gds.graph.project(
         relationshipProperties: {weight: weight}
     },
     {undirectedRelationshipTypes: ['MENTIONS', 'NEXT_CHUNK', 'RELATED']}
+)
+"""
+
+
+# ── The second projection, and why there are two ─────────────────────────────
+#
+# A projection is not neutral infrastructure: it encodes what you are
+# optimising for. ``lc-retrieval`` above is built for reranking, and its IDF
+# weights deliberately *suppress* ubiquitous entities.
+#
+# Multi-seed PPR wants a different graph, for two measured reasons:
+#
+# 1. ``MENTIONED_IN`` is the only relationship here whose direction is honestly
+#    symmetric — "entity appears in passage" is co-membership. Extracted
+#    entity-entity edges are not: ``MET`` and ``MARRIED_TO`` are symmetric,
+#    ``MEMBER_OF`` and ``TRIBUTARY_OF`` flow importance toward the container,
+#    and ``SHOT`` carries no importance semantics at all. PageRank's model
+#    needs one consistent meaning for an outbound edge; that graph has none.
+# 2. ``NEXT_CHUNK`` is a chain, so it leaks walk mass into passages that are
+#    merely adjacent in time rather than related in substance.
+#
+# The IDF weight is kept as a *property* so it can be switched on and off.
+# It matters far more than it looks: naive, the walk decides every question is
+# about Lewis, Clark, Drouillard and deer (entity top-8 overlap across
+# questions 4.53/8); IDF-weighted, that falls to 0.60/8.
+MENTIONS_PROJECTION_QUERY = """
+MATCH (e)-[:MENTIONED_IN]->(seen:Chunk)
+WHERE NOT e:Chunk AND NOT e:GenericLocation
+WITH e, count(DISTINCT seen) AS df
+MATCH (e)-[:MENTIONED_IN]->(c:Chunk)
+WITH DISTINCT e, c, df
+RETURN gds.graph.project(
+    $graphName,
+    e,
+    c,
+    {
+        sourceNodeLabels: labels(e),
+        targetNodeLabels: labels(c),
+        relationshipType:  'MENTIONS',
+        relationshipProperties: {weight: log(1.0 + toFloat($totalChunks) / df)}
+    },
+    {undirectedRelationshipTypes: ['MENTIONS']}
 )
 """
 
@@ -179,3 +228,105 @@ def node_ids_to_chunks(node_ids: list[int]) -> dict[int, dict]:
         nodeIds=node_ids,
     )
     return {row["nodeId"]: row for row in rows}
+
+
+def project_mentions(name: str | None = None, *, force: bool = False) -> ProjectionStats:
+    """Project the ``MENTIONED_IN``-only undirected graph that PPR seeds walk.
+
+    Separate from :func:`project` on purpose — see the note above
+    ``MENTIONS_PROJECTION_QUERY``. Idempotent unless ``force``.
+    """
+    cfg = settings()
+    name = name or cfg.mentions_graph_name
+
+    if graph_exists(name):
+        if not force:
+            graph = gds().graph.get(name)
+            return ProjectionStats(
+                name=name,
+                node_count=graph.node_count(),
+                relationship_count=graph.relationship_count(),
+                projection_ms=0.0,
+            )
+        drop_graph(name)
+
+    graph, result = gds().graph.cypher.project(
+        MENTIONS_PROJECTION_QUERY, graphName=name, totalChunks=total_chunks()
+    )
+    return ProjectionStats(
+        name=name,
+        node_count=graph.node_count(),
+        relationship_count=graph.relationship_count(),
+        projection_ms=float(result.get("projectMillis", 0.0)),
+    )
+
+
+def get_mentions_graph(name: str | None = None):
+    """Return the mentions-only projection, with a useful error if it is absent."""
+    name = name or settings().mentions_graph_name
+    if not graph_exists(name):
+        raise RuntimeError(
+            f"GDS graph '{name}' is not projected. "
+            f"Run `python scripts/project_graph.py` first."
+        )
+    return gds().graph.get(name)
+
+
+@lru_cache(maxsize=1)
+def mentions_membership() -> frozenset[int]:
+    """Node ids present in the mentions projection.
+
+    Only nodes touching a ``MENTIONED_IN`` edge are in that graph, so an entity
+    with an embedding but no mentions — and a chunk the extractor found nothing
+    in — are both absent. Seeding PPR at a missing node is a hard GDS error, and
+    179 chunks (6.1% of the corpus, 3.4% of its text) have zero entities and are
+    unreachable by any walk over this graph at any damping. That is a real recall
+    floor, and the reason this pipeline blends with cosine rather than replacing
+    it.
+    """
+    rows = read_query(
+        """
+        MATCH (e)-[:MENTIONED_IN]->(c:Chunk)
+        WHERE NOT e:Chunk AND NOT e:GenericLocation
+        RETURN id(e) AS nodeId
+        UNION
+        MATCH (e)-[:MENTIONED_IN]->(c:Chunk)
+        WHERE NOT e:Chunk AND NOT e:GenericLocation
+        RETURN id(c) AS nodeId
+        """
+    )
+    return frozenset(row["nodeId"] for row in rows)
+
+
+def all_chunk_node_ids() -> list[int]:
+    """Every chunk node id, in a stable order — the corpus-wide scoring index."""
+    return [
+        row["nodeId"]
+        for row in read_query("MATCH (c:Chunk) RETURN id(c) AS nodeId ORDER BY id(c)")
+    ]
+
+
+def hub_table(limit: int = 12) -> list[dict]:
+    """Top entities by chunk degree, with the IDF weight each one earns.
+
+    The hub trap, made showable rather than assertable. It does two jobs at
+    once: the corpus is a daily record of what the party shot and ate, so the
+    deer outranks both captains — and ``DREWYER`` appears here while
+    ``GEORGE DROUILLARD`` is a separate node, which puts section 4's unresolved
+    entities on screen for free.
+    """
+    return read_query(
+        """
+        MATCH (e)-[:MENTIONED_IN]->(c:Chunk)
+        WHERE NOT e:Chunk AND NOT e:GenericLocation
+        WITH e, count(DISTINCT c) AS df
+        RETURN head(labels(e))                    AS label,
+               coalesce(e.canonicalName, e.name)  AS name,
+               df                                 AS chunks,
+               log(1.0 + toFloat($totalChunks) / df) AS idfWeight
+        ORDER BY df DESC
+        LIMIT $limit
+        """,
+        totalChunks=total_chunks(),
+        limit=limit,
+    )
