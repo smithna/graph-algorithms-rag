@@ -24,7 +24,7 @@ before the section's slides can be written honestly.
 | 8 | Does this help? | `benchmark.py`, `metrics.py` | runs; **4 gold labels still unresolved** |
 | 9 | How to implement | docs only | not started |
 | 10 | Takeaways | none | not started |
-| — | **Step 6: the deck** | reveal.js, vendored offline | not started — section 4's narrative settled: built on the Sacagawea example, no metric claims |
+| — | **Step 6: the deck** | reveal.js, vendored offline | scaffold not started; **section 4 slide content drafted** — [`docs/section-04-slides.md`](section-04-slides.md) |
 
 ### Step 0 results (2026-09-06)
 
