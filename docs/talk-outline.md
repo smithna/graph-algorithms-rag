@@ -1034,6 +1034,126 @@ Two consequences:
 *(Constraint from Nathan, 2026-09-07: **do not modify the community-days demo
 repo** unless specifically instructed. Any agent/tool work stays a proposal.)*
 
+#### 5d. The hand read — 16 promotions, judged by reading them
+
+The conjunction proxy was broken, so the only honest test left was to read
+every passage the blend promotes into the top-8 from outside cosine's, for the
+three `kind: connection` questions, and ask one thing of each: **does it contain
+something a correct answer needs that no cosine top-8 passage contains?**
+
+| question | cosine top-8 | promotions | clear the bar |
+|---|---|---|---|
+| `charbonneau-role` | **2 of 8 relevant** | 6 | **3** |
+| `sacagawea-interpreting` | 3 strong, 1 partial | 3 | **1 (decisive)** |
+| `shoshone-horses` | 1 strong, 2 context | 7 | **0** |
+
+**4 of 16.** Not a rout, not nothing. What matters is that the wins and the
+losses have different causes, and both are teachable.
+
+##### Where it works: cosine retrieves the *topic*, PPR retrieves the *entity*
+
+`charbonneau-role` is the case to demo. Cosine's top-8 has only two relevant
+passages; the other six are about **different interpreters** — Dorion with the
+Sioux, Gravelin with the Ricara, Jusseaume — plus the arrival at St. Charles
+and a list of Sioux bands. Charbonneau is not named in any of them. Cosine
+matched the *word* "interpreter". The three promotions that clear the bar carry
+what the question actually asks:
+
+```
+1805-03-18  "Mr. Tousent Chabono, Enlisted as an Interpreter this evening"   <- the hiring
+1804-12-18  "Chabonoe our big belly interpeter"                              <- WHICH language
+1805-08-25  "out of patience with the folly of Charbono who had not
+             sufficient sagacity to see the consequencies"                   <- his judgement
+```
+
+And the single best instance in the whole read, from
+`sacagawea-interpreting` — cosine rank **22**, 305 characters, and it **never
+uses her name**:
+
+> `1804-11-04` *"a french man by Name Chabonah, who Speaks the Big Belley
+> language visit us, he wished to hire & informed us his 2 Squars were Snake
+> Indians, we engau him to go on with us and take one of his wives to interpet
+> the Snake language"*
+
+That is the hiring *and* the arrangement the question asks about. It is
+reachable because extraction resolved **"one of his wives" → `SACAGAWEA`** and
+**"Snake Indians" → `SHOSHONE`**. The entity layer carries a coreference the
+text never states, so cosine cannot reach it and the graph can. **That is
+section 4 paying off in section 5, on one readable passage** — a far better
+callback than a second database.
+
+##### Where it fails: `shoshone-horses`, and it fails three times over
+
+All seven promotions are April–May 1806, about the **Nez Perce, Skillutes,
+Eneshur and Walla Walla** — the return journey. Not one concerns the Shoshone.
+The question names the nation; every promotion is a different nation a year
+later. Three separate causes, each worth knowing:
+
+1. **The seeder matched the verb, not the constraint.** It chose
+   `PURCHASE OF HORSES`, `EXCHANGE OF HORSES`, `TRADE FOR HORSES` — generic
+   Event nodes — over `SHOSHONE`. Same error class as cosine's, committed one
+   layer up.
+2. **Seeding the discriminating entities barely helps.** Forcing
+   `SHOSHONE + SACAGAWEA` moves August-1805 passages in the top-8 from 1 to 2.
+3. **And no combiner rescues it.** `SUM` (what linearity gives) and `MIN` (a
+   deliberately conjunctive combiner) both return **0 of 8** August-1805
+   passages.
+
+##### Why (3) happens, and it is the section's real lesson
+
+Read the entities the extractor attached to the Aug 18 1805 passage — the one
+that *is* the answer, *"I soon obtained three very good horses for which I gave
+an uniform coat, a pair of legings, a few handkerchiefs, three knives"*:
+
+```
+SHOSHONE (NativeNation) · SHOSHONE COVE · DREWYER · WILLIAM CLARK · JEFFERSON RIVER
+UNIFORM COAT · PAIR OF LEGINGS · THREE KNIVES · HANDKERCHIEFS · OLD CHECKED SHIRT  (all Supply)
+CHIEFS COAT · WIFE · INTERPRETER  (all mislabelled Person)
+```
+
+**There is no horse.** A passage about buying three horses has no horse entity
+attached. The traded goods are all there — as `Supply`, which has **no embedding
+and no vector index**, so the seeder can never select them. The horse-trading
+`Event` nodes exist but sit on 1805-08-28, 1806-04-19, 1806-04-25 and
+1806-05-10.
+
+So the structure that would answer this question was never built. **No retrieval
+algorithm over this graph can find it by structure**, and that bound is set by
+extraction, not by ranking.
+
+##### And the algebraic limit — PPR cannot express conjunction, ever
+
+This retires the "conjunction" framing on principle rather than on evidence.
+PPR is **linear in the restart distribution**. A chunk connected to two seeds
+receives the *sum* of two contributions — there is no bonus for being connected
+to **both**. A linear combination cannot represent AND. A chunk strongly tied to
+one seed beats a chunk moderately tied to two, every time.
+
+> **The same property gives you the 3× speedup and the hard expressive limit.**
+> Linearity is why the whole seed set batches into one `sourceNodes` call, and
+> it is why diffusion can never do conjunction. Conjunction is a *pattern match*
+> — which is Cypher's job, not PageRank's.
+
+##### What section 5 can honestly claim, after all this
+
+Not conjunction. Not "better chunks". This:
+
+> **Cosine retrieves the topic. Entity-seeded PPR retrieves the entity.** When a
+> question is about a specific thing and cosine's vocabulary match drags in the
+> wrong ones, seeding the entity fixes it — *provided extraction attached that
+> entity to the passage.*
+
+With three measured limits stated on stage, not hidden:
+
+| limit | evidence |
+|---|---|
+| no conjunction | linearity; SUM and MIN both 0/8 (this finding) |
+| no enumeration or ordering | 3/18 for every graph variant (finding 5c) |
+| bounded by extraction | the Aug 18 passage has no horse (this finding) |
+
+Which is what makes the multi-tool argument **structural** rather than
+empirical: three retrieval modes, three different things they cannot do.
+
 #### 6. Damping: shorter walks win monotonically
 
 Share of walk mass within `k` steps is `1 − d^(k+1)`.
