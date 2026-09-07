@@ -18,10 +18,10 @@ before the section's slides can be written honestly.
 | 2 | What is Graph RAG / evidence | none (sources gathered) | not started |
 | 3 | Roadmap | none | not started |
 | 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ **built, verified, and the section's story settled** — Sacagawea cluster is the spine; see *Section 4 findings* |
-| 5 | Ranking is wrong → personalized PageRank | `pagerank.py`, `demo_pagerank.py` | ✅ runs live; still needs hub visibility |
+| 5 | Ranking can't combine evidence → multi-seed PPR | `pagerank.py`, `demo_pagerank.py` | 🔄 **thesis rebuilt on live measurement** — the outline's hub story is retracted, the replacement is measured and settled; **code not yet rewritten**. See *Section 5 findings* |
 | 6 | Context is redundant → communities | `communities.py`, `demo_communities.py` | ✅ runs live; still needs Leiden + conductance |
 | 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | ✅ runs live (needed a resolution fix — see below) |
-| 8 | Does this help? | `benchmark.py`, `metrics.py` | runs; **4 gold labels still unresolved** |
+| 8 | Does this help? | `benchmark.py`, `metrics.py` | runs; **gold set is broken worse than reported** — 4 labels missing *and* at least 4 more silently resolving to near-empty decoy nodes. See *Section 5 findings* #10 |
 | 9 | How to implement | docs only | not started |
 | 10 | Takeaways | none | not started |
 | — | **Step 6: the deck** | reveal.js, vendored offline | scaffold not started; **section 4 slide content drafted** — [`docs/section-04-slides.md`](section-04-slides.md) |
@@ -697,6 +697,348 @@ Real duplicates still in the graph after two resolution passes, for the slides:
 `DREWYER`/`GEORGE DROUILLARD` (328 mentions split), `CRUZATTE` in 11 forms,
 `LABICHE` in 11, `BRATTEN`(24)/`BRATTON`(23) split almost evenly.
 
+### Section 5 findings — working notes, not slide material
+
+> ⚠️ **Two of this section's own claims did not reproduce and are retracted
+> below.** The history is kept, exactly as in section 4: "the mechanism I
+> assumed was wrong, and here is what the data said instead" is the most useful
+> thing in the section. Measured 2026-09-07 against the **`neo4j`** demo graph,
+> read-only. Every number below is `neo4j`-specific — see finding #12.
+
+#### 1. RETRACTED: the hub trap as the outline stated it
+
+The outline claimed *"every chunk in the corpus is two hops from every other
+chunk through MERIWETHER LEWIS... run it naively and every question returns
+roughly the same passages."* All three parts are false here.
+
+| claim | measured |
+|---|---|
+| Lewis is the dominant hub | **He is third.** `ODOCOILEUS VIRGINIANUS` 589 chunks, `CERVUS CANADENSIS` 439, Lewis 377 |
+| every chunk is 2 hops from every other | mean 2-hop reach is **448 of 2,912** — 15.4% of the corpus (median 424, max 1,154, min 0) |
+| every question returns the same passages | cross-question overlap of unrestricted PPR top-8 is **0.00/8 — every pair, every mode.** 48 distinct passages in 48 slots |
+
+The corpus is a daily record of what the party shot and ate, and
+`add_taxonomy.py` renamed the animals to Latin binomials, so the deer outranks
+both captains. Lewis alone accounts for 1.67% of chunk pairs; the deer 4.08%.
+
+#### 2. What survives: the trap is real at the *entity* level
+
+| | naive (unweighted) | + IDF | + IDF & lift |
+|---|---|---|---|
+| entity top-8 cross-question overlap | **4.53/8** | **0.60/8** | **0.00/8** |
+| PPR mass on the 10 biggest hubs | 12.60% | 6.95% | — |
+| mean rank of Lewis among entities | **2.5** | 9.0 | — |
+| median mention-count of top entities | — | 23 | **2** |
+
+Naive, the walk believes every question is about Lewis, Clark, Drouillard and
+deer — Lewis is the *single top entity* for the prairie-dog, Floyd and Great
+Falls questions. IDF-weighted, the top entities become `EQUUS CABALLUS` for the
+horse question, `CYNOMYS LUDOVICIANUS` for the prairie dog, `EXAMINATION OF
+PORTAGE` for the portage.
+
+**And the mechanism explains why the passage level was spared.** A hub
+*receives* mass from every passage mentioning it, so it concentrates; when it
+re-emits, it sprays that mass across 589 passages, so each gets almost nothing.
+**Hubs concentrate at the entity level and dissipate at the passage level.**
+Consequence worth a slide: IDF weighting is essential when the output you
+consume is the entity set (graph expansion, subgraph extraction, community
+seeding) and much less important when you only read passages off the end.
+
+**Lift is not free.** It drives overlap to zero by pushing the median
+mention-count of top entities from 23 to **2** — you trade hubs for one-off
+noise. Two fixes where one overcorrects is a better ten minutes than two that
+both simply work.
+
+#### 3. RETRACTED: the long-passage blur hypothesis
+
+The hypothesis — a long, topically mixed passage has a blurry centroid
+embedding, so a specific detail inside it ranks poorly — is **disconfirmed, with
+the sign reversed.**
+
+| gold-bearing passages | n | median cosine rank |
+|---|---|---|
+| short (<250 words) | 77 | **946** |
+| long (≥400 words) | 213 | **389** |
+
+`Spearman(words, cosine rank) = −0.252`; entity count is flat at −0.025.
+**Longer passages rank better.** Averaging dilutes specificity but also broadens
+coverage — more text means more surface area to overlap the query's vocabulary
+— and on this corpus coverage wins. The long mixed passages are the ones cosine
+*likes*.
+
+#### 4. The real failure: cosine has no representation for conjunction
+
+Passages mentioning **two or more** of a question's gold entities, and how many
+reach the vector top-8:
+
+| question | kind | bearing | best rank | median | in top-8 |
+|---|---|---|---|---|---|
+| shoshone-horses | connection | 86 | 5 | 578 | 2 |
+| sacagawea-interpreting | connection | 26 | 1 | 108 | 4 |
+| charbonneau-role | connection | 13 | 5 | 121 | 1 |
+| grizzly-encounters | authority | 24 | 17 | 445 | **0** |
+| great-falls-portage | authority | 46 | 9 | 638 | **0** |
+| fort-clatsop-winter | authority | 9 | 1 | 15 | 3 |
+| trade-goods | thematic | 8 | **166** | 724 | **0** |
+| food-sources | thematic | 162 | 4 | 743 | 1 |
+| illness-and-injury | thematic | 16 | 19 | 468 | **0** |
+| before-floyd-death | sequence | 1 | **415** | 415 | **0** |
+| pacific-arrival | sequence | 16 | 3 | 277 | 1 |
+| keelboat-return | control | 13 | 5 | 165 | 1 |
+| prairie-dog | control | 0 | — | — | — |
+
+**Five of thirteen questions have zero conjunction-bearing passages in the
+vector top-8.** A passage that answers by *combining* entities does not read
+like the question — an entry naming Floyd and the Missouri reads like a day's
+log. Multi-seed PPR is natively conjunction-aware: seed at both and passages
+touching both accumulate mass from two independent sources.
+
+Note the `kind` column — `connection` questions retrieve tolerably, `authority`
+and `thematic` do not. That is the same line section 8 draws, arriving here
+independently.
+
+*(`prairie-dog` shows 0 because it has a single gold entity and the test needs
+two. An artifact, not a result.)*
+
+#### 5. Multi-seed PPR + blend: the measured result
+
+Setup: `MENTIONED_IN`-only undirected projection, entity seeds from
+question-to-entity semantic match across the eight entity vector indexes (**no
+gold used to pick seeds**), passage seeds from the cosine top-5, blended on
+percentile ranks over the whole corpus.
+
+| strategy | conjunction passages in top-8 | median rank |
+|---|---|---|
+| cosine only | 14 | 524 |
+| entity-seeded PPR only | 9 | 488 |
+| passage-seeded PPR only | 12 | 353 |
+| blend 0.6 / 0.4 | 22 | 323 |
+| blend 0.2 / 0.8 | **24** | **276** |
+| entity + passage PPR, no cosine | 19 | 309 |
+
+**Cosine alone is the worst row.** Any blend lifts top-8 hits ~60%. There is a
+broad plateau from cosine weight 0.9 down to 0.1 — the knob is forgiving, and
+Nathan's 60/40 instinct sits comfortably inside it. **Do not quote a single
+optimum**: the top-8 column bounces 21→23→22→22→21→24→21 and that is noise on
+thirteen questions. Median rank *is* monotonic in structure weight.
+
+**The demo case.** `before-floyd-death` — one passage in the corpus names both
+Charles Floyd and the Missouri River. Cosine ranks it **413 of 2,913**;
+entity-seeded PPR **17**, passage-seeded **20**, combined **16**. A 25× move on
+the single passage carrying the conjunction, and it is the section 0 cold-open
+failure closed.
+
+**The entity seeds are a demo screen in their own right:**
+
+```
+shoshone-horses      PURCHASE OF HORSES · EXCHANGE OF HORSES · TRADE FOR HORSES
+grizzly-encounters   URSUS ARCTOS HORRIBILIS · WHITE BEAR CLIFT · WHITEBEAR ISLANDS
+great-falls-portage  PORTAGE DIFFICULTY · GREAT FALLS · PORTAGE OF 940 YARDS
+sacagawea-interp.    SACAGAWEA(NativeNation) · SACAGAWEA(Person) · INTERPRETERS WIFE
+```
+
+The last row seeds **both** Sacagawea nodes — the real `Person` and a mislabeled
+`NativeNation` duplicate — and the result is fine. That is the "you do not have
+to resolve it first" claim demonstrated live, and a better section 10 callback
+than running a second database.
+
+**Open: the proportional weighting is untested.** Raw normalisation produced
+weights of 0.203 / 0.202 / 0.201 / 0.198 — entity cosine scores cluster so
+tightly that proportional seeding is indistinguishable from uniform over the
+top-5. Testing the idea properly needs sharpening: softmax with a temperature,
+or subtracting the (k+1)th score before normalising.
+
+#### 6. Damping: shorter walks win monotonically
+
+Share of walk mass within `k` steps is `1 − d^(k+1)`.
+
+| damping | mass ≤3 steps | top-8 | median rank |
+|---|---|---|---|
+| **0.35** | 98% | 19 | **274** |
+| 0.45 | 96% | 19 | 286 |
+| 0.55 | 91% | 19 | 309 |
+| 0.65 | 82% | 19 | 322 |
+| 0.75 | 68% | 17 | 350 |
+| **0.85** ← `RerankConfig` default | 48% | **16** | **442** |
+
+The three-step horizon is not a heuristic on this corpus, it is the optimum, and
+the shipped default is the worst of six values tested. On a bipartite walk the
+parity matters too: from an **entity** seed, step 1 = passages mentioning it,
+step 2 = co-mentioned entities, step 3 = passages of those entities.
+
+#### 7. `alpha=1.0` verifies exactly — and the current architecture caps the gain
+
+| alpha | identical ordering to baseline | overlap |
+|---|---|---|
+| **1.0** | **6/6** | 8.00/8 |
+| 0.9 | 3/6 | 8.00/8 |
+| 0.5 | 0/6 | 7.67/8 |
+| 0.0 | 0/6 | 5.33/8 |
+
+`alpha=1.0` reproduces the vector baseline byte-for-byte, which is the
+credibility move: it proves the knob is real and the baseline was not swapped.
+
+**But it also exposes why the shipped design underdelivers.** `rerank()` seeds
+from the vector top-5 and then ranks *only the vector top-50*, so the upside is
+bounded by "what sits in positions 9–50 that belongs in 1–8." Live, that is
+**one slot in eight**. The thing PPR is good at — surfacing passages nobody
+nominated — is forbidden by the candidate gate. Section 5's new design blends
+over the whole corpus instead, which is what lets a passage at rank 413 be
+reached at all.
+
+*Terminology hazard for the slides:* `RerankConfig.alpha` is the cosine/graph
+score blend and `damping_factor` is the walk horizon. They are unrelated knobs
+and need distinct names on screen.
+
+#### 8. Global PageRank on this graph is a degree count — and `lift` is degree normalisation
+
+Two independent reasons plain PageRank has no defensible job here, both of which
+killed an earlier suggestion to use it as an entity-linking prominence prior:
+
+- **Undirected collapses to degree.** For a connected undirected graph the walk's
+  stationary distribution is *exactly* `deg(v)/2|E|`; PageRank adds teleport,
+  which shrinks it toward uniform. So it is a smoothed degree count and carries
+  no new information.
+- **Directed is semantically incoherent.** PageRank's model requires an outbound
+  edge to mean one consistent thing. Here `MET` and `MARRIED_TO` are symmetric,
+  `MEMBER_OF` and `TRIBUTARY_OF` flow importance toward the container, and `SHOT`
+  carries none. For the symmetric types the direction is partly an artifact of
+  which entity the extractor named first — not a property of the world.
+
+Consequence for shipping code: `pagerank.py` uses global PageRank as the `lift`
+denominator on the undirected projection, so **`lift` is currently
+`PPR / weighted-degree` under a grander name.** That does not invalidate it —
+dividing by the walk's base visit rate is well motivated — but the explanation
+has to change from "divide by global importance" to "divide by how often the
+walk lands here regardless of the question," and `global_pagerank()` plus its
+session cache may reduce to a degree lookup. **Unmeasured:** Spearman of global
+PageRank against weighted degree on `lc-retrieval`. Worth one query before the
+simplification.
+
+The structurally-inert signal that suggestion was reaching for — the stray
+`SHOSHONE` `:Person` with no extracted relationships — is just **degree**, and
+`resolve.py`'s mention-count tie-break already captures it. Good thirty seconds
+from the stage: *we reached for PageRank and a `count()` was better.*
+
+#### 9. Corpus shape — and the decision not to re-chunk
+
+Chunks are long enough for the mechanism to matter: **median 325 words, p90 486,
+median 60 words per entity** — roughly 5× finer granularity than the
+whole-passage embedding. 698 chunks (24%) carry four or more distinct entity
+types.
+
+```
+workable      (>=250 words, >=4 entities)   1,405   48.2%
+long but thin (>=250 words,  <4 entities)     447   15.3%
+short enough  (embedding already sharp)     1,061   36.4%
+invisible     (zero entities)                 179    6.1%
+```
+
+**Extraction saturates before length does.** Entity count climbs to the 400–499
+word band (6.4 avg) then *reverses* (5.3 at 500–599), while chars-per-entity
+rises monotonically 145 → 339. The longest passages are the least densely
+annotated — the granularity gain erodes exactly where blur is worst.
+*(Evidence past 500 words is thin: n=142, and one chunk above 600.)*
+
+**A hard recall floor.** 179 chunks — 6.1% of chunks, 3.4% of corpus text — have
+zero entities and are unreachable by any `MENTIONED_IN` walk from any seed at any
+damping. Mean length 707 chars, max 2,210, so these are not only junk fragments.
+Honest slide material: *the graph cannot see 6% of this corpus and vector search
+can*, which is the argument for union rather than replacement.
+
+**Decision: do not re-chunk to one chunk per diary entry.** Entry boundaries are
+*already* in the graph — every chunk carries non-null `date` and `author`, 1,275
+(date, author) entries over 2,913 chunks, 436 already single-chunk — so
+entry-level grouping is a `GROUP BY`, not a rebuild. And entry-level chunks would
+be far too long for this extractor: mean 699 words, p50 561, p90 1,390, max
+4,664. It fails either way you build it:
+
+- **re-extract at entry level** → ~6 entities regardless of length, so
+  words-per-entity goes from 60 to 200+ and the 5× advantage drops under 2×
+- **re-attach existing mentions** → same entity count, blurrier embedding
+  (p90 486 → 1,390 words), no gain
+
+More blur without more pointers is the one combination the design cannot use.
+Re-chunking would also **invalidate section 4 completely** — co-occurrence *is*
+chunk co-membership — collide with `lewisclark`, and force a re-embed.
+
+**Better idea, and it is a slide: separate the retrieval unit from the context
+unit.** Retrieve at chunk granularity where the embedding is sharp and entities
+are dense, then expand the winners to their sibling chunks in the same entry
+before handing context to the LLM. Strictly more than entry chunking, no rebuild,
+nothing invalidated.
+
+**One cleanup worth doing:** 400 chunks are under 100 words and some are clearly
+chunking damage — `'===='`, `'side are lowest and more distant from the
+river.'`. Fix it the way `flag_generic_locations.py` does: add a flag, filter at
+query time. Additive, changes no existing co-membership measurement, and keeps
+`'===='` out of a live candidate list.
+
+#### 10. The gold set is broken worse than the Progress table said — this blocks section 8
+
+`verify_questions.py` reports 4 unresolved labels. It **passes with ✓** on labels
+that resolve to near-empty decoy nodes:
+
+| gold label | resolves to | should be |
+|---|---|---|
+| `ELK` | Supply, **11** mentions | `CERVUS CANADENSIS` (439) |
+| `BISON` | AnimalSpecies, **3** | `BISON BISON` (330) |
+| `SALMON` | Supply, **13** | `ONCORHYNCHUS CLARKII` (45) + `TSHAWYTSCHA` (30) |
+| `GREAT FALLS` | Event, **2** | `GREAT FALLS OF THE MISSOURI` (26) |
+
+Fixing `food-sources` alone took it from 3 conjunction-bearing passages to
+**162**. And **9 of 22 gold labels are ambiguous** — several nodes share the
+name — including `SHOSHONE` (NativeNation:192 vs Person:1), which is the section
+7 bug verbatim, and `SACAGAWEA` (Person:64 vs NativeNation:1).
+
+**The defect is that `✓` means "a node with this name exists", not "the right
+node".** It cannot catch a decoy. The fix is the mention-count prominence prior
+that `resolve.py` already got and this script never did — see finding #8.
+
+Two labels are genuinely thin rather than mis-resolved: `NEZ PERCE` has 2
+mentions (the journals say *Chopunnish*, split across `Person` nodes) and
+`PACIFIC OCEAN` has 4. Those are real extraction gaps that bound every strategy,
+and `Supply` (634 nodes) has **no embeddings and no vector index** at all.
+
+`questions/questions.yaml` was **not edited** — the corrected mapping was local
+to the experiment, since that file feeds section 8's benchmark and Step 5 is not
+section 5's scope.
+
+#### 11. Two decisions taken
+
+**No resolved-vs-unresolved second database in section 5.** The comparison would
+be `neo4j` vs `rawluna`, which differ in *extraction model* too (39% fewer
+mention edges) — confounded, and section 4 already retracted one measurement for
+exactly that. The free version is better: the hub table shows `DREWYER` at #7
+with 265 mentions while `GEORGE DROUILLARD` is a separate node, and the entity
+seeds visibly include both `SACAGAWEA` nodes. One sentence, no second database.
+
+**Numbers *do* go on section 5's slides**, which does not contradict section 4.
+Section 4's numbers needed the gold set to mean anything; these are measurements
+of the algorithm's own behaviour — cross-question overlap, hub mass, damping
+sweep, blend sweep, `alpha=1.0` identity, projection and query latency — exact,
+reproducible on stage, and carrying no judgement about whether a retrieved
+passage is correct. Every *accuracy* claim still waits for section 8.
+
+#### 12. Caveats that must travel with every number above
+
+- **The relevance signal is a proxy.** "Mentions ≥2 gold entities" is not
+  "answers the question." These numbers support *cosine does not retrieve
+  conjunction*; they do **not** establish that those passages are the right
+  answers. Same discipline as section 4's gold-set note.
+- **Thirteen questions is a small sample**, and one contributes nothing. Treat
+  blend-weight differences of 1–3 top-8 hits as noise.
+- **All of it is `neo4j`.** The section 4 findings above record `lewisclark` as
+  the intended replacement demo graph. `lewisclark` descends from `rawluna`,
+  which has 39% more mention edges and names entities differently, so the hub
+  table, the overlap figures and the blend sweep will all shift. **If the demo
+  graph changes, section 5's numbers must be re-measured from scratch.** The
+  code is database-agnostic; the slide figures are not.
+- The `control` question `keelboat-return` is *not* harmed by the blend (cosine
+  1 in top-8 at median 164; blend 0.8/0.2 gives 2 at median 153), but this must
+  be re-confirmed at whatever weight ships — it is the outline's own honesty
+  check.
+
 ### Design notes not yet folded into the sections
 
 - ~~**Section 4 has a full implementation design**~~ — **built.** Candidate
@@ -990,40 +1332,115 @@ miss. Carried into the benchmark in section 8 as the `cooccurrence` strategy.
 and note that build-time work is what makes query-time work possible — the
 callback section 10 lands.
 
-### 5. "Your ranking is wrong" → personalized PageRank (10 min) · 0:23
+### 5. "Your ranking can't combine evidence" → multi-seed PPR (10 min) · 0:23
 
-**The failure.** Vector top-8 returns eight passages that *sound* like the
-question. Sounding like the question and answering it are different things.
+*(Title changed and thesis rebuilt — the previous version's hub-trap centrepiece
+did not reproduce against live data. Retraction and replacement in
+*Section 5 findings*. **Nathan to sign off on the new title.**)*
 
-**PageRank in 60 seconds**, then the pivot: plain PageRank asks "what's
-important in this graph?" — a global, query-independent answer, the same for
-every question you ever ask. **Personalized** PageRank restarts the walk at
-chosen source nodes, so it asks the useful question: *what's important
-relative to what this question is about?* The source nodes are your top vector
-hits. Vector search nominates; the graph ranks.
+**The failure.** Vector top-8 returns eight passages that each mention *part* of
+the answer. None of them connects the parts. Cosine scores every passage against
+the question independently, on vocabulary — it has **no representation for
+conjunction**, and conjunction is what most real questions need.
 
-**The hub trap — break it live.** This is the section's centerpiece and it is
-the thing that will actually save someone in the audience a wasted afternoon.
-Run it naively: every question returns roughly the same passages. Why? Every
-chunk in the corpus is two hops from every other chunk through `MERIWETHER
-LEWIS`, who is mentioned nearly everywhere. The random walk drowns.
+Shown, not asserted: passages carrying two or more of a question's gold entities
+*together* sit at a median cosine rank of **524 of 2,913**. Five of thirteen
+questions have **none** in the vector top-8. `before-floyd-death` has exactly one
+passage naming both Charles Floyd and the Missouri River, and cosine ranks it
+**413**.
 
-Two fixes, both one line:
-- **IDF-weight the mention edges**: `log(1 + totalChunks / df)`, so a shared
-  mention of *Beaverhead Rock* counts for far more than a shared mention of
-  *Lewis*
-- **Normalize by global PageRank** ("lift"): a passage that ranks high for
-  *every* question is not evidence about *this* one
+**PageRank in 60 seconds** — and say the honest thing while you are there. Plain
+PageRank asks "what is important in this graph?", but on an undirected graph the
+stationary distribution is *exactly* proportional to degree, so plain PageRank
+here is **a fancy degree count**. It is not the interesting half. What is
+interesting is **changing where the walk starts**: personalized PageRank
+restarts at chosen source nodes and measures structural proximity to *that set*,
+aggregated over every path rather than the shortest one.
 
-**Hybrid retrieval** — abstract takeaway #2. The `alpha` blend between cosine
-and structure. Show `alpha=1.0` reproducing the baseline exactly, `alpha=0.0`
-going pure-structure, and where the useful middle sits.
+**Two seed sets, over a graph with one relationship type.**
 
-**Demo** — `demo_pagerank.py`: vector top-k beside reranked top-k, with the
-pre-rerank position of each passage and the promoted ones flagged.
+- **Entity-seeded.** Semantic-match the question against the entity embeddings,
+  take the top few, weight them by match score, seed all of them. You never have
+  to decide *which* tree species was meant — or which of two `SACAGAWEA` nodes is
+  the real one. Seed both and let structure sort it out. **This is the section 10
+  callback made visible**: argmax entity linking fails hard when resolution is
+  wrong; proportional seeding degrades gracefully.
+- **Passage-seeded.** Seed at the top cosine passages, which reinforces the
+  entities the best semantic matches have in common.
+- **Project `MENTIONED_IN` only, undirected.** It is the one relationship here
+  whose direction is honestly symmetric — "entity appears in passage" is
+  co-membership. Dropping `RELATED` drops the edges whose direction has no
+  consistent meaning across types (`MET` is symmetric, `MEMBER_OF` is not,
+  `SHOT` carries no importance semantics at all). Dropping `NEXT_CHUNK` stops
+  mass leaking to passages that are merely adjacent in time.
 
-**Cost.** Projection is the expensive step and it's amortized. Per-query PPR
-against a projected graph is milliseconds.
+**PPR is linear in the restart distribution.** `PPR(w₁v₁ + w₂v₂)` is *exactly*
+`w₁·PPR(v₁) + w₂·PPR(v₂)`. So run one PPR per seed, cache them, and blend
+afterwards — you get every weighting from one set of runs and can re-weight live
+on stage without recomputing.
+
+**Keep the walk short.** Damping is the horizon: the share of walk mass within
+`k` steps is `1 − d^(k+1)`. Measured, shorter is strictly better, and the value
+the repo currently ships is the worst of six tested:
+
+| damping | mass ≤ 3 steps | median rank of conjunction passages |
+|---|---|---|
+| 0.35 | 98% | **274** |
+| 0.55 | 91% | 309 |
+| 0.85 ← shipped default | 48% | **442** |
+
+**Hybrid retrieval** — abstract takeaway #2, and the good news is that the knob
+is forgiving:
+
+| cosine / PPR | conjunction passages reaching top-8 | median rank |
+|---|---|---|
+| **1.0 / 0.0** | **14** | **524** |
+| 0.6 / 0.4 | 22 | 323 |
+| 0.2 / 0.8 | 24 | 276 |
+
+Cosine alone is the worst row. *Any* blend lifts top-8 hits by roughly 60%, and
+there is a broad plateau from about 0.9 down to 0.1 — so the honest advice is
+"pick something in the middle, it is not delicate." Do **not** quote a single
+optimum; the top-8 column is noisy on thirteen questions.
+
+Also worth ten seconds: there are **two places** to combine cosine and
+structure — in the *seed weights* or in the *final score* — and seeding is the
+better one, because structure then operates on a semantically-informed prior
+instead of fighting it after the fact.
+
+**The hub trap** — demoted from centrepiece to a supporting finding, because
+the measured version is narrower than the outline claimed but more useful. Hubs
+do **not** make every question return the same passages (cross-question passage
+overlap is 0/8). They dominate the *entity* side of the walk: naive entity
+top-8 overlap across questions is **4.53/8**, and Meriwether Lewis is the single
+top-ranked entity for the prairie-dog, Floyd and Great Falls questions. The
+mechanism is worth a sentence — a hub *receives* mass from every passage that
+mentions it, then sprays it across 589 passages, so **hubs concentrate at the
+entity level and dissipate at the passage level.** IDF-weighting the mention
+edges takes that 4.53 to **0.60**. The rule: IDF matters when the output you
+consume is the entity set; much less when you only read passages off the end.
+
+And show the top-hub table itself, because it does two jobs at once:
+
+```
+589  ODOCOILEUS VIRGINIANUS      330  BISON BISON        265  DREWYER
+439  CERVUS CANADENSIS           307  MISSOURI RIVER     224  JOSEPH FIELD
+377  MERIWETHER LEWIS            291  WILLIAM CLARK      192  SHOSHONE
+```
+
+The corpus is a daily record of what they shot and ate, so the deer outranks
+both captains — and `DREWYER` sits at #7 with 265 mentions while
+`GEORGE DROUILLARD` is a *separate node*. The hub table displays section 4's
+unresolved-entity problem for free, with no second database.
+
+**Demo** — `demo_pagerank.py`, rebuilt: the entity seeds chosen from the
+question (a good screen on its own — `PURCHASE OF HORSES`, `PORTAGE DIFFICULTY`,
+both `SACAGAWEA` nodes), then the `before-floyd-death` passage moving from
+cosine rank **413** to **16**, then the blend slider.
+
+**Cost.** Projection is the expensive step and it is amortised — `lc-mentions`
+projects in **94 ms**. Per-seed PPR against it is milliseconds, cacheable, and
+linearity means re-weighting is free.
 
 ### 6. "Your context is redundant" → community detection (6 min) · 0:33
 
@@ -1170,8 +1587,25 @@ signals, and real `gds.wcc.stream` over in-memory candidate pairs. Plus the
 corps-member gold-set precision/recall, and the `cooccurrence` query-time
 strategy registered in `strategies.py`.
 
-**Step 2 — Section 5 code.** Add hub visibility to `demo_pagerank.py` (top
-entities by degree) so the hub trap is showable rather than assertable.
+**Step 2 — Section 5 code.** *Scope grew: the outline's hub story did not
+reproduce and the section's thesis was rebuilt on measurement — see
+Section 5 findings.* What the section now needs:
+
+1. A second projection, `MENTIONED_IN` only and undirected (`lc-mentions`),
+   alongside `lc-retrieval`. Two jobs, two projections — the IDF weighting that
+   is right for retrieval is wrong for prominence, and `RELATED`'s direction has
+   no consistent meaning.
+2. Entity seeding by question-to-entity semantic match across the eight entity
+   vector indexes, with **sharpened** proportional weights (raw normalisation
+   comes out indistinguishable from uniform — finding #5).
+3. Multi-seed PPR exploiting linearity: one run per seed, cached, blended
+   afterwards. Passage-seeded PPR as the second signal.
+4. Corpus-wide blending with cosine on percentile ranks — **not** the current
+   candidate-gated rerank, which caps the achievable gain at "what sits in
+   positions 9–50" (finding #7).
+5. `demo_pagerank.py` rebuilt around the `before-floyd-death` case, plus the
+   entity-seed screen and the hub table.
+6. Damping default moved off `0.85`, which measured worst of six values.
 
 **Step 3 — Section 6 code.** Leiden alongside Louvain in `communities.py`;
 `gds.conductance` for the cohesion check. Verify GDS tier for `gds.leiden`.
