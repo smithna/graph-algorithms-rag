@@ -147,6 +147,7 @@ RETURN gds.graph.project(
 MENTION_WEIGHTS = {
     "idf": "log(1.0 + toFloat($totalChunks) / df)",
     "idf_over_entities": "log(1.0 + toFloat($totalChunks) / df) / ec",
+    "inverse_degree": "1.0 / df",
     "inverse_entities": "1.0 / ec",
     "uniform": "1.0",
 }

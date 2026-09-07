@@ -678,6 +678,70 @@ one is not:
 > amount of per-pair accuracy would have prevented. Fix what enters the
 > candidate set, not what comes out of it.
 
+#### 3e. The disambiguation design — two layers, measured
+
+Settled after 3c and 3d. Neither layer reads the words in a name; both are
+structural, deterministic and order-independent. Measured on `lewisclark`
+against Sacagawea's cluster:
+
+| stage | her forms kept | contaminants |
+|---|---|---|
+| confirmed pairs, no rules | 14 | **25** |
+| + layer 1 (evidence) | 14 | 4 |
+| + layer 2 (transitivity) | **11** | **0** |
+
+**Layer 1 — evidence sufficiency.** A confirmed pair needs at least one
+endpoint with ≥2 chunks. Two one-chunk nodes confirming each other is not
+evidence: neither side has anything to discriminate with, so the judge reaches
+for the identity it recognises. This alone removed 21 of 25 contaminants and
+cost nothing — the sparse forms still reach the cluster through `INDIAN WOMAN`
+(24 chunks) and `SACAGAWEA` (8), so the 18 dropped edges were redundant.
+
+**Layer 2 — transitivity verification.** WCC closure *is* the claim that "same
+entity" is transitive, and nothing ever tests it. For each node with two or more
+confirmed neighbours, ask whether those neighbours are the same as each other; a
+"no" means the node is a bridge and is dropped from the merge graph. It caught
+the interpreter family and two more cross-identity welds worth naming on a
+slide:
+
+```
+P. CRUSAT     bridges  GEORGE DROUILLARD ~/~ PIERRE CRUZATTE
+JOHN BRATTEN  bridges  JOHN ORDWAY       ~/~ WILLIAM BRATTON
+```
+
+**It is cheaper than it sounds: 33 of 81 checks (41%) were answered free** from
+verdicts already in the cache. Candidate adjudication rejects far more than it
+confirms and the pipeline throws those rejections away — but a rejection is
+exactly the evidence transitivity needs. Two people who co-occur constantly are
+almost certainly proposed and rejected long before anything asks whether a vague
+node bridges them. *(Nathan's suggestion; the pipeline could persist these as an
+`IS_NOT_SAME_ENTITY_AS` relationship, since it has no cache of its own.)*
+
+**Layer 3 — component size cap**, as a backstop for whatever the first two miss.
+Not needed on this data (0 components refused), but cheap insurance: refusing to
+merge is recoverable, merging is not.
+
+**Why not a `flag_generic_persons` step.** It was the obvious idea and it is
+wrong for this corpus. "The Indian woman" is culturally generic and
+referentially unique — there was one. "The interpreter" is equally generic and
+genuinely ambiguous — there were four. No string rule separates them, and an
+LLM asked "is this a generic reference?" says yes to both, which deletes
+Sacagawea's references. Her forms are phrased the way women were referred to in
+1804; a filter that penalises that phrasing erases her from the graph while
+leaving the actually-ambiguous nodes untouched.
+
+> **The slide, if it earns a place:** the fix was not to teach the system what a
+> vague name looks like. It was to stop treating a single passage as evidence.
+
+**The cost, stated plainly.** Layer 2 drops 3 of her 14 forms —
+`SQUAR INTERPRETRESS` and the two interpreter-worded ones — because they are
+genuinely ambiguous, not because they are sparse. An 11-node cluster with zero
+contaminants is a stronger claim on stage than a 14-node one with
+`THE INTERPRETER` in it.
+
+**Status: implemented read-only in `graphrank/resolution.py`, not wired into
+`disambiguate.py`.** Running it on `lewisclark` is a separate decision.
+
 #### 4. The default model is three generations stale
 
 Benchmarked over 187 labelled Person pairs, `gpt-4o-mini` — the default in both
@@ -1388,6 +1452,82 @@ and the caveat that it can empty the seed set (all three `shoshone-horses` seeds
 are discarded at a threshold of 5; the code falls back rather than returning
 nothing). n=4 hand-judged passages throughout, so these are directions, not
 verdicts.
+
+##### 5d-quater. Sharpened bias helps — and it argues for ONE seed, not several
+
+Nathan's proposal: inverse entity degree in the projection, plus sharpened
+biases prioritising stronger cosine similarity. Tested as a cross-product. The
+sharpening helps; the projection change does not.
+
+The reason it was worth trying, which neither of us had said: **the degree-1
+seeds are also the weaker cosine matches.**
+
+```
+charbonneau:  TOUSSAINT CHARBONNEAU  0.862  (deg 62)
+              JEAN BAPTISTE          0.808  (deg 1)
+              BIRTH OF JEAN BAPTISTE 0.800  (deg 1)
+```
+
+So sharpening on match score suppresses exactly the seeds that spike.
+
+| projection | bias | `charbonneau` | `sacagawea` Nov-4 |
+|---|---|---|---|
+| **IDF** | proportional *(ships)* | 3/3 [7,3,5] | [8] |
+| IDF | power:20 → 0.67/0.18/0.15 | 3/3 [8,3,4] | [7] |
+| IDF | softmax:0.03 | 3/3 [8,3,4] | [7] |
+| **IDF** | **softmax:0.01 → 0.99/0.00/0.00** | 3/3 [8,3,4] | **[5]** |
+| `inverse_degree` | proportional | 3/3 [7,3,4] | [7] |
+| `inverse_degree` | *every* sharpening scheme | 3/3 [7,3,4] | [7] |
+
+**Best result measured on this pipeline so far**: IDF + aggressive sharpening.
+The Nov-4 passage moves 8 → 5, out of precarious and into comfortable.
+Charbonneau is a wash (same rank sum).
+
+**Unexplained**: under `inverse_degree`, five different bias schemes produce
+*identical* output — sharpening is completely inert. `1/df` spans 3000× against
+IDF's 11×, so the walk is plausibly dominated by rare-entity funnelling in a way
+that swamps the restart distribution, but that is a guess. Flagged, not claimed.
+
+##### The uncomfortable implication, and it retires a claim of mine
+
+`softmax:0.01` produces weights `0.99 / 0.00 / 0.00`. **That is a single seed.**
+Which is the third independent route to the same destination:
+
+| route | effective seeds | `charbonneau` |
+|---|---|---|
+| `min_seed_degree=10` | 1 | 3/3 [8,3,4] |
+| `softmax:0.01` | ~1 | 3/3 [8,3,4] |
+| ships, equal weights | 3 | 3/3 [7,3,5] |
+
+> **On the hand-read evidence, one well-chosen seed is as good as or better than
+> several.** The "seed all the candidates, don't argmax" story that slide 5.4 was
+> built on is **not supported**. It rested on the seed-count table (1 → 2 seeds
+> = +64%), which was scored against the co-mention proxy later found
+> hub-contaminated.
+
+**The resolution-robustness claim survives in a weaker, more honest form.**
+`softmax:0.01` on the Sacagawea question selects the **mislabelled
+`NativeNation` duplicate** as its single seed and still returns the best result
+— because both `SACAGAWEA` nodes lead to the same neighbourhood. So argmax is
+safe here not because we hedged across candidates, but because the duplicates
+are *structurally equivalent*. That is still a real point about tolerating
+imperfect resolution, and it is still a section 4 callback. It is not "seed all
+four and let structure sort it out."
+
+**Consequences for the section:**
+
+- Slide **5.4** must be rewritten. "Seed all four" becomes something like
+  "pick the best-matching entity, and note that picking the *wrong duplicate*
+  costs you nothing because it lands in the same neighbourhood."
+- The Sacagawea two-node screen still works, for the weaker claim.
+- `min_seed_degree` and the bias-sharpening knob are both routes to the same
+  end; **sharpening is the better one** because it does not risk emptying the
+  seed set and it needs no threshold tuned per corpus.
+
+**Caveat, unchanged and load-bearing: n = 4 hand-judged passages.** Every number
+in 5d-bis, 5d-ter and 5d-quater is a direction, not a verdict. What would settle
+them is a wider hand read over the `kind: connection` questions, which is also
+what would let the earlier sweeps be re-scored honestly.
 
 ##### What section 5 can honestly claim, after all this
 

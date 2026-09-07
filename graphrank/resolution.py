@@ -763,7 +763,47 @@ def components(
     return result
 
 
-# ── Transitivity verification: catching bridge nodes before closure ───────────
+# ── Layer 1: evidence sufficiency ─────────────────────────────────────────────
+
+#: Minimum chunks one endpoint of a confirmed pair must have.
+#:
+#: The failure this prevents is specific and was measured, not guessed. A
+#: one-chunk node paired with another one-chunk node gives the judge nothing to
+#: discriminate with, so it falls back on whatever identity it recognises. On
+#: this corpus that produced 27 confirmations of `SQUAR INTERPRETRESS` against
+#: one-chunk Native leaders from three different nations — TIN NACH-E-MOO-TOOLT
+#: (Nez Perce), MAN-NES-SUR REE (Hidatsa), CONIA COMAWOOL (Clatsop) — every one
+#: resolved to "Sacagawea".
+#:
+#: Requiring one well-evidenced endpoint removed 21 of the 25 contaminants from
+#: her cluster and cost **nothing**: all 14 of her surface forms survived,
+#: because the sparse ones still reach the cluster through `INDIAN WOMAN` (24
+#: chunks) and `SACAGAWEA` (8). The 18 dropped edges were redundant.
+#:
+#: **This is deliberately not a "generic reference" filter.** The obvious
+#: framing — flag vague-sounding names, an analogue of
+#: `flag_generic_locations.py` — fails on this corpus and would do real harm.
+#: "The Indian woman" is culturally generic and referentially unique: there was
+#: one. "The interpreter" is equally generic and genuinely ambiguous: there were
+#: four. No string test and no LLM prompt separates those without the corpus,
+#: and a plausible prompt deletes Sacagawea's references, which are phrased the
+#: way women were referred to in 1804.
+#:
+#: Evidence sufficiency sidesteps the whole question. It never reads the words.
+MIN_EVIDENCE_CHUNKS = 2
+
+
+def filter_by_evidence(
+    pairs: list[CandidatePair], *, min_chunks: int = MIN_EVIDENCE_CHUNKS
+) -> list[CandidatePair]:
+    """Drop confirmed pairs where neither side has enough support to judge."""
+    return [
+        p for p in pairs
+        if max(p.left.mentions, p.right.mentions) >= min_chunks
+    ]
+
+
+# ── Layer 2: transitivity verification — catching bridge nodes before closure ─
 
 
 @dataclass
