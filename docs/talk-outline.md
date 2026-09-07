@@ -588,6 +588,65 @@ collapses, or if Drouillard turns up in Sacagawea's aliases. A pipeline that can
 silently weld two identities together should refuse to continue when it starts
 doing so.
 
+#### 3d. The bridge node — why WCC welded Sacagawea to Drouillard
+
+The obvious explanation for the over-merge in 3c is "the LLM got it wrong." It
+did not. Asked directly, with `disambiguate.py`'s own prompt, `gpt-5.6-luna`
+answers **every** relevant pair correctly:
+
+```
+SACAGAWEA    ~ GEORGE DROUILLARD    different   ✓
+SACAGAWEA    ~ WINDSOR              different   ✓
+INDIAN WOMAN ~ GEORGE DROUILLARD    different   ✓
+SACAGAWEA    ~ INDIAN WOMAN         SAME        ✓
+DREWYER      ~ GEORGE DROUILLARD    SAME        ✓
+```
+
+It never said Sacagawea was Drouillard. **The merge came entirely from
+transitive closure**, through *bridge nodes* — vague references the judge
+confirms against more than one person:
+
+```
+THE INTERPRETER  →  confirmed same as GEORGE DROUILLARD *and* TOUSSAINT CHARBONNEAU
+HIS WIFE         →  confirmed same as SACAGAWEA         *and* TOUSSAINT CHARBONNEAU
+```
+
+Which gives the exact observed chain:
+
+```
+SACAGAWEA ──[HIS WIFE]── TOUSSAINT CHARBONNEAU ──[THE INTERPRETER]── GEORGE DROUILLARD
+```
+
+**Every link in that chain is defensible.** "His wife", in the passages beside
+Charbonneau, *is* Sacagawea. "The interpreter" *is* Charbonneau. And Drouillard
+*was* the expedition's sign-language interpreter, so that call is arguable too.
+Four reasonable judgements, no bad one among them — and one merged entity that
+is flatly wrong.
+
+> **This is the slide.** Transitive closure does not just propagate errors, it
+> manufactures them. A node that is genuinely ambiguous — that legitimately
+> refers to two different people in different passages — is not a *wrong* answer
+> waiting to be caught by a better judge. It is a **bridge**, and WCC will cross
+> it. No amount of per-pair accuracy prevents this, because no pair is wrong.
+
+**The actionable fix, and it is already half-built in this pipeline.**
+`flag_generic_locations.py` exists precisely because "the river" and "the bank"
+are useless as *places*. There is no equivalent for people, so "THE
+INTERPRETER", "HIS WIFE", "THE MAN", "MY BROTHER" all sit in the graph as
+first-class Person nodes and act as bridges. A `flag_generic_persons` step —
+or simply excluding possessive and role-only references from candidate
+generation — would remove the bridges without touching the judge at all.
+
+That also explains why the aggressive settings in 3c were so much worse:
+`MIN_CHUNK_COUNT=1` admits every one-chunk node, and one-chunk nodes are
+overwhelmingly exactly these vague references. The tuning did not create bad
+judgements; it fed the closure algorithm far more bridges.
+
+**Demo value.** This is reproducible in about thirty seconds on stage — ask the
+judge four questions, draw the chain, show the merged node. It is a far better
+argument for "adjudicate before you close, and be careful what you let into the
+candidate set" than any precision number.
+
 #### 4. The default model is three generations stale
 
 Benchmarked over 187 labelled Person pairs, `gpt-4o-mini` — the default in both
