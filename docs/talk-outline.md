@@ -791,8 +791,11 @@ So 3c's lesson has now been learned twice, the second time by ignoring it:
   `P CRUSAT + PETER CROUSAT + PETER CROUZATT + …` (16 spellings of Cruzatte),
   Frazer (7), Weiser (5), Goodrich (4), Howard (3)
 
-**Status: not applied.** `lewisclark` remains pre-disambiguation at 794 Person
-nodes, checkpointed at
+**Status: not applied.** Handoff written up in
+[`picking-up-entity-resolution.md`](picking-up-entity-resolution.md) — restore
+points, the patched scripts, the operational traps, and the first thing to try
+on resuming. `lewisclark` remains pre-disambiguation at 794 Person nodes,
+checkpointed at
 `data/checkpoints/lewisclark-pre-disambiguation/`. `neo4j` and `rawluna` were
 never touched, and section 4 demos against them.
 

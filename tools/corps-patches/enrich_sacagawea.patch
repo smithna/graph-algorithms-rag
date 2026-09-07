@@ -1,0 +1,63 @@
+--- ../corps-of-discovery-graph-rag/enrich_sacagawea.py	2026-09-06 14:51:02
++++ /private/tmp/claude-502/-Users-nathansmith-Documents-kcdc-2026/3b4960bb-596d-4977-8aca-b60fe382d634/scratchpad/enrich_sacagawea_prov.py	2026-09-07 05:18:21
+@@ -31,6 +31,10 @@
+ NEO4J_USER     = os.environ["NEO4J_USER"]
+ NEO4J_PASSWORD = os.environ["NEO4J_PASSWORD"]
+ 
++# Explicit database targeting: these scripts otherwise use driver.session(database=NEO4J_DB) with
++# no database, which silently follows the user's HOME DATABASE.
++NEO4J_DB = os.getenv("NEO4J_DATABASE", "neo4j")
++
+ SOURCE_URL   = "https://lewis-clark.org/people/sacagawea/sacagawea-in-the-journals/"
+ SACAGAWEA_CN = "SACAGAWEA"
+ MIN_SCORE    = 0.25   # minimum matched-chars fraction to accept a chunk
+@@ -133,7 +137,7 @@
+ 
+ def chunks_for_date(driver, date: datetime.date) -> list[tuple[str, str]]:
+     """Return (elementId, text) for all chunks on the given date."""
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         result = s.run(
+             "MATCH (c:Chunk) WHERE c.date = $date RETURN elementId(c) AS eid, c.text AS text",
+             date=date,
+@@ -178,7 +182,7 @@
+ 
+ def ensure_sacagawea(driver) -> None:
+     """Create the Sacagawea Person node if it doesn't already exist."""
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         s.run(
+             """
+             MERGE (saca:Person {canonicalName: $cn})
+@@ -191,12 +195,14 @@
+ 
+ def link_chunk(driver, eid: str) -> None:
+     """MERGE a MENTIONED_IN relationship from Sacagawea to the given chunk."""
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         s.run(
+             """
+             MATCH (saca:Person {canonicalName: $cn})
+             MATCH (c:Chunk) WHERE elementId(c) = $eid
+-            MERGE (saca)-[:MENTIONED_IN]->(c)
++            MERGE (saca)-[r:MENTIONED_IN]->(c)
++            ON CREATE SET r.source = 'lewis-clark.org', r.externalOnly = true
++            ON MATCH  SET r.alsoExternal = true
+             """,
+             cn=SACAGAWEA_CN, eid=eid,
+         )
+@@ -204,11 +210,12 @@
+ 
+ def update_aliases(driver, surface_forms: list[str]) -> None:
+     """Merge surface forms into Sacagawea's aliases list."""
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         s.run(
+             """
+             MATCH (saca:Person {canonicalName: $cn})
+-            SET saca.aliases = [x IN coll.distinct(
++            SET saca.externalAliases = $forms,
++                saca.aliases = [x IN coll.distinct(
+                 coalesce(saca.aliases, []) + $forms
+             ) WHERE x <> saca.name AND x <> saca.canonicalName]
+             """,

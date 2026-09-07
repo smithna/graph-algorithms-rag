@@ -1,0 +1,73 @@
+--- ../corps-of-discovery-graph-rag/add_taxonomy.py	2026-09-06 14:51:02
++++ /private/tmp/claude-502/-Users-nathansmith-Documents-kcdc-2026/3b4960bb-596d-4977-8aca-b60fe382d634/scratchpad/add_taxonomy_fixed.py	2026-09-07 05:18:21
+@@ -42,11 +42,15 @@
+ NEO4J_USER     = os.environ["NEO4J_USER"]
+ NEO4J_PASSWORD = os.environ["NEO4J_PASSWORD"]
+ 
++# Explicit database targeting: these scripts otherwise use driver.session(database=NEO4J_DB) with
++# no database, which silently follows the user's HOME DATABASE.
++NEO4J_DB = os.getenv("NEO4J_DATABASE", "neo4j")
++
+ GBIF_MATCH_URL = "https://api.gbif.org/v1/species/match"
+ MIN_CONFIDENCE = 80     # below this we consider the match unreliable
+ REQUEST_DELAY  = 0.25   # seconds between GBIF calls
+ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
+-LLM_MODEL      = os.getenv("EXTRACTION_MODEL", "gpt-4o-mini")
++LLM_MODEL      = os.getenv("EXTRACTION_MODEL", "gpt-5.6-luna")
+ 
+ # Ordered from broadest to most specific
+ RANKS = ["kingdom", "phylum", "class", "order", "family", "genus"]
+@@ -139,7 +143,7 @@
+ 
+ def fetch_sample_chunk(driver, canonical: str) -> str | None:
+     """Return the text of one chunk that mentions this species, or None."""
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         rec = s.run(
+             "MATCH (n:Species {canonicalName: $cn})-[:MENTIONED_IN]->(c:Chunk)"
+             " RETURN c.text AS text LIMIT 1",
+@@ -171,7 +175,7 @@
+     try:
+         resp = client.chat.completions.create(
+             model=LLM_MODEL,
+-            temperature=0,
++            **({} if any(str(globals().get(v,"")).startswith("gpt-5") for v in ("RESOLUTION_MODEL","LLM_MODEL","EXTRACTION_MODEL","MODEL")) else {"temperature": 0}),
+             messages=[
+                 {"role": "system", "content": _LLM_SYSTEM},
+                 {"role": "user",   "content": user_content},
+@@ -198,7 +202,7 @@
+     """
+     # Keep "sp." lowercase: "Anas sp." not "Anas Sp."
+     display = new_cn.title().replace(" Sp.", " sp.")
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         conflict = s.run(
+             f"MATCH (n:{label} {{canonicalName: $cn}}) RETURN count(*) AS c",
+             cn=new_cn,
+@@ -235,7 +239,7 @@
+             """, old=old_cn, new=new_cn, display=display)
+ 
+ def setup_constraint(driver) -> None:
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         s.run("""
+             CREATE CONSTRAINT taxon_rank_name IF NOT EXISTS
+             FOR (t:Taxon) REQUIRE (t.rank, t.name) IS NODE KEY
+@@ -258,7 +262,7 @@
+     if not ranks_present:
+         return
+ 
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         # Upsert each Taxon node
+         for rank, name, key in ranks_present:
+             s.run("""
+@@ -300,7 +304,7 @@
+ 
+     setup_constraint(driver)
+ 
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         species = s.run("""
+             MATCH (n:Species)
+             WHERE NOT EXISTS { (n)-[:BELONGS_TO]->(:Taxon) }

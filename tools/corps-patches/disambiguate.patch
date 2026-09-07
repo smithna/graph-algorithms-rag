@@ -1,0 +1,193 @@
+--- ../corps-of-discovery-graph-rag/disambiguate.py	2026-09-06 14:51:02
++++ /private/tmp/claude-502/-Users-nathansmith-Documents-kcdc-2026/3b4960bb-596d-4977-8aca-b60fe382d634/scratchpad/disambiguate_fixed.py	2026-09-07 05:18:38
+@@ -43,14 +43,18 @@
+ NEO4J_URI        = os.environ["NEO4J_URI"]
+ NEO4J_USER       = os.environ["NEO4J_USER"]
+ NEO4J_PASSWORD   = os.environ["NEO4J_PASSWORD"]
++
++# Explicit database targeting: these scripts otherwise use driver.session(database=NEO4J_DB) with
++# no database, which silently follows the user's HOME DATABASE.
++NEO4J_DB = os.getenv("NEO4J_DATABASE", "neo4j")
+ OPENAI_API_KEY   = os.environ["OPENAI_API_KEY"]
+-RESOLUTION_MODEL = os.getenv("RESOLUTION_MODEL", "gpt-4o-mini")
++RESOLUTION_MODEL = os.getenv("RESOLUTION_MODEL", "gpt-5.6-luna")
+ 
+ LABELS = ["Person", "NativeNation", "Place", "WaterBody", "PlantSpecies", "AnimalSpecies", "Supply", "Event"]
+ 
+ COSINE_CUTOFF    = 0.5
+ JARO_CUTOFF      = 0.92
+-MIN_CHUNK_COUNT  = 2   # minimum chunk co-occurrences to include an edge
++MIN_CHUNK_COUNT  = 2   # conservative: required when WCC will merge the result
+ TOP_K            = 10
+ 
+ # Single-word Person names that are unambiguous throughout the corpus and may
+@@ -154,6 +158,11 @@
+ COOCCURRENCE_GRAPH = "entity-cooccurrence"
+ 
+ 
++def _total_chunks(driver) -> int:
++    with driver.session(database=NEO4J_DB) as s:
++        return s.run("MATCH (c:Chunk) RETURN count(c) AS n").single()["n"]
++
++
+ def build_cooccurrence_graph(gds: GraphDataScience, driver):
+     """Project a single entity-entity graph weighted by chunk co-occurrence count.
+ 
+@@ -174,19 +183,29 @@
+           AND e2.canonicalName IS NOT NULL
+         WITH e1, e2, count(DISTINCT c) AS chunkCount
+         WHERE chunkCount >= $minCount
++        WITH e1, e2, chunkCount,
++             count { (e1)-[:MENTIONED_IN]->(:Chunk) } AS df1,
++             count { (e2)-[:MENTIONED_IN]->(:Chunk) } AS df2
+         RETURN gds.graph.project(
+             $graphName, e1, e2,
+             {
+                 sourceNodeLabels: labels(e1),
+                 targetNodeLabels: labels(e2),
+                 relationshipType: 'MENTIONED_WITH',
+-                relationshipProperties: {chunkCount: chunkCount}
++                relationshipProperties: {
++                    chunkCount: toFloat(chunkCount),
++                    idfWeighted: CASE WHEN df1 = 0 OR df2 = 0 THEN 0.0 ELSE
++                        toFloat(chunkCount)
++                        * log(1.0 + toFloat($totalChunks) / df1)
++                        * log(1.0 + toFloat($totalChunks) / df2) END
++                }
+             },
+             {undirectedRelationshipTypes: ['MENTIONED_WITH']}
+         )
+-    """, graphName=COOCCURRENCE_GRAPH, minCount=MIN_CHUNK_COUNT)
++    """, graphName=COOCCURRENCE_GRAPH, minCount=MIN_CHUNK_COUNT,
++         totalChunks=_total_chunks(driver))
+ 
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         rows = s.run("""
+             MATCH (n) WHERE NOT n:Chunk AND n.canonicalName IS NOT NULL
+             RETURN id(n) AS nid, n.canonicalName AS canonicalName
+@@ -243,7 +262,7 @@
+     don't inflate similarity scores via a shared prefix.
+     """
+     titles = list(TITLE_TOKENS) if label == "Person" else []
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         rows = s.run(f"""
+             MATCH (a:{label}), (b:{label})
+             WHERE a.canonicalName < b.canonicalName
+@@ -259,7 +278,7 @@
+                  apoc.text.join(tokA, ' ') AS strippedA,
+                  apoc.text.join(tokB, ' ') AS strippedB
+             WITH a, b, tokA, tokB, strippedA, strippedB,
+-                 apoc.text.jaroWinklerDistance(strippedA, strippedB) AS jw,
++                 1 - apoc.text.jaroWinklerDistance(strippedA, strippedB) AS jw,
+                  apoc.text.doubleMetaphone(last(tokA)) AS metLastA,
+                  apoc.text.doubleMetaphone(last(tokB)) AS metLastB
+             WHERE strippedA <> '' AND strippedB <> ''
+@@ -269,7 +288,7 @@
+                 OR (size(tokB) <  size(tokA) AND size(tokB) > 1 AND all(t IN tokB WHERE size(t) >= 3) AND all(t IN tokB WHERE t IN tokA))
+                 OR (metLastA <> '' AND metLastB <> '' AND size(metLastA) >= 3 AND size(metLastB) >= 3
+                     AND left(metLastA, 1) = left(metLastB, 1)
+-                    AND apoc.text.jaroWinklerDistance(metLastA, metLastB) >= 0.85)
++                    AND 1 - apoc.text.jaroWinklerDistance(metLastA, metLastB) >= 0.85)
+               )
+             RETURN a.canonicalName AS name1, b.canonicalName AS name2
+         """, titles=titles).data()
+@@ -290,7 +309,7 @@
+     does not cause misses.  Alias-vs-alias comparison is case-insensitive so
+     "RATTLE SNAKE" and "rattle snake" are recognised as the same alias.
+     """
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         rows = s.run(f"""
+             MATCH (a:{label}), (b:{label})
+             WHERE a.canonicalName < b.canonicalName
+@@ -342,7 +361,7 @@
+     try:
+         resp = client.beta.chat.completions.parse(
+             model=RESOLUTION_MODEL,
+-            temperature=0,
++            **({} if RESOLUTION_MODEL.startswith("gpt-5") else {"temperature": 0}),
+             messages=[
+                 {"role": "system", "content": prompt},
+                 {"role": "user",   "content": f"Entity type: {label}\nName 1: {name1}\nName 2: {name2}"},
+@@ -358,7 +377,7 @@
+ def create_same_entity_rel(
+     driver, label: str, cn1: str, cn2: str, canonical: str
+ ) -> None:
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         s.run(
+             f"MATCH (a:{label} {{canonicalName: $n1}}), (b:{label} {{canonicalName: $n2}})"
+             " MERGE (a)-[:IS_SAME_ENTITY_AS {canonicalName: $canonical}]->(b)",
+@@ -395,7 +414,7 @@
+ def best_canonical(driver, label: str, node_ids: list[int]) -> str:
+     """Pick the most-suggested canonical name from IS_SAME_ENTITY_AS edges
+     in this component; fall back to the longest node name."""
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         rels = s.run(
+             f"MATCH (a:{label})-[r:IS_SAME_ENTITY_AS]-(b:{label})"
+             " WHERE id(a) IN $ids AND id(b) IN $ids"
+@@ -409,7 +428,7 @@
+         return max(counts, key=lambda x: (counts[x], len(x)))
+ 
+     # Fallback: longest canonicalName in the component
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         names = s.run(
+             f"MATCH (n:{label}) WHERE id(n) IN $ids RETURN n.canonicalName AS name",
+             ids=node_ids,
+@@ -419,7 +438,7 @@
+ 
+ def merge_component(driver, label: str, node_ids: list[int], canonical: str) -> None:
+     display = canonical.title()
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         s.run(f"""
+             MATCH (n:{label}) WHERE id(n) IN $ids
+             WITH collect(n) AS nodes,
+@@ -441,7 +460,7 @@
+     print(f"\n── {label} (phase 2) ──")
+ 
+     # Skip if no IS_SAME_ENTITY_AS relationships exist for this label
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         count = s.run(
+             f"MATCH (a:{label})-[:IS_SAME_ENTITY_AS]-(b:{label})"
+             " RETURN count(*) AS c"
+@@ -490,7 +509,7 @@
+         # If a node with the target canonicalName already exists outside this
+         # component, pull it in so APOC merges all of them together and the
+         # subsequent SET doesn't collide with the uniqueness constraint.
+-        with driver.session() as s:
++        with driver.session(database=NEO4J_DB) as s:
+             extras = s.run(
+                 f"MATCH (n:{label} {{canonicalName: $cn}}) WHERE NOT id(n) IN $ids"
+                 " RETURN id(n) AS nid",
+@@ -500,7 +519,7 @@
+             node_ids.append(r["nid"])
+ 
+         # Fetch canonical names for logging
+-        with driver.session() as s:
++        with driver.session(database=NEO4J_DB) as s:
+             names = [
+                 r["name"] for r in s.run(
+                     f"MATCH (n:{label}) WHERE id(n) IN $ids RETURN n.canonicalName AS name",
+@@ -541,6 +560,7 @@
+     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+     driver.verify_connectivity()
+     gds    = GraphDataScience(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
++    gds.set_database(NEO4J_DB)
+     client = OpenAI(api_key=OPENAI_API_KEY)
+     print("Connected to Neo4j.")
+ 
+@@ -558,7 +578,7 @@
+         for label in labels:
+             merge_duplicates(gds, driver, label)
+         deleted = 0
+-        with driver.session() as s:
++        with driver.session(database=NEO4J_DB) as s:
+             for label in labels:
+                 result = s.run(
+                     f"MATCH (a)-[r:IS_SAME_ENTITY_AS]-(b)"

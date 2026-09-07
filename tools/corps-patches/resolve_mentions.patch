@@ -1,0 +1,61 @@
+--- ../corps-of-discovery-graph-rag/resolve_mentions.py	2026-09-06 14:51:02
++++ /private/tmp/claude-502/-Users-nathansmith-Documents-kcdc-2026/3b4960bb-596d-4977-8aca-b60fe382d634/scratchpad/resolve_mentions_fixed.py	2026-09-07 05:18:21
+@@ -30,8 +30,12 @@
+ NEO4J_URI        = os.environ["NEO4J_URI"]
+ NEO4J_USER       = os.environ["NEO4J_USER"]
+ NEO4J_PASSWORD   = os.environ["NEO4J_PASSWORD"]
++
++# Explicit database targeting: these scripts otherwise use driver.session(database=NEO4J_DB) with
++# no database, which silently follows the user's HOME DATABASE.
++NEO4J_DB = os.getenv("NEO4J_DATABASE", "neo4j")
+ OPENAI_API_KEY   = os.environ["OPENAI_API_KEY"]
+-RESOLUTION_MODEL = os.getenv("RESOLUTION_MODEL", "gpt-4o-mini")
++RESOLUTION_MODEL = os.getenv("RESOLUTION_MODEL", "gpt-5.6-luna")
+ CONCURRENCY      = int(os.getenv("EXTRACTION_CONCURRENCY", "5"))
+ NEIGHBOR_HOPS    = 3   # NEXT_CHUNK hops to search for candidate full names
+ 
+@@ -65,7 +69,7 @@
+ _SKIP_RESOLUTION = {"YORK", "SCANNON"}
+ 
+ def load_mentions(driver) -> list[dict]:
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         rows = s.run("""
+             MATCH (p:Person)-[:MENTIONED_IN]->(c:Chunk)
+             WHERE NOT p.canonicalName CONTAINS ' '
+@@ -80,7 +84,7 @@
+ 
+ def get_candidates(driver, name: str, chunk_id: str) -> list[dict]:
+     """Return [{displayName, canonicalName}] for full-name Persons in nearby chunks."""
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         rows = s.run(f"""
+             MATCH (c:Chunk {{chunkId: $chunkId}})
+             MATCH (c)-[:NEXT_CHUNK*0..{NEIGHBOR_HOPS}]-(nearby:Chunk)<-[:MENTIONED_IN]-(fp:Person)
+@@ -114,7 +118,7 @@
+         try:
+             resp = await client.beta.chat.completions.parse(
+                 model=RESOLUTION_MODEL,
+-                temperature=0,
++                **({} if any(str(globals().get(v,"")).startswith("gpt-5") for v in ("RESOLUTION_MODEL","LLM_MODEL","EXTRACTION_MODEL","MODEL")) else {"temperature": 0}),
+                 messages=[
+                     {"role": "system", "content": SYSTEM_PROMPT},
+                     {"role": "user", "content": (
+@@ -134,7 +138,7 @@
+                 return
+ 
+             full_canonical = cn_by_display[result.full_name]
+-            with driver.session() as s:
++            with driver.session(database=NEO4J_DB) as s:
+                 s.run("""
+                     MATCH (p:Person {canonicalName: $cn})-[r:MENTIONED_IN]->(c:Chunk {chunkId: $chunkId})
+                     MATCH (fp:Person {canonicalName: $fullCn})
+@@ -149,7 +153,7 @@
+ 
+ 
+ def cleanup_empty_nodes(driver) -> None:
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         result = s.run("""
+             MATCH (p:Person)
+             WHERE NOT p.canonicalName CONTAINS ' '
