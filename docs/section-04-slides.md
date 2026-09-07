@@ -245,28 +245,44 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
 SACAGAWEA ──[HIS WIFE]── TOUSSAINT CHARBONNEAU ──[THE INTERPRETER]── GEORGE DROUILLARD
 ```
 
-> I did this to my own graph last night. Sacagawea absorbed Drouillard.
+> I did this to my own graph. Sacagawea absorbed Drouillard.
 >
-> And here is the thing — **the model was never wrong.** Ask it directly:
-> *is Sacagawea the same entity as George Drouillard?* No. *As Windsor?* No.
-> It gets every direct pair right.
+> Ask the model directly and it gets the hard ones right: *is Sacagawea the same
+> entity as George Drouillard?* No. *As Windsor?* No.
 >
 > But "his wife", beside Charbonneau, **is** Sacagawea. "The interpreter" **is**
-> Charbonneau. And Drouillard **was** the sign-language interpreter. Four
-> defensible judgements, not a wrong one among them — and one merged entity that
-> is flatly wrong.
+> Charbonneau. And Drouillard **was** the sign-language interpreter. Each link
+> defensible on its own — and closure turns them into one wrong entity.
+
+**Slide:** and it gets worse — check what the model said about the *sparse* nodes.
+
+```
+SQUAR INTERPRETRESS  confirmed same as  TIN NACH-E-MOO-TOOLT  (Nez Perce)
+                                        MAN-NES-SUR REE       (Hidatsa)
+                                        CONIA COMAWOOL        (Clatsop)
+```
+
+> Three different Native leaders, from three different nations, all confirmed as
+> Sacagawea. Each appears in exactly **one chunk**, and so does "squar
+> interpretress". The model has nothing to tell them apart, so it reaches for the
+> identity it recognises.
+>
+> So it is not that the model was perfect and the algorithm ruined it. That
+> would be a comfortable story. **Sparse entities get bad answers from both
+> halves** — and closure turns individual mistakes into one merged identity.
 
 **Slide:** the rule.
 
-> ## Closure doesn't just propagate errors. It manufactures them.
-> A genuinely ambiguous node is not a wrong answer waiting for a better model.
-> It is a **bridge** — and WCC will cross it.
+> ## Fix what enters the candidate set, not what comes out of it.
 
-> Two consequences. **One:** adjudicate *before* you close, never after.
-> **Two:** be careful what you let into the candidate set — this pipeline has a
-> `flag_generic_locations` step because "the river" is useless as a place. It
-> has nothing equivalent for people, so "the interpreter" and "his wife" sit in
-> the graph as first-class Person nodes, waiting to be bridges.
+> No amount of per-pair accuracy saves you here, because the pairs that fail are
+> the ones nobody can judge. This pipeline has a `flag_generic_locations` step
+> because "the river" is useless as a place. It has nothing equivalent for
+> people — so "the interpreter", "his wife" and "squar interpretress" sit in the
+> graph as first-class Person nodes, attracting bad matches and bridging
+> identities.
+>
+> And adjudicate *before* you close, never after.
 
 ---
 

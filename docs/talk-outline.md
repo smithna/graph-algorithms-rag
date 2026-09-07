@@ -588,11 +588,16 @@ collapses, or if Drouillard turns up in Sacagawea's aliases. A pipeline that can
 silently weld two identities together should refuse to continue when it starts
 doing so.
 
-#### 3d. The bridge node — why WCC welded Sacagawea to Drouillard
+#### 3d. Bridge nodes — and a correction to what this section first claimed
 
-The obvious explanation for the over-merge in 3c is "the LLM got it wrong." It
-did not. Asked directly, with `disambiguate.py`'s own prompt, `gpt-5.6-luna`
-answers **every** relevant pair correctly:
+⚠️ **This finding was reported once in a form that flattered the model, and is
+corrected here.** The first version said "the judge was never wrong — WCC
+manufactured the error from clean inputs." That is true of the pairs originally
+tested and false in general. Keeping the correction visible, because the
+corrected version is the more useful one.
+
+**What is still true.** Asked about *well-known, named individuals*, the judge
+is reliable. With `disambiguate.py`'s own prompt, `gpt-5.6-luna` answers:
 
 ```
 SACAGAWEA    ~ GEORGE DROUILLARD    different   ✓
@@ -602,50 +607,76 @@ SACAGAWEA    ~ INDIAN WOMAN         SAME        ✓
 DREWYER      ~ GEORGE DROUILLARD    SAME        ✓
 ```
 
-It never said Sacagawea was Drouillard. **The merge came entirely from
-transitive closure**, through *bridge nodes* — vague references the judge
-confirms against more than one person:
+It never said Sacagawea was Drouillard. And bridge nodes are real: vague
+references get confirmed against two different people —
 
 ```
 THE INTERPRETER  →  confirmed same as GEORGE DROUILLARD *and* TOUSSAINT CHARBONNEAU
 HIS WIFE         →  confirmed same as SACAGAWEA         *and* TOUSSAINT CHARBONNEAU
 ```
 
-Which gives the exact observed chain:
+giving the chain that actually fired:
 
 ```
 SACAGAWEA ──[HIS WIFE]── TOUSSAINT CHARBONNEAU ──[THE INTERPRETER]── GEORGE DROUILLARD
 ```
 
-**Every link in that chain is defensible.** "His wife", in the passages beside
-Charbonneau, *is* Sacagawea. "The interpreter" *is* Charbonneau. And Drouillard
-*was* the expedition's sign-language interpreter, so that call is arguable too.
-Four reasonable judgements, no bad one among them — and one merged entity that
-is flatly wrong.
+**What was wrong.** The claim that the *inputs* to closure were sound. Reading
+the adjudication cache for one hub node, `SQUAR INTERPRETRESS`, shows 35
+confirmed edges — 33 of them resolving to "Sacagawea", including:
 
-> **This is the slide.** Transitive closure does not just propagate errors, it
-> manufactures them. A node that is genuinely ambiguous — that legitimately
-> refers to two different people in different passages — is not a *wrong* answer
-> waiting to be caught by a better judge. It is a **bridge**, and WCC will cross
-> it. No amount of per-pair accuracy prevents this, because no pair is wrong.
+| confirmed same as | chunks | what the graph says it is |
+|---|---|---|
+| TIN NACH-E-MOO-TOOLT | 1 | `MEMBER_OF → NEZ PERCE` |
+| MAN-NES-SUR REE | 1 | `MEMBER_OF → HIDATSA` |
+| CONIA COMAWOOL | 1 | `MEMBER_OF → CLATSOP` |
+| WE ARK KOOMT | 1 | `TRADED_WITH → MERIWETHER LEWIS` |
 
-**The actionable fix, and it is already half-built in this pipeline.**
-`flag_generic_locations.py` exists precisely because "the river" and "the bank"
-are useless as *places*. There is no equivalent for people, so "THE
-INTERPRETER", "HIS WIFE", "THE MAN", "MY BROTHER" all sit in the graph as
-first-class Person nodes and act as bridges. A `flag_generic_persons` step —
-or simply excluding possessive and role-only references from candidate
-generation — would remove the bridges without touching the judge at all.
+Those are distinct Native leaders from three different nations. **The judge
+confirmed all of them as Sacagawea.** So the 33:1 "consensus" is not evidence of
+anything — it is thirty-three errors in a row.
 
-That also explains why the aggressive settings in 3c were so much worse:
-`MIN_CHUNK_COUNT=1` admits every one-chunk node, and one-chunk nodes are
-overwhelmingly exactly these vague references. The tuning did not create bad
-judgements; it fed the closure algorithm far more bridges.
+**The pattern is specific and predictable:** a one-chunk vague descriptor paired
+with a one-chunk unfamiliar name. Both sides are sparse, the judge has nothing
+to discriminate with, and it reaches for the identity it recognises.
 
-**Demo value.** This is reproducible in about thirty seconds on stage — ask the
-judge four questions, draw the chain, show the merged node. It is a far better
-argument for "adjudicate before you close, and be careful what you let into the
-candidate set" than any precision number.
+> **Corrected claim:** closure did not invent the error, and neither did the
+> model alone. **Sparse ambiguous nodes produce bad pairwise judgements, and
+> closure then compounds them into merged identities.** Two failures, and the
+> second is only dangerous because of the first.
+
+**Why this kills the obvious repairs.** Majority-voting a node's canonical names
+sounds principled and is not:
+
+| node | tally | order-dependent? |
+|---|---|---|
+| `SQUAR INTERPRETRESS` (hub) | 33 : 1 : 1 | no — but the 33 are wrong |
+| `THE INTERPRETER` (bridge) | **1 : 1** | **yes — an exact tie** |
+| `HIS WIFE` (bridge) | single edge | no majority exists |
+
+Majority is robust exactly where it does not matter and undefined or tied
+exactly where it does. Removing the *node* instead is no better — it was tried,
+and dropping `SQUAR INTERPRETRESS` fragmented Sacagawea's cluster and lost her
+node entirely, because the same node is both a genuine member and a bridge.
+
+**So the fix belongs upstream, at candidate generation.** These nodes are toxic
+twice: they attract false confirmations *and* they bridge. `flag_generic_locations.py`
+already exists because "the river" is useless as a place; there is no equivalent
+for people, so `THE INTERPRETER`, `HIS WIFE`, `SQUAR INTERPRETRESS` and `OUR
+GUIDE` all sit in the graph as first-class Person nodes.
+
+It also explains cleanly why `MIN_CHUNK_COUNT=1` was catastrophic in 3c: it
+admits precisely this population.
+
+**For the stage.** The corrected story is better than the original, because "the
+model was perfect and the algorithm ruined it" is a comfortable story and this
+one is not:
+
+> Sparse entities get bad answers from *both* halves. The model cannot
+> distinguish two people it has never heard of who appear once each. Closure
+> then turns those individual mistakes into a single wrong identity that no
+> amount of per-pair accuracy would have prevented. Fix what enters the
+> candidate set, not what comes out of it.
 
 #### 4. The default model is three generations stale
 
