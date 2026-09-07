@@ -1,149 +1,110 @@
-# Section 5 — "Your ranking can't combine evidence"
-### multi-seed personalized PageRank · 10 minutes · starts 0:23
-
-> # ⛔ DO NOT BUILD SLIDES FROM THIS YET
->
-> **Three faults found after drafting, on verification against live data.**
-> The structure and the arc are worth keeping; several load-bearing numbers and
-> the demo case are not. Nothing here should reach reveal.js until 1 and 2 are
-> settled.
->
-> **1. The demo case (5.1, 5.10) is a false positive.** The single passage
-> naming both `CHARLES FLOYD` and `MISSOURI RIVER` — the one cosine ranks 415
-> and structure promotes to 16 — is from **1804-06-08**, ten weeks *before*
-> Floyd died on 1804-08-20. It is a routine log about passing the Mine River in
-> which Clark takes "Sjt. Floyd" on a four-mile walk. It has nothing to do with
-> his death. Meanwhile cosine's top three are 1804-08-20 *"Sergeant Floyd much
-> weaker and no better"*, 1804-08-20, and 1804-08-19. **Cosine answers this
-> question correctly and the structural promotion is noise.** I built the demo
-> narrative on a co-mention count without reading the passage — the exact error
-> the outline's own caveat warns about.
->
-> **2. The conjunction metric is hub-contaminated in half the bank.** "Mentions
-> ≥2 gold entities" collapses to "mentions both captains" whenever the gold set
-> contains `MERIWETHER LEWIS` (377 chunks) or `WILLIAM CLARK` (291):
->
-> | question | conjunction passages | qualify via hubs only |
-> |---|---|---|
-> | grizzly-encounters | 24 | **24 (100%)** |
-> | pacific-arrival | 16 | 14 (88%) |
-> | food-sources | 162 | **141 (87%)** |
-> | great-falls-portage | 46 | 37 (80%) |
-> | illness-and-injury | 16 | 12 (75%) |
-> | shoshone-horses | 86 | 56 (65%) |
-> | sacagawea-interpreting | 26 | 0 |
-> | charbonneau-role | 13 | 0 |
-> | fort-clatsop-winter | 9 | 0 |
-> | trade-goods | 8 | 0 |
-> | keelboat-return | 13 | 0 |
-> | before-floyd-death | 1 | 0 |
->
-> Every pooled figure in this draft (median 527 → 232, top-8 13 → 22) mixes
-> both halves, so it is substantially measuring "does this passage name Lewis
-> and Clark". Visible in the promoted passages: `illness-and-injury` promotes a
-> passage about **guard-duty exemptions**. The fix is to require at least one
-> low-df gold entity and re-run every sweep; six questions survive that filter.
->
-> **3. The hub-trap numbers (5.7) describe a graph this section does not use.**
-> `4.53/8 → 0.60/8` was measured on `lc-retrieval` at damping 0.85. On the
-> shipped configuration the trap is far milder. Measured matrix:
->
-> | graph | damping | edges | entity top-8 overlap | Lewis mean rank |
-> |---|---|---|---|---|
-> | lc-retrieval | 0.85 | unweighted | **4.47/8** | **2.5** |
-> | lc-retrieval | 0.85 | IDF | 0.60/8 | 8.3 |
-> | lc-retrieval | 0.45 | unweighted | 1.07/8 | 9.8 |
-> | lc-retrieval | 0.45 | IDF | 0.13/8 | 17.2 |
-> | lc-mentions | 0.85 | unweighted | 1.67/8 | 7.8 |
-> | lc-mentions | 0.85 | IDF | 0.13/8 | 18.2 |
-> | lc-mentions | 0.45 | unweighted | 0.47/8 | 14.7 |
-> | **lc-mentions (shipped)** | **0.45** | **IDF** | **0.07/8** | **21.5** |
->
-> This is *better* material than the draft has — all three design choices
-> independently defuse the trap, and the naive configuration is the one
-> everybody writes first. But 5.7 must be rewritten to say so, and its
-> "Lewis is the top entity for the prairie-dog, Floyd and Great Falls
-> questions" example is wrong on the shipped config (and wrong for Floyd on any
-> config — `CHARLES FLOYD` outranks him there).
->
-> **Also wrong, minor:** 5.5's seed list shows `INTERPRETERS WIFE`; at
-> `entity_seed_k=3` the third seed is `CAPTURE OF SACAGAWEA`. And 5.1's date
-> list was written from memory, not from the run.
+# Section 5 — "Your ranking can't tell people apart"
+### entity-seeded personalized PageRank · 10 minutes · starts 0:23
 
 > **Draft slide content.** Markdown for review; the reveal.js scaffold comes
 > later and is mechanical. Speaker notes are in blockquotes.
 >
+> **⚠️ Title needs Nathan's sign-off.** The original was *"Your ranking is
+> wrong"*, which promises an improvement this corpus does not deliver at the
+> passage level. A second draft used *"can't combine evidence"*, written for a
+> conjunction thesis that was measured and retracted. The current title matches
+> what is actually demonstrable.
+>
 > **Editorial constraints agreed for this section:**
-> - **Numbers *are* allowed on screen here** — and that does not contradict
->   section 4. Section 4's numbers needed the gold set to mean anything. These
->   are measurements of the algorithm's own *behaviour*: cross-question overlap,
->   hub mass, a damping sweep, a blend sweep, latency. Exact, reproducible on
->   stage, and carrying no claim about whether a retrieved passage is correct.
-> - **No accuracy claims.** "Cosine does not retrieve conjunction" is
->   demonstrable. "The blended results are better answers" is not — that waits
->   for section 8 and its gold set. Never say recall in this section.
-> - **The Floyd passage is the spine.** Everything else hangs off it.
-> - **Two of this section's earlier claims were retracted on measurement.** The
->   slides state what is true now; the history lives in the outline's *Section 5
->   findings*. Only one retraction earns stage time, as an optional aside (5.11).
+>
+> - **Numbers are allowed on screen — but only ones that need no relevance
+>   judgement.** Where a passage ranks, how often two questions return the same
+>   entities, latency, whether `alpha=1.0` reproduces the baseline: all exact.
+>   **The blend, damping and seed-count sweeps stay off the slides**, because
+>   they were scored against a co-mention proxy that turned out to be
+>   hub-contaminated (findings #4, #10). They are working notes, not evidence.
+> - **No accuracy claims.** "Cosine returns the wrong interpreter" is checkable
+>   on screen. "The blended results are better answers" needs a gold set and
+>   belongs to section 8.
+> - **Relevance judgements on this section's demo are hand-made**, by reading
+>   sixteen passages in full (finding 5d). Say that from the stage. It is a
+>   feature, not an apology.
+> - **`charbonneau-role` is the spine.** Everything hangs off it.
+> - **The three limits get stage time, not a footnote.** They are what makes the
+>   multi-tool argument structural rather than a hedge.
 
 ---
 
-## 5.1 — The failure (1:00)
+## 5.1 — The failure (1:15)
 
-**Slide:** the question, and what came back.
+**Slide:** the question.
 
-> ### "What was happening in the days before Sergeant Floyd died?"
+> ### "What was Toussaint Charbonneau's role on the expedition?"
 
-**Slide (build):** the vector top-8, as a list of dates.
+**Slide (build):** what vector search returns, with the names in each passage.
 
 ```
-Aug 20 1804 · Aug 20 1804 · Aug 26 1804 · Aug 26 1804
-Jul 27 1806 · May 27 1806 · Apr 20 1805 · Jun 30 1805
+1.  Chabono                         <- him
+2.  Duriaur                         <- a Sioux go-between
+3.  (nobody)                        <- the party reaches St. Charles
+4.  Dourion                         <- the Sioux interpreter
+5.  Charbono                        <- him
+6.  Durion, Gravelin                <- Sioux and Ricara interpreters
+7.  (nobody)                        <- a Minetarree chief pays a visit
+8.  Gravline                        <- the barge pilot
 ```
 
-**Every passage is about a day. None of them is about the question.**
+**Two of eight are about the man you asked about.**
 
-> Two of these are the right days and they came back for the wrong reason —
-> they contain the word "Floyd". The rest are days that *sound* like a journal
-> entry about a sick man. 1806 is two years too late.
+> Four slots went to *other* French-speaking go-betweens on the same expedition.
+> Two went to diplomatic scenes with no interpreter in them at all.
 >
-> Nothing here is a bad embedding. This is what cosine similarity is for and it
-> did it correctly.
+> And this is not a near miss. Sixty-two passages in this corpus mention
+> Charbonneau. **Sixty of them are outside this window.**
+
+**Slide:** the number.
+
+| | passages | median rank | in top-8 |
+|---|---|---|---|
+| mention **Charbonneau** | 62 | **296** | **2** |
+| interpreter vocabulary, not him | 108 | 578 | 2 |
+
+> Nothing here is a bad embedding. Every passage it returned is about
+> interpreting on the Lewis and Clark expedition. It answered the question I
+> asked. It just answered it about the wrong person.
 
 ---
 
-## 5.2 — Name the actual defect (1:00)
+## 5.2 — Name it (1:00)
 
-**Slide:** one sentence.
+**Slide:**
 
-> ## Cosine scores each passage against the question, alone.
-> ## It has no way to represent **conjunction.**
+> ## Co-typed entity substitution
+> ### It answers *"an interpreter."* You asked about *"this interpreter."*
 
-> The answer to that question lives in a passage that mentions Floyd **and** the
-> Missouri River **and** a date in August 1804. But a passage that answers by
-> *combining* things does not read like the question. It reads like a day's log.
+**Slide:** why, in one line of arithmetic.
+
+> ### A passage embedding is an average over ~300 words.
+
+> The question encodes *interpreter, role, expedition* — and a French surname.
 >
-> There is exactly one passage in this corpus that names both Charles Floyd and
-> the Missouri River.
-
-**Slide:** the number, large.
-
-> # 415
-> ### of 2,913 — where cosine ranks it
-
-> No candidate window short enough to be worth having contains rank 415.
+> In a passage about Dorion negotiating with the Sioux, the words *interpreter,
+> chief, speech, presents, nation* recur throughout. They dominate that average.
+> A name that appears **once**, between a weather note and a hunting tally,
+> contributes a sliver.
 >
-> And it is not one unlucky question. Across the benchmark bank, passages
-> carrying two or more of a question's entities sit at a **median cosine rank of
-> 527**, and **five of twelve** questions have *none* of them in the top-8.
+> So the passage that is *actually* about Charbonneau sits **further** from the
+> question than a passage about a different interpreter doing interpreter
+> things. Cosine has no way to make identity a **hard** constraint — in a
+> continuous space, "Dorion the Sioux interpreter" is genuinely near
+> "Charbonneau the interpreter". They differ by one low-mass token and agree on
+> everything else.
 
-**Say the caveat, once, and mean it:**
+**Slide — take it home. This is the slide people will remember.**
 
-> I am counting passages that mention two or more of the question's entities.
-> That is a proxy for relevance, not a ground truth. It shows what cosine
-> *doesn't rank* — it does not prove those passages are the right answers. That
-> claim needs a gold set and it comes in section 8.
+> ## Your corpus has forty engineers.
+> ## You ask what **Chen** owns.
+> ## You get three passages about **Rodriguez** owning a similar service.
+
+> Because *"engineer owns service"* is most of the sentence, and *"Chen"* is one
+> word of it.
+>
+> *(Beat.)* Hold onto the forty engineers. We come back to them at the end.
 
 ---
 
@@ -154,21 +115,18 @@ Jul 27 1806 · May 27 1806 · Apr 20 1805 · Jun 30 1805
 > **PageRank:** what is important in this graph?
 > **Personalized PageRank:** what is important *relative to these nodes?*
 
-> Plain PageRank is the random surfer — restart anywhere, see where you end up.
-> One number per node, the same for every question you will ever ask.
-
-**Slide:** the honest aside. Worth 15 seconds and it buys the room.
+**Slide:** the honest aside. Fifteen seconds, and it buys the room.
 
 > ### On an undirected graph, plain PageRank is a fancy degree count.
 
 > The stationary distribution of an undirected random walk is *exactly*
 > proportional to degree. PageRank adds teleport, which shrinks it toward
-> uniform. So if your graph is undirected, you have computed `count()` the
+> uniform. If your graph is undirected, you have computed `count()` the
 > expensive way.
 >
-> I reached for it in this project as a prominence prior for entity linking, and
-> a mention count was better. Say so; it costs nothing and the room trusts the
-> next claim more.
+> I reached for it on this project as a prominence prior for entity linking. A
+> mention count beat it. Say so — it costs nothing and everything after it is
+> trusted more.
 
 **Slide:** the pivot.
 
@@ -177,115 +135,92 @@ Jul 27 1806 · May 27 1806 · Apr 20 1805 · Jun 30 1805
 
 ---
 
-## 5.4 — Personalized PageRank, as a similarity (0:45)
+## 5.4 — Seed the entity. Seed all of them. (1:30)
 
-**Slide:**
+**Slide:** the fix, in one sentence.
 
-> ### PPR measures structural proximity to a **set** of nodes —
-> ### aggregated over *every* path, not the shortest one.
+> ### `MENTIONED_IN` is a **discrete** edge.
+> ### Either extraction attached the entity, or it didn't.
 
-Two consequences worth naming:
+> No averaging. Identity is binary. That is the hard constraint cosine can only
+> express softly — and it is the whole trick.
+>
+> Median 60 words per entity in a 325-word passage. **The entity is a pointer.
+> The embedding is an average.**
 
-- **corroboration beats a single strong match** — many mediocre paths outrank
-  one good one, which cosine cannot express because it never sees the set
-- **it decays smoothly** — damping is a tunable horizon, where "one hop away"
-  is just the cutoff that was easy to write in Cypher
-
-> This is the complement to vector search, and that is the whole architectural
-> point: cosine asks *what sounds like the question*, PPR asks *what connects to
-> what I already found.*
-
----
-
-## 5.5 — Seed everything. Don't pick one. (1:15)
-
-**Slide:** the ambiguity problem, as everyone actually meets it.
+**Slide:** but don't pick one.
 
 > Question mentions a tree. Your graph has four `POPULUS` species.
-> **Which node do you seed?**
-
-**Slide:** the answer.
-
+> **Which do you seed?**
+>
 > ## Wrong question. Seed all four.
 
-> The moment you take an argmax over entity candidates you have built a
-> single point of failure into retrieval, and when it picks wrong it fails
-> silently. Seed all the plausible candidates instead and let the structure
-> decide which neighbourhood is coherent.
-
-**Slide — the live receipt.** The entity seeds this pipeline picks for a
-Sacagawea question, chosen from the question alone:
+**Slide — the live receipt.** Seeds chosen for a Sacagawea question, from the
+question alone:
 
 ```
-SACAGAWEA        (NativeNation)      <- a mislabelled duplicate
-SACAGAWEA        (Person)            <- the real one
-INTERPRETERS WIFE (Person)
+SACAGAWEA   (NativeNation)   <- a mislabelled duplicate
+SACAGAWEA   (Person)         <- the real one
+CAPTURE OF SACAGAWEA (Event)
 ```
 
-> It seeds **both** Sacagawea nodes. It does not know or care which is real, and
-> the result is fine.
+> It seeds **both** Sacagawea nodes. It does not know which is real and does not
+> need to. Take an argmax over entity candidates and you have built a single
+> point of failure into retrieval that fails *silently* when it picks wrong.
 >
-> **This is section 4's callback, made visible.** Argmax linking fails hard when
-> resolution is wrong. Proportional seeding degrades gracefully. You do not have
-> to fix your entities before this works — you just do better when you have.
+> **This is section 4's callback.** You do not have to fix your entities before
+> this works. You just do better when you have.
 
-**Slide:** and the measured part, because the obvious refinement is a trap.
+**Slide — and the passage that proves the mechanism.** Cosine rank **22**,
+305 characters, and it **never says her name**:
 
-| seeds | conjunction passages in top-8 |
-|---|---|
-| 1 | 14 |
-| **2** | **23** |
-| 3 | 22 |
-| 8 | 23 |
+> `1804-11-04` *"a french man by Name Chabonah, who Speaks the Big Belley
+> language visit us, he wished to hire & informed us his 2 Squars were Snake
+> Indians, we engau him to go on with us and **take one of his wives to interpet
+> the Snake language**"*
 
-> One seed to two is **+64%**. After that it is flat.
+> That is the hiring *and* the arrangement — he speaks Hidatsa, she interprets
+> Shoshone. It is the best single passage in the corpus for "which nations did
+> Sacagawea interpret for, and how did that work."
 >
-> Now the part I got wrong. I assumed the win was in *weighting* the seeds by
-> how well each matched the question. I built four weighting schemes, including
-> one that collapses to a single effective seed and one with a 13× spread.
+> Cosine buried it because it is short and never names her. **The graph reaches
+> it because extraction resolved "one of his wives" → `SACAGAWEA` and "Snake
+> Indians" → `SHOSHONE`.**
 >
-> **All four score the same.** Every seed for a question is semantically close
-> to the question, so they sit in overlapping neighbourhoods and their PPR
-> vectors are nearly parallel — reweighting parallel vectors barely rotates the
-> sum.
->
-> **You don't need to pick the right entity, and you don't need to weight them
-> cleverly. You need to stop choosing exactly one.**
+> The entity layer is carrying a coreference the text never states. That is
+> build-time work paying off at query time, on one passage you can read from
+> the back of the room.
 
 ---
 
-## 5.6 — The graph you walk on is a decision (0:45)
+## 5.5 — The graph you walk on is a decision (0:45)
 
-**Slide:** two projections, side by side.
+**Slide:** two projections.
 
 | | `lc-retrieval` | `lc-mentions` |
 |---|---|---|
 | relationships | MENTIONS, NEXT_CHUNK, RELATED | **MENTIONS only** |
-| direction | undirected | undirected |
 
-**Slide:** why the second one drops two thirds of the graph.
+**Slide:** why throw two thirds away.
 
 > `MENTIONED_IN` is the only relationship here whose direction is *honestly*
 > symmetric — "entity appears in passage" is co-membership.
 >
 > The extracted entity-to-entity edges are not. `MET` and `MARRIED_TO` are
 > symmetric. `MEMBER_OF` and `TRIBUTARY_OF` flow importance toward the
-> container. `SHOT` carries no importance semantics at all. PageRank's model
-> needs an outbound edge to mean **one consistent thing**, and that graph has no
-> such thing — for the symmetric types the direction is partly an artifact of
-> which entity the extractor happened to name first.
+> container. `SHOT` carries none at all. PageRank needs an outbound edge to mean
+> **one consistent thing** — and for the symmetric types, the direction is
+> partly an artifact of which entity the extractor happened to name first.
 >
-> And `NEXT_CHUNK` is a chain, so it leaks walk mass into passages that are
-> merely *adjacent in time.*
-
-**The line:**
+> `NEXT_CHUNK` is a chain, so it leaks walk mass into passages that are merely
+> *adjacent in time.*
 
 > ## A projection is not neutral infrastructure.
 > ## It encodes what you're optimising for.
 
 ---
 
-## 5.7 — The hub trap (1:30)
+## 5.6 — The hub trap (1:15)
 
 **Slide:** top entities by how many passages mention them.
 
@@ -299,40 +234,35 @@ INTERPRETERS WIFE (Person)
 265  DREWYER
 ```
 
-> **The deer outranks both captains.** This corpus is a daily record of what
-> they shot and ate. Whatever you assumed your hub was, check.
+> **The deer outranks both captains.** A daily record of what they shot and ate.
+> Whatever you assumed your hub was — check.
 >
-> And look at row seven — `DREWYER`, 265 passages. `GEORGE DROUILLARD` is a
-> **different node** in this graph. Section 4's unresolved entities, on screen,
-> for free.
+> And row seven: `DREWYER`, 265 passages. `GEORGE DROUILLARD` is a **separate
+> node**. Section 4's unresolved entities, on screen, for free.
 
-**Slide:** what the hubs do to the walk. Same six questions, unweighted edges.
+**Slide:** what hubs do to a naive walk — and what three choices do about it.
 
-```
-prairie dog question   ->  top entity: MERIWETHER LEWIS
-Floyd question         ->  top entity: MERIWETHER LEWIS
-Great Falls question   ->  top entity: MERIWETHER LEWIS
-```
+| graph | walk | edge weights | same top-8 entities across questions |
+|---|---|---|---|
+| all three types | long (d=0.85) | none | **4.47 / 8** · Lewis ranks **2.5** |
+| all three types | long | IDF | 0.60 / 8 |
+| all three types | short (d=0.45) | none | 1.07 / 8 |
+| **mentions only** | **short** | **IDF** | **0.07 / 8** · Lewis ranks **21.5** |
 
-> The walk decides every question is about Lewis, Clark, Drouillard and deer.
-> Across six different questions the top-8 entities overlap **4.53 of 8**.
-
-**Slide:** the one-line fix.
+> Top row is the configuration everyone writes first: all your edges, damping
+> 0.85 because that is the number in every tutorial, no weighting because why
+> would you weight. Six different questions and the walk returns **four and a
+> half of the same eight entities** every time. It has decided every question is
+> about Lewis, Clark, Drouillard and deer.
+>
+> **Three choices, each of which independently defuses it.** Drop the edges
+> whose direction is meaningless. Shorten the walk. IDF-weight the mentions:
 
 ```cypher
 log(1.0 + toFloat($totalChunks) / df)   AS weight
 ```
 
-| | naive | IDF-weighted |
-|---|---|---|
-| entity top-8 overlap across questions | **4.53 / 8** | **0.60 / 8** |
-| PPR mass on the ten biggest hubs | 12.6% | 6.9% |
-
-> IDF-weighted, the top entities become `EQUUS CABALLUS` for the horse question
-> and `CYNOMYS LUDOVICIANUS` for the prairie dog. The walk starts answering the
-> question it was asked.
-
-**Slide — the mechanism, and it is the part that transfers.**
+**Slide — the mechanism, because this is the part that transfers.**
 
 > ## Hubs **concentrate** at the entity level and **dissipate** at the passage level.
 
@@ -340,126 +270,165 @@ log(1.0 + toFloat($totalChunks) / df)   AS weight
 > back across all 589, so each gets almost nothing.
 >
 > Which is why my passage ranking never looked broken while the entity ranking
-> was garbage. If you consume the **entity set** — graph expansion, subgraph
-> extraction, community seeding — this bites you hard. If you only read passages
-> off the end, you may never notice.
-
-**Optional, 10 seconds, if time allows:** the second fix over-corrects.
-
-> Normalising by global PageRank ("lift") drives cross-question overlap to
-> *zero* — by dragging the median mention-count of top entities from 23 down to
-> **2**. You have traded hubs for one-off noise. Two fixes, one of which goes
-> too far, is more useful than two that both just work.
+> was garbage. **If you consume the entity set** — graph expansion, subgraph
+> extraction, community seeding — this bites hard. If you only read passages off
+> the end, you may never notice it happening.
 
 ---
 
-## 5.8 — Keep the walk short (0:45)
+## 5.7 — Keep the walk short (0:30)
 
 **Slide:** damping is a horizon, not a magic number.
 
 > ### share of walk mass within *k* steps = `1 − d^(k+1)`
 
-| damping | mass within 3 steps | median rank of conjunction passages |
-|---|---|---|
-| **0.35** | 98% | **314** |
-| 0.55 | 91% | 328 |
-| 0.75 | 68% | 350 |
-| **0.85** | 48% | **380** |
+| damping | mass within 3 steps |
+|---|---|
+| 0.45 | **96%** |
+| 0.85 | **48%** |
 
-> `0.85` is the default in every PageRank tutorial including the one I wrote,
-> and it is the **worst** of six values here. It puts less than half the walk
-> mass within three steps.
->
-> Three steps is what you want on a bipartite graph: from an entity seed, step 1
+> Three steps is what you want on a bipartite graph. From an entity seed: step 1
 > is the passages that mention it, step 3 is the passages of its co-mentioned
-> entities. That is the neighbourhood. Past that you are reading the whole
-> corpus at low volume.
+> entities. That is the neighbourhood.
+>
+> `0.85` — the tutorial default, including in tutorials I have written — puts
+> less than half the walk mass inside it. Measured on this corpus, shorter was
+> better at every value we tried.
 
 ---
 
-## 5.9 — The blend (1:15) · abstract takeaway #2
+## 5.8 — The blend, and one honest knob (0:45) · abstract takeaway #2
 
-**Slide:** the credibility move, first.
+**Slide:** the credibility move.
 
 > # alpha = 1.0
-> ### reproduces the vector baseline, byte for byte. 6 questions, 6 identical orderings.
+> ### reproduces the vector baseline byte for byte
+> ### 6 questions, 6 identical orderings
 
-> Before I show you a knob, I want you to trust that it is a real knob and that
-> I haven't swapped the baseline out underneath it.
+> Before I show you a knob, I want you to trust it is a real knob and that I
+> have not quietly swapped the baseline underneath it.
 
-**Slide:** the sweep.
+**Slide:** where to combine.
 
-| cosine / structure | conjunction passages in top-8 | median rank |
-|---|---|---|
-| **1.0 / 0.0** | **13** | **527** |
-| 0.8 / 0.2 | 19 | 386 |
-| 0.6 / 0.4 | 22 | 314 |
-| 0.4 / 0.6 | 22 | 264 |
-| 0.2 / 0.8 | 22 | 232 |
-| 0.0 / 1.0 | 20 | 250 |
-
-> **Cosine alone is the worst row in the table.** And then a broad plateau —
-> anything from 0.9 to 0.1 beats it, and everything in the middle is within
-> noise of everything else in the middle.
->
-> That is the useful finding, so resist quoting an optimum: **the knob is
-> forgiving.** Pick something in the middle. On thirteen questions, the
-> difference between 22 and 23 is not a difference.
-
-**Slide:** and where to combine them, which matters more than the ratio.
-
-> ### Two places to blend cosine and structure:
+> ### Two places to blend similarity and structure:
 > ### in the **seed weights**, or in the **final score**.
 
-> Seeding is the better one. Weight the restart distribution by semantic match
-> and structure operates *on* a semantically-informed prior. A post-hoc linear
-> blend has the two signals fighting after the fact.
-
----
-
-## 5.10 — The payoff (1:15) · LIVE DEMO
-
-**Run:** `demo_pagerank.py` — the default question is the Floyd case.
-
-**Slide:** the seeds it chose, from the question alone.
-
-```
-DEATH OF CHARLES FLOYD      (Event)
-CHARLES FLOYD               (Person)
-BAD COLD OF CHARLES FLOYD   (Event)
-```
-
-> Note that two of the three are `Event` nodes. Nobody designed that; the
-> extractor made event entities and the semantic match found them.
-
-**Slide:** the passage, moving.
-
-```
-                             cosine rank
-cosine only                      415
-+ structure  (0.6 / 0.4)          68
-+ structure  (pure)               16
-```
-
-> **Show both numbers, and say why.** At the shipped blend it goes to 68 — good,
-> not spectacular. Push the slider to pure structure and it lands at 16.
+> Weight the restart distribution by semantic match and structure operates *on*
+> a semantically-informed prior. A post-hoc linear blend has the two signals
+> fighting after the fact. Seeding is the better one.
 >
-> This is the one passage in the corpus where cosine's opinion is pure cost, so
-> cosine's weight is what holds it down. That is the honest way to introduce a
-> blend: not a free lunch, a trade you are choosing.
-
-**Slide:** and the contrast that makes the architecture point.
-
-> ### The obvious design — rerank the vector top-50 — cannot do this.
-> ### Its ceiling is "what sits in positions 9 through 50."
-
-> I built that first. It moves one passage in eight, and on the benchmark's own
-> recall metric it scores **exactly zero** improvement over plain cosine.
-> Rank 415 was never reachable. **Score the whole corpus.**
+> The mixing weight itself turned out to be forgiving over a wide range on this
+> corpus — which is the useful news. It is not a delicate parameter. I am not
+> going to put a sweep on screen, because the only relevance measure I had for
+> it was a proxy I later found broken, and I would rather show you passages.
 
 ---
 
-## 5.11 — What it costs (1:00)
+## 5.9 — The payoff (1:30) · LIVE DEMO
+
+**Run:** `demo_pagerank.py` — default question is `charbonneau-role`.
+
+**Slide:** the seeds it chose from the question alone.
+
+```
+TOUSSAINT CHARBONNEAU               (Person)
+JEAN BAPTISTE CHARBONNEAU           (Person)
+BIRTH OF JEAN BAPTISTE CHARBONNEAU  (Event)
+```
+
+**Slide:** the three passages it pulled in, and what each one adds.
+
+```
+1805-03-18   "Mr. Tousent Chabono, Enlisted as an Interpreter this evening"
+             -> the hiring itself
+
+1804-12-18   "Chabonoe our big belly interpeter"
+             -> WHICH language: Hidatsa
+
+1805-08-25   "out of patience with the folly of Charbono who had not
+              sufficient sagacity to see the consequencies"
+             -> his judgement in the job
+```
+
+> The hiring. The language. And the day he sat on the news that the Shoshone
+> were leaving with the horses and did not think to mention it.
+>
+> **None of those three is in the cosine top-8.** Cosine gave me Dorion,
+> Gravelin, and the party arriving at St. Charles.
+
+**Say this plainly — it is the section's integrity:**
+
+> I judged these by reading them. Sixteen promoted passages across three
+> questions, read in full, one question each: *does this contain something a
+> correct answer needs that no cosine passage has?*
+>
+> **Four of sixteen cleared that bar.** Not a rout. I had a metric that said it
+> was much better than that, and the metric was measuring the wrong thing — so I
+> read the passages instead. If you take one methodological thing from this talk,
+> take that.
+
+---
+
+## 5.10 — Three things it cannot do (1:15)
+
+**Slide:** all three, measured.
+
+> ### 1. It cannot conjoin.
+
+> PPR is **linear in the restart distribution.** A passage near two seeds gets
+> the **sum** — never a bonus for being near **both**. `(1.0, 0.0)` and
+> `(0.5, 0.5)` both score 1.0. A linear combination cannot represent AND.
+>
+> And the same property is why the whole seed set goes into **one** call instead
+> of one per seed. **The speedup and the expressive limit are the same fact.**
+> Conjunction is a pattern match — that is Cypher's job.
+
+> ### 2. It cannot enumerate or order.
+
+> *"What was happening in the days before Sergeant Floyd died?"* — 18 passages
+> exist in that week. Cosine's top-8 contains **3**. So does every graph variant
+> I tried, including one with the journal's own `NEXT_CHUNK` sequence and a long
+> walk: **3 of 18**.
+>
+> A date filter returns all eighteen in one hop. Nothing in those passages'
+> vocabulary *or* entity structure says "the days before Floyd died". Only the
+> date does.
+
+> ### 3. It is bounded by extraction.
+
+> *"How did the corps obtain horses from the Shoshone?"* — the passage that
+> answers it is Aug 18 1805: *"I soon obtained three very good horses for which I
+> gave an uniform coat, a pair of legings, a few handkerchiefs, three knives."*
+>
+> Here is what the extractor attached to it:
+
+```
+SHOSHONE · SHOSHONE COVE · DREWYER · WILLIAM CLARK · JEFFERSON RIVER
+UNIFORM COAT · PAIR OF LEGINGS · THREE KNIVES · HANDKERCHIEFS   (all Supply)
+```
+
+> **There is no horse.** A passage about buying three horses has no horse in the
+> graph. Every traded good is there, and `Supply` nodes have no embedding, so
+> nothing can seed them.
+>
+> The structure that would answer this question was never built. **No ranking
+> algorithm fixes that.**
+
+**Slide:** so —
+
+> ## Three retrieval modes. Three different things they can't do.
+> | | good at | blind to |
+> |---|---|---|
+> | cosine | topical resemblance | telling same-type entities apart |
+> | entity-seeded PPR | identity, corroboration | conjunction, ordering, completeness |
+> | Cypher / filters | exact enumeration and constraints | anything you can't write down |
+
+> This is why the answer is not one retriever. It is knowing which question
+> you have.
+
+---
+
+## 5.11 — What it costs (0:45)
 
 **Slide:**
 
@@ -469,30 +438,22 @@ cosine only                      415
 | plain cosine top-8 | **4 ms** |
 | this, on a fresh question | **~196 ms** |
 
-> Two PPR calls, one per structural signal, whatever the seed count. Projection
-> is the amortised part and that is the standard claim — but the per-query claim
-> everyone makes, *"PPR against a projected graph is milliseconds"*, is only true
-> of **one** call.
-
-**Slide:** the API detail that made it 3× faster.
+**Slide:** and the one-line fix that got it there.
 
 ```
 sourceNodes: [[nodeId1, bias1], [nodeId2, bias2], …]
 ```
 
-> `sourceNodes` takes the whole seed set in one call — **with per-node bias.**
-> One call with eight sources is 56 ms; eight separate calls are 441 ms, because
-> the cost is per-call overhead, not source count.
+> `sourceNodes` takes the whole seed set in one call — **with per-seed bias.**
+> One call with eight sources: 56 ms. Eight separate calls: 441 ms. The cost is
+> per-call overhead, not source count.
 >
-> I built it one call per seed, because I assumed weighted seeds needed it. They
-> don't. I designed around a limitation the parameter list doesn't have, then
-> measured a trade-off that doesn't exist.
-
-**The line, and it is the transferable one:**
+> I built it one call per seed, because I assumed weighted seeds required it.
+> They don't.
 
 > ## Read the signature before you design around it.
 
-**Slide:** the framing that matters.
+**Slide:**
 
 > ### ~50× plain vector — and it doesn't matter.
 > The generation call you're about to make dwarfs 200 ms.
@@ -501,21 +462,21 @@ sourceNodes: [[nodeId1, bias1], [nodeId2, bias2], …]
 
 ## 5.12 — Take home (0:30)
 
-> ## Vector search nominates. The graph decides.
-> ### And it can only decide about passages you let it see.
+> ## Cosine retrieves the topic. The graph retrieves the entity.
 
-> Three things to take away:
->
-> **One.** Cosine ranks what sounds like the question. Graph structure ranks
-> what connects to what you found. Different questions, and you need both.
->
-> **Two.** Don't argmax your entities. Seed all the candidates.
->
-> **Three.** Whatever you weight your edges by is a claim about what matters.
-> Make it on purpose.
+**Slide:** and when to bother.
 
-*(Hands to section 6: "and now every one of those eight passages is about the
-same afternoon.")*
+> ### It earns its place in proportion to how many **same-type entities** your corpus has.
+
+> Forty engineers, and you asked what Chen owns? This is for you.
+>
+> One CEO, one product, one customer? Save yourself the projection.
+>
+> *(And five of those forty engineers are named Chen — which is the problem we
+> solved in the last section. One company, two different failures.)*
+
+*(Hands to section 6: "and now every passage in that window is about the same
+afternoon.")*
 
 ---
 
@@ -523,63 +484,67 @@ same afternoon.")*
 
 | slide | min |
 |---|---|
-| 5.1 the failure | 1:00 |
-| 5.2 name the defect | 1:00 |
+| 5.1 the failure | 1:15 |
+| 5.2 name it + forty engineers | 1:00 |
 | 5.3 PageRank in 60s | 1:00 |
-| 5.4 PPR as a similarity | 0:45 |
-| 5.5 seed everything | 1:15 |
-| 5.6 the projection is a decision | 0:45 |
-| 5.7 the hub trap | 1:30 |
-| 5.8 keep the walk short | 0:45 |
-| 5.9 the blend | 1:15 |
-| 5.10 the payoff (demo) | 1:15 |
-| 5.11 what it costs | 1:00 |
+| 5.4 seed the entity, seed all of them | 1:30 |
+| 5.5 the projection is a decision | 0:45 |
+| 5.6 the hub trap | 1:15 |
+| 5.7 keep the walk short | 0:30 |
+| 5.8 the blend | 0:45 |
+| 5.9 the payoff (demo) | 1:30 |
+| 5.10 three things it cannot do | 1:15 |
+| 5.11 what it costs | 0:45 |
 | 5.12 take home | 0:30 |
-| **total** | **11:55** |
+| **total** | **12:00** |
 
-⚠️ **Over budget by 1:55.** The section is allotted 10:00. Cut candidates, in
-order of preference:
+⚠️ **Over budget by 2:00.** Allotted 10:00. Cut candidates, in order, with the
+running total — the first four are not enough on their own:
 
-1. **5.4 entirely (−0:45)** — it is theory the demo demonstrates anyway; fold
-   its one useful line ("cosine asks what sounds like it, PPR asks what connects
-   to it") into 5.3's pivot slide
-2. **5.7's lift aside (−0:10)** and **5.3's degree-count aside (−0:15)** —
-   both delightful, both optional
-3. **5.6 (−0:45)** — compress to the single "a projection is not neutral
-   infrastructure" slide, drop the relationship-semantics detail
-4. **5.11's sourceNodes story (−0:25)** — keep the cost table, drop the
-   retraction
+| cut | saves | running |
+|---|---|---|
+| drop **5.5**, keeping only the "a projection is not neutral infrastructure" line inside 5.4 | 0:45 | 11:15 |
+| fold **5.7** into 5.6 as one sentence | 0:30 | 10:45 |
+| drop **5.3's** degree-count aside | 0:15 | 10:30 |
+| drop **5.11's** `sourceNodes` retraction, keep the cost table | 0:20 | 10:10 |
+| compress **5.8** to the `alpha=1.0` slide alone | 0:25 | **9:45** |
 
-Cutting 1 and 2 lands at 10:45. Cutting 1, 2 and 3 lands at 10:00 exactly.
+All five lands at 9:45 with slack for the live demo overrunning. Four of five
+still leaves it 10 seconds over, so **plan on all five** and treat 5.3's aside
+and 5.11's retraction as restorable if a rehearsal comes in fast.
 
-**Do not cut 5.1, 5.2, 5.5, 5.7's hub table, or 5.10.** Those are the section.
+**Do not cut 5.1, 5.2, 5.4's Nov-4 passage, 5.9, or 5.10.** Those are the
+section. 5.10 especially — it is what makes the whole talk's multi-tool
+argument honest, and it is the thing nobody else's PageRank talk will say.
 
 ---
 
 ## Assets still needed
 
-- [ ] Hub table as a styled slide with the deer/captains contrast visible at a
-      glance (source: `demo_pagerank.py --hubs`)
-- [ ] The "hubs concentrate at the entity level, dissipate at the passage level"
-      diagram as inline SVG — one hub, 589 arrows in, 589 arrows out, thin
-- [ ] Bipartite 3-step diagram for 5.8: entity → passages → co-mentioned
+- [ ] 5.1's tagged top-8 as a slide where the "wrong name" column reads at a
+      glance — the names are the punchline, set them large
+- [ ] The forty-engineers slide. Text only, big. No diagram.
+- [ ] Hub table styled so deer-above-captains lands without explanation
+      (source: `demo_pagerank.py --hubs`)
+- [ ] "Concentrate at the entity level, dissipate at the passage level" as
+      inline SVG — one hub, many arrows in, the same many arrows out, thin
+- [ ] Bipartite 3-step diagram for 5.7: entity → passages → co-mentioned
       entities → their passages
-- [ ] Screen recording of `demo_pagerank.py` for 5.10 — outline says only two
-      demos should be live; **this should be one of them** (it is the section's
-      payoff and it is fast)
-- [ ] `--conjunction` table as a slide if 5.2 needs more than the single 415
+- [ ] The Aug-18-1805 entity list for 5.10 with **no horse** visibly absent —
+      possibly strike-through a ghosted `EQUUS CABALLUS`
+- [ ] `demo_pagerank.py` recording as backup; **this should be one of the two
+      live demos** — it is the payoff and it runs in 196 ms
 
 ## Open decisions
 
-1. **The section title.** `"Your ranking can't combine evidence"` replaces
-   `"Your ranking is wrong"`. The old title promises an improvement this corpus
-   does not deliver at the passage level — the reranker moves one slot in eight.
-   Needs Nathan's sign-off.
-2. **Which database.** Every number in this draft is measured on `neo4j`. The
-   outline's section 4 findings still record `lewisclark` as the intended
-   replacement demo graph, and it descends from a different extraction with 39%
-   more mention edges. **If the demo graph changes, every table here is
-   re-measured.** Settle before building slides in reveal.js.
-3. **5.10's blend value.** The demo shows 415 → 68 → 16 across the slider. If
-   that is one number too many for the stage, show 415 → 16 at pure structure
-   and mention the shipped default verbally.
+1. **The title.** *"Your ranking can't tell people apart"* — needs sign-off.
+2. **Which database.** Every number here is `neo4j`. The section 4 findings still
+   record `lewisclark` as the intended replacement demo graph, built from a
+   different extraction with 39% more mention edges. **If the demo graph changes,
+   every table here is re-measured** — including the hub table and the
+   62/296/2 figures that open the section.
+3. **How much of the retraction to tell.** 5.9 currently spends ~20 seconds on
+   "my metric was measuring the wrong thing, so I read the passages." I think it
+   is the most valuable twenty seconds in the section. It is also the easiest
+   thing to cut if a rehearsal runs long, and Nathan may prefer to keep the
+   methodology out of a 10-minute slot.
