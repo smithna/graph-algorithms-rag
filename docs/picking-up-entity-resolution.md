@@ -1,5 +1,38 @@
 # Picking up the entity resolution work
 
+> **RESOLVED 2026-09-07 — see [`talk-outline.md`](talk-outline.md) finding 3g.**
+> The layered run with a new consistency layer (exhaustive member-pair
+> verification, must-not-link constrained clustering, disputed-edge exclusion,
+> judge-canonical naming) was applied to `lewisclark`: 794 → 675 Person nodes,
+> 40 clusters merged, Sacagawea at 47 chunks / 19 aliases with zero
+> contaminants, gate passed. The merged state is checkpointed at
+> `data/checkpoints/lewisclark-post-disambiguation/` (pre-merge state still at
+> `lewisclark-pre-disambiguation`; the merge is also reproducible by re-running
+> `tools/disambiguate_layered.py --apply`, fully cached and deterministic).
+> The Sacagawea re-enrichment measurement is DONE (2026-09-07): the
+> provenance-tagged scraper ran on top of the merge — 85 chunks total, 25
+> graph-only / 22 both / 38 scraper-only; results written up in
+> `talk-outline.md` finding 3 ("Measured at last"). Note the enrichment links
+> and aliases are in `lewisclark` but NOT in the post-disambiguation
+> checkpoint, which captures the merge only — restore + re-run the patched
+> `enrich_sacagawea.py` to reproduce. Pipeline completed later on 2026-09-07:
+> species-name resolution + taxonomy repair (checkpoint
+> `lewisclark-post-species-resolution`, regression check
+> `tools/audit_taxonomy.py`), corps tags (41 members, patched matcher in
+> `tools/corps-patches/tag_corps_members.patch`), 10 fulltext indexes, and
+> embeddings via the reworked `tools/embed_entities.py` — four labels only
+> (AnimalSpecies, PlantSpecies, Event, Taxon; 1,506 nodes), while
+> Person/Place/WaterBody/NativeNation stay fulltext-only by design (outline
+> "Design notes"). `demo_paths.py` dependencies are all satisfied.
+> **Demo validation is DONE (2026-09-07, outline finding 3h):** the section 4
+> arc is walkthrough + layered dry run on `rawluna` (read-only, both cached
+> and demo-fast) with `lewisclark` as the applied after graph; `demo_paths.py`
+> ran there for the first time after two `graphrank/` fixes (list-valued
+> `date`/`chunkId` from merged relationships; duplicate Yen's routes). One
+> task remains before rehearsal: a single uncapped dry run on `rawluna` to
+> fill 98 missing cache verdicts (paid API, blocked in the validating session).
+> The rest of this file is the handoff as it stood when the work was parked.
+
 Handoff for the unfinished part of section 4: **disambiguating `lewisclark`**.
 Nothing in the talk depends on this. Section 4 demos against `neo4j` and
 `rawluna`, both of which work today. This is an improvement that stalled on a

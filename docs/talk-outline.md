@@ -18,7 +18,7 @@ before the section's slides can be written honestly.
 | 2 | What is Graph RAG / evidence | none (sources gathered) | not started |
 | 3 | Roadmap | none | not started |
 | 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ **built, verified, and the section's story settled** — Sacagawea cluster is the spine; see *Section 4 findings* |
-| 5 | Ranking can't tell people apart → entity-seeded PPR | `pagerank.py`, `projection.py`, `decompose.py`, `demo_pagerank.py`, `sweep_pagerank.py`, `measure_seeds.py` | ✅ **built, verified live, slides drafted** — thesis settled on the third attempt (co-typed entity substitution); `charbonneau-role` is the spine. **Start at *Section 5 in one page*.** New: decomposed seeder (5d-ter's fix), built + measured — named-entity coverage 10/11 vs semantic 8/11, finding 5f. Open: title, demo-graph choice, whether 5f gets stage time |
+| 5 | Ranking can't tell people apart → entity-seeded PPR | `pagerank.py`, `projection.py`, `decompose.py`, `demo_pagerank.py`, `sweep_pagerank.py`, `measure_seeds.py`, `measure_extraction_grade.py`, `measure_ablation.py`, `measure_budget_graph.py`, `measure_name_shards.py` | ✅ **built, verified live, slides drafted** — thesis settled on the third attempt (co-typed entity substitution); `charbonneau-role` is the spine. **Start at *Section 5 in one page*.** New: decomposed seeder (5d-ter's fix), built + measured — named-entity coverage 10/11 vs semantic 8/11, finding 5f. Open: title, demo-graph choice, whether 5f gets stage time. New: 5h screens PPR's remaining case after 5g's filter parity; **framing approved** (5h-5: gold-plated §4 path vs budget cheap-extraction path, walk compensates at query time). **Ablation built and measured (5i, `measure_ablation.py`): the filter goes blind to the coref-only passages and the walk does NOT buy them back — ranks 114–1108 ablated vs 11–62 full; SACAGAWEA keeps 6/64 edges; NEXT_CHUNK is no coref patch. Replicated on a REAL budget graph (5j, `measure_budget_graph.py` on new `budgetluna` = rawluna + indexes, no resolution): harsher — identity shattered across 19 shards + 25 untagged chunks, fever/Aug-14 at rank 1709/1475, and the edge-support metric scores the worse graph better. Multi-shard seeding measured (5j-bis): oracle shards restore even the FILTER on 2 of 3 — query-time compensation is query-time entity resolution; the sole adjacency win needs the impure shard the correct merge excludes. "About as good, less work up front" refuted; surviving beat: the walk covers duplicates and hubs; shards need resolving — at build time once or at query time forever. Spelling-shard case measured (5k, `measure_name_shards.py`): DREWYER 265 / GEORGE DROUILLARD 63 unmerged ON THE DEMO GRAPH — 5g's parity requires *resolved* tags; vector discovery ranks the other spelling #22 behind the Dorions; the walk trails cosine at bridging it; the df-prop merged walk (median 168) or a two-tag filter fixes it — the easy §3-machinery merge the pipeline never ran** |
 | 6 | Context is redundant → communities | `communities.py`, `demo_communities.py` | ✅ runs live; still needs Leiden + conductance |
 | 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | ✅ runs live (needed a resolution fix — see below) |
 | 8 | Does this help? | `benchmark.py`, `metrics.py` | runs; **gold set is broken worse than reported** — 4 labels missing *and* at least 4 more silently resolving to near-empty decoy nodes. See *Section 5 findings* #10 |
@@ -81,9 +81,9 @@ independently built graphs:
 
 | database | what it is | status |
 |---|---|---|
-| `rawluna` | pre-disambiguation, `gpt-5.6-luna` extraction | **keep, frozen** — the section-4 measurement baseline |
-| `lewisclark` | clone of `rawluna` + mentions + taxonomy, **pre-disambiguation** | parked — disambiguation unresolved, see 3f |
-| `neo4j` | the v1.0 dump — `gpt-4o-mini` extraction throughout | **keep** — still the demo graph; `lewisclark` did not supersede it |
+| `rawluna` | pre-disambiguation, `gpt-5.6-luna` extraction | **keep, frozen** — the section-4 measurement baseline, and where the live walkthrough runs (read-only) |
+| `lewisclark` | clone of `rawluna` + mentions + taxonomy + **consistency-gated disambiguation** | **pipeline complete 2026-09-07** (675 Persons, 41 corps tags, 10 fulltext indexes, embeddings on 4 labels) — section 4's "after" graph; demo path validated, see *3h* |
+| `neo4j` | the v1.0 dump — `gpt-4o-mini` extraction throughout | **keep** — the demo graph for sections 5–8; section 4's "after" exhibit moved to `lewisclark` (see 3h) |
 | `rawgraph` | pre-disambiguation, `gpt-4o-mini` extraction | retired |
 
 **Why `neo4j` is being replaced rather than kept as the "after" graph.** It is
@@ -479,6 +479,46 @@ external list still beats the algorithm on raw coverage. What the algorithm
 gives you is coverage that is *derived*, reproducible, and works on a corpus
 nobody has written a website about.
 
+**Measured at last (2026-09-07, on the disambiguated `lewisclark` — see 3g).**
+The provenance-tagged `enrich_sacagawea.py` ran *after* the consistency-gated
+merge, so every link it creates says whether the graph already had it
+(`alsoExternal`) or not (`externalOnly`). The chunk-level split:
+
+| source | chunks | of the 85 total |
+|---|---|---|
+| graph only — the curated site never lists them | **25** | 29% |
+| both — graph found it, the site agrees | 22 | 26% |
+| scraper only — beyond what the graph found | **38** | 45% |
+
+Neither source contains the other, and that is the finding. The graph derived
+47 of her 85 known passages (55%) from corpus evidence alone — including **25
+the hand-curated site does not list**, so "the website is the superset" is
+false. The scraper's 38 unique chunks are concentrated exactly where alias
+matching is structurally blind: passages that reference her only by pronoun and
+context. Her near-death at the Marias — *"I found that her pulse were scarcely
+perceptible"* — contains no surface form of any name; the curated list reaches
+it because a historian read the journals and wrote the date down. No extraction
+pipeline hits that from text.
+
+On the aliases the same shape: of the site's 13 curated forms, the graph had
+independently recovered 5–6 (strict string match 3; ignoring leading articles,
+`Squar Interpretress`, `Interpreters Wife`, `The Squaw`, `The Squar`, `Indian
+Woman`). What only the site knows: `Janey` (Clark's private nickname), the
+Snake-woman family, `our interpretress` — names whose evidence lives outside
+the corpus.
+
+So the section's claim gets its final, honest form: **the graph does not
+replace the external source; it demotes it.** The identity no longer *depends*
+on lewis-clark.org — 55% of her mention coverage, and the identity itself, are
+derived and reproducible — and what the site adds is now tagged provenance
+(`r.source`, `r.externalOnly`), auditable and removable in one query, instead
+of scraper output fused invisibly into the graph. External data as enrichment
+you can point to, not a dependency you have to trust.
+
+Post-enrichment state: 85 chunks, 32 aliases (the corps script's case-sensitive
+dedup keeps `the squaw` alongside `The Squaw` — cosmetic, noted). The 13 forms
+also remain stored on `p.externalAliases`.
+
 #### 3b. What the gold set is, and what it is not
 
 **It is not ground truth, and no slide should treat it as one.** Nathan's call,
@@ -791,11 +831,11 @@ So 3c's lesson has now been learned twice, the second time by ignoring it:
   `P CRUSAT + PETER CROUSAT + PETER CROUZATT + …` (16 spellings of Cruzatte),
   Frazer (7), Weiser (5), Goodrich (4), Howard (3)
 
-**Status: not applied.** Handoff written up in
-[`picking-up-entity-resolution.md`](picking-up-entity-resolution.md) — restore
-points, the patched scripts, the operational traps, and the first thing to try
-on resuming. `lewisclark` remains pre-disambiguation at 794 Person nodes,
-checkpointed at
+**Status: resolved — see 3g (2026-09-07).** Kept as written at the time:
+handoff in [`picking-up-entity-resolution.md`](picking-up-entity-resolution.md)
+— restore points, the patched scripts, the operational traps, and the first
+thing to try on resuming. `lewisclark` remained pre-disambiguation at 794
+Person nodes, checkpointed at
 `data/checkpoints/lewisclark-pre-disambiguation/`. `neo4j` and `rawluna` were
 never touched, and section 4 demos against them.
 
@@ -807,6 +847,219 @@ raised about majority voting and which applies here too. Doing it properly means
 choosing a deterministic edge order (descending evidence, say) and accepting
 that the result is an approximation — or refusing to merge wherever constraints
 conflict, which is recoverable and probably right for a demo corpus.
+
+#### 3g. Finished: consistency-gated merging — closure made to prove its claim (2026-09-07)
+
+3f's diagnosis said the fix was correlation clustering with must-not-link
+constraints. That is what got built, applied to `lewisclark`, and verified.
+**794 → 675 Person nodes, 40 clusters merged, and the headline number: Sacagawea
+went from 8 chunks / 8 aliases to 47 chunks / 19 aliases — 12 surface forms,
+zero contaminants — with candidate generation still at the recall settings.**
+The answer to 3c/3f turned out not to be tuning candidates down; it was gating
+merges on verdict consistency. Recall stays where a judge reviews pairs;
+precision now lives where closure merges them.
+
+**Layer 3, component consistency** (`resolution.verify_components`, wired into
+`tools/disambiguate_layered.py`). A component is the claim that every member
+pair is the same entity, but adjudication only ever saw the edges that built
+it — the far pairs of a chain are asserted by closure and asked of nobody, which
+is how five Brattons became one man. So before anything merges:
+
+1. **Every closure-asserted member pair gets a verdict** — the confirmed edges
+   by construction, the rest from the adjudication cache or fresh calls (442
+   pairs on this corpus; the final run answered 442/442 from cache, zero API
+   calls, byte-identical output).
+2. **A rejection is a cannot-link constraint, enforced absolutely.** Layer 2
+   verified transitivity locally (two hops) and enforced it weakly (cut one
+   edge, which alternate paths route around — 3f's "whole but contaminated").
+   Layer 3 re-clusters each component greedily under its constraints: edges
+   union strongest-first, any union that would co-cluster a rejected pair is
+   skipped, and the constraint propagates to the merged set. Kruskal with a
+   veto — greedy correlation clustering, made order-independent by a
+   deterministic edge order.
+3. **The edge order is (contradictions, signal agreement, min-mentions,
+   similarity, names)** — contradictions first, because the failure it fixes
+   was measured, not imagined: the judge confirmed `SACAGAWEA ~
+   HOHAST-ILL-PILP` (a Nez Perce chief) while rejecting him against every
+   woman-form. Both endpoints well-attested, so pure evidence ranking let the
+   lie claim her node first and the vetoes dragged her out of her own cluster.
+   Third-party verdicts dispute a wrong positive far more than a right one;
+   counting them picks the honest edge. Evidence measures what the judge had to
+   work with — the other verdicts measure whether it agreed with itself.
+4. **An edge more disputed than corroborated cannot support a merge at all.**
+   Found the hard way, live: the first `--apply` merged `JOHN BRATTEN` into
+   **John Ordway** — a judge confirmation with no negative *between* the pair,
+   sitting in a two-member component where no veto can fire. Post-merge
+   verification caught it, the checkpoint restore cost the promised minute, and
+   the fix generalises: for each edge, every third entity with decided verdicts
+   against both endpoints is a witness — opposite verdicts dispute the edge
+   (if A matches C and B does not, A and B are not the same person), matching
+   confirmations corroborate it. `BRATTEN ~ ORDWAY` had one disputing witness
+   (William Bratton) and zero corroborating ones. Merges now require the
+   witnesses to net out in favour. A confirmed pair nobody corroborates is a
+   verdict, not evidence.
+5. **Merged nodes take the judge's canonical name**, by majority over the
+   cluster's confirmed verdicts, not the longest surface form — the earlier
+   rule named her merged node "Our Interpreter The Snake Woman" and Jefferson's
+   "President Of The States Of America". One trap: the judge canonicalises the
+   servant forms to `YORK`, which collides with the uniqueness constraint on
+   the existing single-word `YORK` node the person gate had excluded; on
+   collision the merge falls back to a member name rather than absorbing a node
+   no layer verified.
+
+**What it caught, end to end** (all from the dry-run reports, reproducible from
+cache): the Bratton chain split with William's six spellings intact and Hugh,
+Isaac, Richard, and John-the-other refused; Drouillard separated from the
+Mandan and Hidatsa chiefs (`LE BORGNE` and `POCAPSAHE (BLACK CAT)` emerged as
+their own correctly-named nodes); Dorion Sr. and Jr. kept apart; `MAN-NES-SUR
+REE` expelled from the La Rocque cluster; `THOMAS JEFFERSON ~ MY OLD GUIDE`
+refused; William Clark expelled from a chiefs' component; the 11-name Native
+component refused entirely rather than blended.
+
+**The costs, stated plainly, because refusing is the mechanism working:**
+`WILLIAM WARNER ~ WILLIAM WERNER` is a real pair and was refused — Warner's own
+false confirmations against Sacagawea's forms are disputing witnesses against
+his one true edge. `SAR CAR GAH WE` (clearly her) stayed unmerged. The
+plausible `AR-RAT-TA NA-MOCK-SHE` spelling pair went down with its disputed
+component. All recoverable: nothing wrong was written, and an unmerged
+duplicate is a recall miss, not a corrupted identity.
+
+**Still judge's-word-only, disclosed for review:** `GEORGE DROUILLARD + MR.
+DURIAUR` (accepted by Nathan; "Durion" usually means Dorion), `RICARRE CHIEF`
+merged with the Black Cat forms, `PAR NAR NE AR PAR BE + WHITE CRAIN`. Each
+survived because no witness disputes it — the rule's honest residual.
+
+**For the stage.** The arc is now one sentence per act: nodeSimilarity at
+recall settings finds candidates no string signal can (that is 2c); the judge
+turns candidates into verdicts (3e); and closure is not allowed to assume
+transitivity — it must prove every pair it asserts, against verdicts that are
+free because rejections were cached (3g). WCC is still in the loop; it just
+stopped being trusted on faith.
+
+**Status: applied.** `lewisclark` is at 675 Person nodes, gate passed
+(no mega-clusters, Sacagawea's cluster verified), and the merged state is
+checkpointed at `data/checkpoints/lewisclark-post-disambiguation/`. `rawluna`
+and `neo4j` untouched. Before `demo_paths.py` runs against it, `lewisclark`
+still needs `tag_corps_members.py`, `setup_fulltext_indexes.py`, and
+`embed_entities.py`. The Sacagawea re-enrichment measurement ran on top of the
+merge — results in finding 3 ("Measured at last").
+
+#### 3h. Demo validation — the section 4 demo path, run end to end (2026-09-07)
+
+Conditions for every number below: local Desktop DBMS (heap still 1 GiB max),
+wall-clock timings on this machine, no resident GDS projections at start,
+`NEO4J_DATABASE=` passed explicitly, home database untouched on `neo4j`.
+
+**The demo arc, decided and measured.** Three acts, two databases:
+
+1. **Walkthrough on `rawluna`, read-only** — `demo_resolution.py`: **3.8 s**.
+   2,135 candidates (co-occurrence 1,359 / string 798 / alias 66, multi-signal
+   86) from a 5,123-entity / 156,062-edge projection; naive WCC largest
+   component 399; write audit zero writes. With `--adjudicate --max-calls 0`:
+   **2.6 s**, 2,063 of 2,135 verdicts from cache (499 confirmed / 1,564
+   rejected / 72 undecided).
+   **New measurement, and it is the beat that motivates 3g:** WCC over just
+   the 499 *confirmed* pairs still welds Sacagawea into a **91-node
+   mega-component** (her forms + the Labiche cluster + Windsor + Warner/Werner
+   + a dozen chiefs, bridged by `HIS WIFE` / `THE INTERPRETER` / `OUR GUIDE`).
+   Adjudication before closure is not enough — closure asserts pairs nobody
+   judged. Display note: the components table caps at 12 rows regardless of
+   `--limit`, so this weld is what the audience sees there; the clean
+   Sacagawea cluster is act 2's job.
+2. **Layered dry run on `rawluna`** — `tools/disambiguate_layered.py
+   --database rawluna --max-calls 0 --consistency-max-calls 0`: **2.2 s, 151
+   lines**. 2,135 candidates → 499 confirmed → 248 past the evidence filter →
+   415 transitivity checks (all cached, 38 bridges) → 37 components →
+   consistency layer checks 395 closure-asserted pairs → 13 split, 24 clean →
+   **34 mergeable clusters**. The Sacagawea payoff prints as `SPLIT [17 → 12]`:
+   her 12-form cluster emerges with `HIS WIFE`, `THE INTERPRETER`, `ONE OF HIS
+   WIVES`, `SAR CAR GAH WE` excluded and the disputed edges named. Bratton vs
+   Ordway, Jefferson vs `MY OLD GUIDE`, and Warner/Werner refusals all visible.
+   **Demoable live as-is — no `--demo` trim mode needed.** Output volume is
+   fine on a projector; the longest block (the 11-name Native component's
+   rejection list) is ~20 lines.
+   *One prerequisite:* 98 verdicts (72 candidate + 26 consistency) are not in
+   cache, because `rawluna`'s candidate set differs slightly from the
+   `lewisclark` pre-disambiguation state the cache was built on
+   (`resolve_mentions` absorbed 17 nodes there). One run without the caps
+   (~98 judge calls, pennies) fills them; this session's permission gate
+   blocked paid API calls, so **run it once before rehearsal** — after that
+   the demo is zero-API and deterministic.
+3. **`lewisclark` as the "after" graph** — validated live: 675 Persons;
+   SACAGAWEA 85 chunks / 32 aliases with provenance tags reconciling exactly
+   (38 `externalOnly` + 22 `alsoExternal` + 25 untagged graph-only = the
+   finding-3 split); 41 `corpsMember`; WILLIAM BRATTON intact (11 aliases, 40
+   mentions) with Hugh/Isaac/Richard/John-the-other separate; JOHN ORDWAY (20
+   aliases, 79 mentions) with no Bratten absorbed. `demo_resolution.py`
+   pointed here opens with the receipts table — SACAGAWEA's 32 absorbed forms
+   next to REUBIN FIELD's 38 — which *is* the after exhibit in one screen.
+   The dry run re-pointed at post-merge `lewisclark` finds only 879 leftover
+   candidates → 4 mergeable clusters (2.2 s): the walkthrough has no story
+   here, which is why acts 1–2 stay on `rawluna`.
+
+**`demo_paths.py` ran on `lewisclark` for the first time — two breaks, both
+fixed in `graphrank/` (corps repo untouched):**
+
+- `paths._hydrate` crashed on `toString(r.date)`: the 3g merge combined
+  parallel relationships, leaving **403 relationships with list-valued
+  `date`/`chunkId`** (364 with both as lists, 39 chunkId-only). Fix: normalise
+  to the first element of each in the hop query.
+- Yen's treats parallel relationships as distinct paths, so identical routes
+  printed twice. Fix: dedupe by node sequence in `k_shortest_paths`.
+
+After the fixes: `--from Sacagawea --to Shoshone` **0.7 s**, 4 distinct routes
+with dated chunk citations; `--from Cameahwait --to Sacagawea` 0.7 s, 3
+routes. Prerequisite: `NEO4J_DATABASE=lewisclark python scripts/project_graph.py`
+first (~1 s, builds `lc-retrieval` + `lc-mentions`). Caveats: route 4 of the
+Shoshone query walks through `DREWYER` — an unmerged Drouillard shard, visible
+on stage (disclose it or use `-k 3`); and the docstring's `--from "Grizzly
+Bear"` example never worked on *either* graph — fulltext beats the vector lane
+whenever any name index returns a hit, so it resolves to `BEAR CREEK` here and
+`WHITE BEAR ISLANDS` on `neo4j`. Use person/place/nation anchors. (`lewisclark`
+actually resolves `Great Falls` correctly, 32 mentions, where `neo4j` picks a
+junk one-mention `GREAT` Person node.)
+
+**Retrieval spot checks on `lewisclark`** — the queries the demos will issue,
+all rank 1:
+
+| query | lane | result |
+|---|---|---|
+| `Crusatte~` | fulltext fuzzy | PETER CRUZATTE 10.67 (61 mentions); unmerged `CRUSATT`/`CRUZATTE`/`CRUSAT` shards trail at 4.7–6.0 — the recall-miss residue, visible |
+| `Minnetarees` | fulltext alias | HIDATSA (147 mentions) |
+| `elk` | vector, AnimalSpecies | CERVUS CANADENSIS 0.707 (587 mentions) |
+| `salmon` | vector, Taxon | Salmonidae 0.801 |
+| `birth of a child` | vector, Event | BIRTH OF NEWBORN BABE 0.806, then BIRTH OF JEAN BAPTISTE CHARBONNEAU 0.721 |
+
+The birth ranking is **not** an error: the top hit is a different real birth
+(chunk `4c77b279`, 1805-08-26); the Charbonneau birth is its own event/chunk
+(`c4e6e907`, 1805-02-11). Both retrieve; say "the top two hits are the
+expedition's two recorded births" and it becomes a feature.
+
+The known `"interpreters wife"` failure reproduces: SACAGAWEA rank 6 at score
+2.34 behind `HIS WIFE` 4.58 (2 mentions) and three one-mention shards, and
+`resolve_entity`'s near-tie prominence rule cannot reach her (she is below
+0.75 × best). **Decision: no mention-count boosting.** Either keep it as the
+disclosed "unmerged shards outrank the merged identity" beat, or keep it off
+stage — the spot-check table above is the safe query set.
+
+**Answers to the open questions:**
+
+- **`lewisclark` does not replace `rawluna`; it replaces `neo4j` — for section
+  4 only.** Walkthrough (candidates, naive closure, layered dry run) runs
+  read-only on `rawluna`; `lewisclark` is the applied after graph and hosts
+  the retrieval + paths demos. `neo4j` stays the sections 5–8 graph.
+- **The layered dry run is live-demoable**: 2.2 s, 151 lines, no trim mode
+  needed — after the one cache-filling run above.
+- **Person-embeddings fallback stays noted-for-later.** Every person/nation
+  demo query resolves via fulltext; the one mis-resolution observed (`Grizzly
+  Bear`) is a fulltext-vs-vector *lane-ordering* issue that person embeddings
+  would not touch.
+
+Heap note: the whole section-4 workload ran at the 1 GiB heap — co-occurrence
+projection plus `lc-retrieval`/`lc-mentions` all built — but finished with
+~135 MiB free and everything else idle. The pre-demo raise to 2 GiB (Desktop
+Settings UI, not `neo4j.conf`) stands. Projections created today were dropped
+afterwards; they rebuild in ~1 s.
 
 #### 4. The default model is three generations stale
 
@@ -923,6 +1176,26 @@ multi-tool argument structural rather than a hedge:
    `questions.yaml`; teach `verify_questions.py` to rank by mention count.
    Unblocks Step 5 (finding 10).
 4. **How much of the retraction to tell** in slide 5.9 (~20 seconds).
+5. **The section's frame (5h-5) — now measured, and the third leg failed
+   (5i).** The ablation ran: on an NER-grade graph the filter goes blind to
+   the coref-only passages *and the walk does not buy them back* (ranks
+   114–1108 vs 11–62 on the full graph; SACAGAWEA keeps 6 of 64 edges).
+   NEXT_CHUNK is no coreference patch (nearest naming chunk is 169 hops from
+   the fever passage). Then re-run on a REAL budget graph (5j, `budgetluna` =
+   `rawluna` + indexes, no resolution): harsher still — the luna extraction
+   shatters her identity across 19 shard nodes + 25 untagged chunks, the
+   walk leaves the fever/Aug-14 passages at rank 1709/1475, and the
+   edge-support metric scores the worse graph *better* (75.1% name-backed vs
+   gold's 64.5%). Seeding every shard (5j-bis) closes the loop: with oracle
+   shards even the *filter* recovers 2 of 3 (query-time compensation =
+   query-time entity resolution), automatic shard discovery is a knife-edge,
+   and the one adjacency win (shards × NEXT_CHUNK, fever 1844→47) runs
+   through a shard the "correct" merge would exclude. "About as good, less
+   work up front" is off slides permanently in that form. The landing is
+   Nathan's (end of 5j-bis): *resolve the shards at query time and you might
+   as well be filtering on tags again* — every query-time trick measured is
+   the tag filter or entity resolution in disguise; the value lives in the
+   entity layer. How to stage that is the open decision.
 
 **Highest-leverage untested change**: **question decomposition for seed
 selection.** The entity seeder is itself a cosine step with cosine's disease —
@@ -934,7 +1207,7 @@ and measured — see finding 5f.**
 
 **Reading guide:**
 
-| load-bearing | 1, 2, 3, 4, 5b, 5c, 5d, 5e, 8, 9, 10, 11, 12 |
+| load-bearing | 1, 2, 3, 4, 5b, 5c, 5d, 5e, 5g, 5h, 5i, 5j, 5k, 8, 9, 10, 11, 12 |
 |---|---|
 | **mechanisms hold, conclusions do not** | 5d-bis, 5d-ter, 5d-quater — see the warning on each |
 | **read before any of those three** | **5d-quinquies** |
@@ -2120,6 +2393,571 @@ pocket behind 5.12, with this finding as the receipts. Title still open.
 Still to do: thread the same frame through sections 9 and 10 when those
 sections are built.
 
+#### 5h. Before giving up on PPR — three candidate mechanisms screened (2026-09-07)
+
+Nathan's framing: 5g's parity plus the editorial decision leaves PPR with less
+stage time than the session description promises. Before conceding that, screen
+the remaining ways the walk could genuinely win — harder questions, chunk
+seeding, richer projections. Screened read-only against `neo4j`, membership
+checks only, no new relevance judgements.
+
+**The reframe that governs all of it: after 5g, the bar is not "cosine fails,"
+it is "the *filter* fails."** A PPR win now requires a judged-relevant passage
+the filter cannot have, or a question the filter cannot run on.
+
+##### 5h-1. The extraction-grade ablation — 5g's claim #2 is demonstrable here after all, and it is the strong candidate
+
+> **Status (2026-09-07, later the same day): built and measured — finding 5i.**
+> The screen below stands; the experiment's *hypothesis* (the walk buys the
+> passages back at query time) did not hold. Read 5i before quoting anything
+> from this subsection's "stage shape" paragraph.
+
+5g called the ordinary-extraction argument "mechanism solid, not demonstrable
+here — precisely because this extraction is unusually good." Wrong on the
+second half: the corpus records *how good*, edge by edge. New
+`scripts/measure_extraction_grade.py` classifies every `MENTIONED_IN` edge by
+its textual support in the chunk (whitespace-normalized containment against
+the entity's recorded surface forms):
+
+| support class | edges | share |
+|---|---|---|
+| name-backed (canonical or name-like alias in text) | 9,541 | 64.5% |
+| surface-only (only a descriptive alias — "the squaw", "This River") | 3,465 | 23.4% |
+| **no surface form at all — pure build-time inference** | **1,793** | **12.1%** |
+
+Per label, pure inference: Person **7.8%**, Event 66.5%, species 22–25%
+(inflated by the Latin renaming — strict NER tags no common nouns, so
+arguably honest, but quote the proper-noun labels), NativeNation 0.8%.
+Contamination runs both ways: gazetteer gaps inflate it (a chunk says
+"shabono" but only "Toust. Shabono" is filed, so containment misses — a
+recording gap, not coreference), and surface-only deflates it (linking "the
+squaw" *was* build-time coreference). ~12% is a size class, not a constant.
+
+**The receipt that makes it a demo:** SACAGAWEA has **21 chunks with no
+surface form of any of her 21 recorded forms** — and they include exactly the
+passages the hand reads crowned: **Nov-4** (5d's best single instance),
+**Jun-16** ("her pulse were scarcely perceptible" — her fever, never names
+her), and **Aug-14** (the Cameahwait mobilisation passage 5f judged the
+corpus's best). The filter owns these passages only because `extract.py`
+resolved pronouns at build time. Charbonneau has 10 such chunks, Ordway 2.
+
+**The experiment (not yet built):** project an ablated mentions graph keeping
+only name-backed edges — a simulation of ordinary NER-grade extraction — and
+run filter+cosine vs entity-seeded PPR on it, endpoints = the existing
+hand-read passages. The filter loses the coref-only judged passages *by
+construction*; the measurement is whether the walk still reaches them (Nov-4
+names Chabonah and the Snake nation, so `SACAGAWEA → her named chunks →
+CHARBONNEAU/SHOSHONE → Nov-4` survives ablation — the question is its rank).
+Second arm: add `NEXT_CHUNK` to the *ablated* graph only. Pronoun antecedents
+live in the preceding chunk, so the sequence edge becomes a **query-time
+coreference patch** — a mechanistic job NEXT_CHUNK never had in 5c, and 5c's
+verdict on sequence questions stands regardless.
+
+**Stage shape if it holds:** *"your graph is probably not this good — degrade
+it to what standard extraction gives you, and the filter goes blind to the
+best passages in the corpus; the walk buys them back at query time."* PPR
+becomes insurance against extraction quality. That inverts 5g without
+contradicting it: on a great graph, tags suffice; on the graph you actually
+have, the walk earns rent. It also completes the section's arc — 5.12's "the
+entity layer retrieves the entity" keeps its headline, and PPR is what you
+run when the entity layer is ordinary.
+
+##### 5h-2. Chunk seeding — exists already; two variants untested
+
+The passage half of `expand` *is* chunk seeding, and 5f measured it as a
+liability when cosine is wrong (Cameahwait: 3 of 5 seeds were the wrong
+nation). Untested variants: **(a)** identity-constrained passage seeds — seed
+the walk from filter+cosine's top instead of raw cosine's, killing the
+amplification by construction; **(b)** thematic questions (`trade-goods`,
+`food-sources`, `illness-and-injury`) — the decomposed seeder parses zero
+mentions, so **no filter can run at all**, and finding 4 measured cosine's
+failure (trade-goods: best conjunction rank 166, median 724, 0 in top-8).
+Passage-seeded PPR is entity-based query expansion — hop from cosine's top
+chunks to their rare entities (the awls and the blue beads) to the passages
+sharing them, vocabulary-free. The one tool that even applies. Cost: judging
+it means fresh hand reads; every old blend number is proxy-contaminated.
+
+##### 5h-3. Richer projections — screened weak, except inside 5h-1
+
+Entity–entity `RELATED` edges: the extracted types are event-ish (OBSERVED
+2,911, ACQUIRED_PROVISION 962, MET_WITH 953…), and the relationship a
+neighborhood question would ride does not exist — **no SACAGAWEA–CAMEAHWAIT
+edge of any type**. The projection docstring's semantics objection stands.
+`NEXT_CHUNK`: 5c's no-effect verdict on sequence questions stands; its one
+live prospect is the ablated-graph coreference patch above.
+
+##### 5h-4. Harder questions, under the new bar
+
+Two classes clear "the filter fails": **(i)** identity questions on
+ordinary-extraction graphs — 5h-1 covers this with the existing question bank,
+no new questions needed; **(ii)** neighborhood questions ("what do we know
+about Sacagawea's brother?") where the nameable seed is X but answers live in
+passages mentioning only the related Y — CAMEAHWAIT has 10 chunks without
+SACAGAWEA. Candidate only: those 10 are unread, and connection-explanation is
+partly §7's business.
+
+**Recommendation:** build 5h-1 first. It reuses every hand-read endpoint, it
+is a delete-test on mass (the discipline that has held all week), and it is
+the one mechanism that restores PPR to the stage time the session description
+promises — as the query-time complement to §4's build-time entity layer,
+which is the talk's own thesis anyway.
+
+##### 5h-5. The framing — Nathan's, APPROVED as the section's story (2026-09-07)
+
+Nathan, on when PPR actually paid off for him: *a huge, diverse corpus, no
+time to develop an ontology, and an extraction prompt that just said "find me
+interesting stuff."* That experience is the frame the section has been
+missing, and it inverts the ablation from a degradation exercise into the
+audience's reality: **the ablated graph isn't a worst case, it's the graph
+most people have.**
+
+The two paths, as the section should draw them:
+
+| | the §4 path (gold-plated) | the §5 path (budget) |
+|---|---|---|
+| build time | careful extraction, coreference, resolution, taxonomy, governance | cheap prompt, no resolution pass, ship it |
+| query time | tag filter + cosine — go home early | entity-seeded PPR compensates |
+| duplicates | merged at build time | seed all twins df-proportionally — **measured identical to the merged walk** (5f refinement, an identity) |
+| coreference gaps | resolved at build time ("one of his wives" → SACAGAWEA) | the walk bridges via co-mentions / adjacency — **measured in 5i: reachability survives, rank does not; this leg FAILED** |
+| hubs, no ontology | curated / renamed at build time | IDF weight damps them automatically — **measured, finding 2** (4.53/8 → 0.60/8) |
+
+Three legs; two already measured, one pending. **"About as good and less work
+up front" is the hypothesis 5h-1 tests, not yet a slide line** — per the
+measurement discipline, the phrase stays off slides until the ablated-graph
+ranks exist. *(The ranks now exist — finding 5i — and they refuse the phrase:
+the third leg failed for coreference-heavy entities. The stage shape below is
+kept for history but is superseded by 5i's closing paragraph.)* And the bound gets stated on stage: the walk only buys back
+edges that exist *somewhere in the neighborhood*. It cannot recover what
+cheap extraction never tagged at all (limit #3's horse passage), and the
+6.1% of chunks with zero entities stay unreachable at any damping. Build-time
+work is the only fix for those — that is what keeps the two paths a real
+trade instead of a sales pitch.
+
+Stage shape, revised from 5h-1's: *"Section 4 showed you the gold-plated
+entity layer. Here is the confession: you usually don't have time for that. I
+didn't — my best PPR results came from a corpus where the extraction prompt
+was 'find me interesting stuff.' So skip the governance, take the cheap
+graph, and let the walk pay the rent at query time: duplicates seed as if you
+had merged them, missing coreference gets bridged through co-mentions, and
+the IDF weight does the hub curation you never did."* The personal anecdote
+opens the beat — it is the "problem the audience has felt" this section's
+opening has needed.
+
+#### 5i. The extraction-grade ablation, run — the walk keeps the passages *reachable*, not *ranked* (2026-09-07)
+
+5h-1's experiment, built (`scripts/measure_ablation.py`) and measured. Design
+as specified there: keep only the **name-backed** `MENTIONED_IN` edges
+(classification imported from `measure_extraction_grade.py`, not
+reimplemented), project `lc-mentions-ablated` (IDF reweighted on the ablated
+degrees — an ordinary extraction would compute IDF from its own edges) plus a
+`+NEXT_CHUNK` variant, seed with the decomposed seeder, and measure the
+**corpus-wide rank** of every already-hand-read endpoint under pure
+entity-seeded PPR — ranks, never top-k membership, per 5d-quinquies. Read-only
+throughout; `lc-mentions` and `lc-retrieval` untouched.
+
+**Hand verification before measurement, one surprise kept.** The three
+SACAGAWEA receipts (Nov-4, Jun-16 fever, Aug-14) classify `inference` and drop,
+and CHARBONNEAU→Nov-4 is name-backed and survives — as 5h-1 predicted. But
+**SHOSHONE→Nov-4 is `surface-only` and drops**: "Snake Indians"/"Snake" are
+filed aliases and present in the text, yet they are *exonyms* — no string
+kinship with SHOSHONE (JW 0.58) — so `name_like` classes them descriptive.
+5h-1's "Nov-4 names Chabonah and the Snake nation" was right about the text
+and wrong about the classifier. Kept as-is deliberately: a real NER+gazetteer
+might well link the exonym, so dropping it makes the walk's job strictly
+harder, and any recovery is the conservative reading. Nov-4's surviving route
+is through CHARBONNEAU alone.
+
+**The result that reframes the experiment: ablation is not uniform.** Corpus
+mass first: 9,541 of 14,799 edges kept (64.5%, matching 5h-1's classifier
+run); chunks with zero entity edges grow 179 → 387 (6.1% → 13.3%). But
+per seed entity:
+
+| seed | edges kept | share |
+|---|---|---|
+| JOHN ORDWAY | 72 / 74 | 97% |
+| TOUSSAINT CHARBONNEAU | 52 / 62 | 84% |
+| **SACAGAWEA** | **6 / 64** | **9%** |
+
+The journals almost never name her. A regex sweep over all 2,913 chunk texts
+for every plausible spelling (sah/sar + cah/kah + gar/gah…, sacaja…, janey)
+finds **12 chunks in the whole corpus that name Sacagawea at all** — 6 are the
+classifier's name-backed set, 5 more carry edges the classifier drops on
+gazetteer/`name_like` gaps (audit table in the script), 2 have no edge at all.
+Cheap extraction does not degrade this graph evenly: it specifically deletes
+the person who exists in the text as "the squaw", "the Indian woman", "one of
+his wives". **The entity the demo question is about is the entity NER-grade
+extraction can barely see** — 64 chunks of build-time identity resting on ~12
+namings.
+
+**The measurement.** Controls = endpoints whose seed edge is name-backed (they
+survive ablation; they exist to show the instrument sees what was varied).
+Tests = the three SACAGAWEA coref-only passages. Ranks are corpus-wide
+(2,913) under pure entity-seeded PPR:
+
+| endpoint (controls) | filter+cosine, ablated | PPR full | ablated | +NEXT |
+|---|---|---|---|---|
+| charbonneau 1805-03-18 hiring | in filter, rank 5/52 | 47 | 40 | 37 |
+| charbonneau 1804-12-18 language | in filter, 3/52 | 4 | 1 | 4 |
+| charbonneau 1805-08-25 judgement | in filter, 6/52 | 6 | 6 | 8 |
+| ordway 1804-05-17 court martial | in filter, 52/72 | 19 | 18 | 17 |
+| ordway 1804-05-26 detachment | in filter, 7/72 | 21 | 25 | 26 |
+
+| endpoint (tests) | filter+cosine, ablated | PPR full | ablated | +NEXT | ablated, generous |
+|---|---|---|---|---|---|
+| Nov-4 "one of his wives" | **LOST by construction** | 58 | 114 | 118 | 165 |
+| Jun-16 her fever | **LOST** | 11 | 480 | 566 | 706 |
+| Aug-14 Cameahwait | **LOST** | 62 | 1108 | 779 | 844 |
+
+Controls barely move — ±7 rank positions across both graphs, the delete-test
+seeing exactly what was deleted. Tests fall off a cliff.
+
+**Verdict, one per arm:**
+
+1. **Filter+cosine goes blind, categorically.** As constructed — this arm is
+   the control for 5h-5's claim, and the claim's first half holds: no tag, no
+   passage, at any k.
+2. **The walk does NOT buy them back.** It keeps all three *reachable* — the
+   predicted route is real (SACAGAWEA → her named Aug-17/19 chunks →
+   CHARBONNEAU → Nov-4, verified edge by edge) — but at ranks 114–1108, not
+   in any context window anyone ships. The mechanism is the non-uniformity
+   above: ablation didn't just delete the filter's view of these passages, it
+   deleted 58 of the seed's own 64 edges, so the walk starts nearly blind
+   too. **"About as good and less work up front" is unsupported by these
+   numbers and stays off slides** — not as a hedge but as a measured result:
+   for a coreference-heavy entity, the walk degrades from rank ~11–62 to rank
+   ~114–1108 exactly where the filter degrades to nothing.
+3. **NEXT_CHUNK is not a coreference patch on this corpus, and the premise is
+   why.** The antecedent is *not* in the preceding chunk: the nearest chunk
+   naming Sacagawea sits **169 NEXT_CHUNK hops** from the Jun-16 fever
+   passage, 14 from Aug-14, and beyond 500 from Nov-4. The journals' persistent
+   referent ("the squaw") spans months — coreference here is corpus-scale, not
+   sentence-scale — so at damping 0.45 the sequence edge carries nothing, and
+   adding it *hurts* two of three tests (114→118, 480→566: pure mass
+   dilution). 5c's no-effect verdict on NEXT_CHUNK now extends to the one
+   mechanistic job 5h-1 had reserved for it. *(Corrected in 5j-bis: on the
+   real budget graph the adjacent chunks DO carry the antecedent — as
+   role-phrase shard tags the gold graph had merged away, so this ablation
+   could never see them. Adjacency pays only when those shards are seeded,
+   and only to ~rank 50.)*
+
+**Sensitivity (the classifier's contamination, quantified rather than
+waved at).** `--generous` restores the 5 hand-audited gazetteer-gap edges
+(SACAGAWEA df 6 → 11, the honest ceiling for what any NER gazetteer could
+tag): test ranks 165 / 706 / 844. Individual endpoints wiggle in both
+directions — more surviving Sacagawea chunks spread the seed mass wider, so
+Nov-4 actually *drops* — but the conclusion is identical at both gazetteer
+grades. Not a classifier artifact.
+
+**What this does to 5h-5's frame.** Two legs stand measured (duplicates seed
+as if merged — 5f's identity; IDF damps hubs — finding 2). The third leg is
+now measured and **the budget path does not cover coreference.** What survives
+for the walk, stated honestly:
+
+- *Graceful vs. categorical failure.* The filter loses coref-only passages
+  absolutely; the walk keeps them at nonzero score, findable by a consumer
+  that looks past top-8 (agentic retrieval, entity expansion, §7 paths). Real,
+  but a different claim than "compensates at query time".
+- *Everything name-backed keeps working.* Controls held within a few
+  positions; on the 84–97% of edges ordinary extraction does produce, the
+  machinery is fine.
+- The bound, which now has teeth: the walk cannot recover never-tagged
+  passages (limit #3's horse), and the zero-entity floor doubles under
+  ablation (6.1% → 13.3% of chunks unreachable at any damping).
+
+For the person the corpus names ~12 times and refers to hundreds of times by
+role, **build-time coreference is the only thing that pays — section 4's
+thesis landing in section 5 with numbers.** Stage consequence is Nathan's
+call, but the honest beat now reads: *the walk covers your duplicates and
+your hubs; it does not cover your pronouns.* The Sacagawea coverage number —
+6 name-backed chunks out of 64 — is itself the most quotable artifact this
+experiment produced: the demo corpus's most important person is nearly
+invisible to the extraction grade most teams run.
+
+*(Observation parked, not concluded: the ordway court-martial control sits at
+filter+cosine rank 52/72 — legal-orders vocabulary, cosine's known blind spot
+— while the ablated walk ranks it 18. One instance, n=1, noted here so nobody
+re-derives it as a finding.)*
+
+*(Same day: Nathan pointed out the simulation undersells the real thing —
+see 5j, which reruns the measurement on an actual budget extraction and
+confirms this finding harder.)*
+
+#### 5j. The budget graph for real — `rawluna` replaces the simulation, and it is harsher (2026-09-07)
+
+Nathan's correction to 5i's design: the graph most teams have is not NER
+output — it is a modern-LLM extraction with no resolution pass, and the
+project already owns one. `rawluna` is the gpt-5.6-luna extraction, frozen
+for section 4's measurements. New database **`budgetluna`** = a copy of it
+(dump/load; `rawluna` untouched and now checkpointed at
+`../rawluna-2026-09-07T17-12-30.dump`) plus the query-side indexes the
+machinery needs and nothing else: the corps repo's full-text index statements
+verbatim, and `embed_entities.py` run from a patched copy that targets the
+database explicitly (the home-database gotcha) — 3,669 entities embedded,
+per-label vector indexes created, **resolution pass skipped**. Chunk ids and
+chunk embeddings are identical to the demo corpus, so every hand-read
+endpoint carries over unchanged.
+
+`scripts/measure_budget_graph.py` measures whatever database is configured,
+as it stands — no ablation, the graph *is* the condition. Validation: run
+against `neo4j` it reproduces 5i's full-graph reference column exactly
+(47/4/6, 58/11/62, 19/21).
+
+**What "no resolution pass" actually looks like — and it is not missing
+edges.** The luna extractor resolves pronouns within its context window, but
+where the journals never name the person it mints **vague nodes**: Nov-4's
+coreference is a Person literally named `ONE OF HIS WIVES`; Aug-14 carries
+`HIS WOMAN` and `OUR INTERPRETER`; the fever passage tags no person at all
+except Clark. Identity shatter, measured over gold-SACAGAWEA's 64 chunks
+(cross-database join on chunkId, keyword-generous so every count favors the
+budget graph):
+
+| where the 64 chunks went in `budgetluna` | chunks |
+|---|---|
+| SACAGAWEA (the node the seeder can find) | 8 |
+| INDIAN WOMAN | 10 |
+| 17 further shards — THE INDIAN WOMAN, SQUAR, HIS WIFE, ONE OF HIS WIVES, JANEY, SAHKAHGAR WE, … | 1–3 each |
+| **no plausible her-referent Person at all** | **25** |
+
+The named men are fine — CHARBONNEAU df 55 (gold 62), ORDWAY df 79 (gold 74).
+Budget extraction is only cheap for people the text names.
+
+**The extraction-grade classifier cannot see this failure — it scores the
+budget graph as *better*.** `measure_extraction_grade.py` on `budgetluna`:
+**75.1% name-backed, 3.6% inference** (gold graph: 64.5% / 12.1%). Of course
+it does: instead of resolving "the Indian woman" to SACAGAWEA (an edge with no
+name support), the budget extractor minted a node *named* THE INDIAN WOMAN,
+whose edge is trivially name-backed. Fragmentation moves the defect from
+edges to nodes, and edge-support classification is blind to nodes. 5h-1's
+"~12% is a size class" caveat gets a sharper sibling: **an edge-support
+quality metric can improve as the extraction gets worse.**
+
+**The seeder finds one shard.** "Sacagawea" resolves by full-text to
+SACAGAWEA (df 8) alone. 5f's exact-name twin union — the mechanism that made
+duplicates seed as if merged — cannot fire here, because a real budget
+graph's duplicates are *spelling variants and descriptions*, not exact-name
+twins. That leg of 5h-5's table quietly assumed the duplicates section 4's
+pipeline produces; the duplicates a cheap pipeline produces are a harder
+class.
+
+**Results** (same endpoints, same machinery as 5i; ranks corpus-wide under
+pure entity-seeded PPR):
+
+| endpoint (controls) | filter+cosine | PPR | +NEXT |
+|---|---|---|---|
+| charbonneau 1805-03-18 hiring | in filter, 6/55 | 2 | 1 |
+| charbonneau 1804-12-18 language | in filter, 4/55 | 6 | 8 |
+| charbonneau 1805-08-25 judgement | in filter, 5/55 | 47 | 48 |
+| ordway 1804-05-17 court martial | in filter, 54/79 | 23 | 18 |
+| ordway 1804-05-26 detachment | in filter, 7/79 | 6 | 8 |
+
+| endpoint (tests) | filter+cosine | gold PPR | budget PPR | +NEXT | 5i ablated |
+|---|---|---|---|---|---|
+| Nov-4 "one of his wives" | **LOST — no tag** | 58 | 75 | 90 | 114 |
+| Jun-16 her fever | **LOST** | 11 | **1709** | 1769 | 480 |
+| Aug-14 Cameahwait | **LOST** | 62 | **1475** | 1154 | 1108 |
+
+Nov-4 is the exception that proves the mechanism: CHARBONNEAU is tagged on it
+*and* on two of her eight chunks (Aug-17/19), so the three-step bridge exists
+and delivers rank 75 — the walk's honest best case, reachable but not
+shippable. The fever and Aug-14 passages land **worse than the simulation**
+(1709/1475 vs 480/1108), because 5i's ablation still walked the gold node
+set with edges removed, while the real budget graph's identity shards do not
+connect to the seed at all. NEXT_CHUNK: still no coreference patch — worse on
+two of three, same as 5i.
+
+**Verdict.** The real budget graph confirms 5i and hardens it: the filter is
+blind *and* the walk is starved, now measured on the kind of graph the
+audience actually has rather than a degradation of a gold one. What is
+genuinely new beyond 5i:
+
+1. **The shatter table.** A person can be ~90% invisible to every name-keyed
+   mechanism — filter, seeder, walk — while the extraction looks healthy on
+   every edge-level metric.
+2. **The metric inversion.** Textual-support classification scores the worse
+   graph higher. Anyone auditing extraction quality by edge support alone
+   will certify exactly the graph that fails this way.
+3. **The twin-union boundary.** Duplicate-tolerance by exact-name union is
+   real but only covers the duplicates a *good* pipeline leaves behind;
+   cheap pipelines produce shards no name lookup groups.
+
+The beat stands as 5i left it — *the walk covers your duplicates and your
+hubs; it does not cover your pronouns* — and "your pronouns" is now measured
+on a real gpt-5.6-luna extraction. Section 4's build-time
+coreference+resolution is what turns 25 invisible chunks and 19 shards into
+one node with 64 edges; nothing at query time did.
+
+*(Caveats that travel with this: one corpus, and an unusually pronoun-heavy
+one — first-person journals where the most-mentioned woman is referred to
+almost entirely by role; the fever passage is arguably extraction recall
+rather than coreference (no person tagged at all); and the charbonneau
+hiring control at budget PPR rank 2 vs gold 47 is a different extraction's
+different neighborhood, an observation, not a finding.)*
+
+##### 5j-bis. Seeding every shard — Nathan's question, and it changes the mechanism story (2026-09-07)
+
+Nathan asked whether the walk above was seeded from multiple possible
+matches. It was not — "Sacagawea" resolves to the SACAGAWEA node alone,
+because all three rescue mechanisms miss by construction: the full-text AND
+query cannot token-match SAHKAHGAR WE or JANEY, the exact-name twin union
+needs identical strings, and the seeder's vector fallback only fires when
+full-text returns nothing. So 5j's verdict conflated *the walk cannot
+compensate* with *the seeder cannot find the shards*. Separated, with two new
+arms (`--vector-margin`, `--oracle-shards` in `measure_budget_graph.py`):
+
+**Arm setup.** *Automatic:* union each mention's vector candidates within
+0.10 of its top hit — no oracle, whatever the margin admits gets seeded;
+here that is SACAGAWEA (8) + SNAKE INDIAN WIFE (1) + THE SQUAW (1) + the
+**impure** INDIAN WOMAN (df 24, purity 0.42 — 58% of its chunks are other
+women), which takes 0.706 of the df-proportional mass. *Oracle:* all 17
+audited shards with purity ≥ 0.5 against gold (table in the script) — an
+upper bound no real budget system has, and note the purity cut **excludes**
+INDIAN WOMAN and SQUAR. Cells below are `filter · PPR · PPR+NEXT`:
+
+| seeds | Nov-4 | Jun-16 fever | Aug-14 |
+|---|---|---|---|
+| what the seeder finds (5j above) | LOST · 75 · 90 | LOST · 1709 · 1769 | LOST · 1475 · 1154 |
+| + vector margin 0.10, automatic | LOST · 131 · 184 | LOST · 1844 · **47** | LOST · 1031 · **69** |
+| oracle: 17 audited shards | **IN, rank 3/31** · 17 · 22 | LOST · 2184 · 2208 | **IN, rank 26/31** · 2 · 2 |
+
+Four findings, each mechanistic:
+
+1. **Query-time compensation on a budget graph = query-time entity
+   resolution.** Under oracle shards the *filter* recovers Nov-4 and Aug-14
+   too (their tags are ONE OF HIS WIVES and HIS WOMAN — shards). 5g's parity
+   returns the moment identity is resolved, at either build time or query
+   time; the walk never separately compensates. "Skip the resolution pass"
+   does not delete the work, it moves it into every query.
+2. **Shard discovery is the wall.** The shipped vector margin (0.03) finds
+   nothing new — SACAGAWEA sits 0.09 above the shard band. 0.10 catches
+   three pure shards plus the impure hub; a hair wider (0.122+) admits
+   KA KAWISSASSA and Charbonneau's own shards (SHABONOE, 0.7398). The
+   seeder's-disease theme (5d-ter), now at the shard layer.
+3. **The 5h-1 adjacency patch finally fires — as shards × NEXT_CHUNK, and
+   only that far.** With the impure INDIAN WOMAN seeded, NEXT_CHUNK pulls the
+   fever passage 1844 → **47** and Aug-14 1031 → **69**. Verified mechanism:
+   INDIAN WOMAN tags chunks **one NEXT hop** from both test passages (the
+   same-day chunks that say "the Indian woman" where the test chunk says
+   "her"). This *corrects 5i's mechanism note*: the antecedent's role-phrase
+   IS in the adjacent chunk — but on the gold graph those role-phrase
+   mentions were merged into SACAGAWEA, so the name-support ablation deleted
+   them, while the budget graph keeps them as taggable shards. Bound stated:
+   rank ~47–69 is top 2%, not a context window, and it took the walk's every
+   trick at once.
+4. **The purity trap.** The oracle — purity ≥ 0.5, the "correct" merge —
+   *loses* the fever passage (2184/2208) that the noisy automatic arm
+   reaches (47), because the excluded INDIAN WOMAN shard is the one carrying
+   the fever-week adjacency. Coverage and contamination have the same
+   source: the phrase everyone used for her is the phrase used for others.
+   Section 3d's bridge nodes at the extraction layer, now with a measured
+   cost in *both* directions — merge it and import wrong-person chunks,
+   drop it and lose the neighborhood.
+
+The beat survives unchanged and gains its sharpest line: **the budget path's
+query-time bill is an entity-resolution bill.** Duplicates and hubs the walk
+covers; shards need resolving — at build time once, or at query time forever,
+and the fever passage is only ever reachable through the contaminated shard
+either way.
+
+**Nathan's closing sharpening, and it is the section's landing:** *if we
+resolve all the shards at query time, we might as well be filtering on tags
+again.* The measurements make that an identity chain, not an analogy:
+df-proportional shard seeding IS the merged node's walk (5f's arithmetic),
+and the merged walk IS filter parity (5g) — so query-time resolution + walk
+= build-time resolution + tag filter, paid per query instead of once, with
+the bridge-node problem live and no consistency gate behind it (the
+0.10-margin knife edge is §3's candidate generation rebuilt inside the
+seeder, minus 3g's adjudication). The oracle row says it plainly: shards
+known, the *filter* holds Nov-4 at rank 3/31. What survives the collapse,
+stated small because it is small: (i) fever-class passages — no tag at any
+resolution quality, walk+adjacency only, rank 47, an agent's path not a
+context window; (ii) graded membership on impure shards — a filter takes
+INDIAN WOMAN's 24 chunks all-or-nothing at 58% wrong-person, the walk takes
+them down-weighted (mechanism only, those chunks unjudged — 5g claim #3
+stays a footnote); (iii) build-time resolution is once, cached, and
+judge-gated; query-time is every query, in the latency path, ungated. Every
+query-time trick measured in 5i–5j-bis is the tag filter in disguise or
+entity resolution in disguise — the value lives in the entity layer, which
+is the talk's own thesis arriving from the opposite direction.
+
+#### 5k. The other shard class — George Drouillard, one man in many spellings (2026-09-07)
+
+Nathan's question after 5j-bis: Sacagawea is a tough nut — what about people
+like Drouillard, named constantly but under wild spellings? Measured,
+`scripts/measure_name_shards.py`, on both graphs. This completes a 2×2 the
+section now owns: *role shards* (rarely named, identity in descriptions —
+5j) vs. *spelling shards* (always named, identity split by orthography).
+
+**Finding zero, and it relocates the problem: this one is live on the DEMO
+graph.** The gold pipeline never merged DREWYER (df **265**) into GEORGE
+DROUILLARD (df **63**) — disjoint, zero co-occurring chunks, 328 chunks
+between them (11% of the corpus). Ask about him by his historical name and
+the tag filter sees **19%** of him (`budgetluna`: 13%, 51/380). So 5g's
+filter parity carries a precondition that was invisible until now: **parity
+holds for *resolved* tags.** Every 5g case happened to ask about entities the
+resolution pass had merged; Drouillard is the man it missed — the hub table's
+on-stage duplicate, now with a measured retrieval bill.
+
+The measurements, per graph (gold / budget):
+
+1. **The seeder is spelling-hostage.** "George Drouillard" and "Drouillard"
+   resolve to GEORGE DROUILLARD alone; "Drewyer" resolves to DREWYER (plus,
+   on gold, the conflation shards DREWYER JOS and DREWYER FRASURE). Whichever
+   spelling the user types, they get that shard and nothing else — full-text
+   cannot cross an orthography gap, and the exact-name twin union (5f)
+   requires identical strings.
+
+   *Nathan asked whether full-text shouldn't return several candidates. It
+   does — top-10, keep everything within 50% of the best hit, then twins;
+   that is how "Drewyer" keeps five candidates and how both SACAGAWEA nodes
+   seeded in 5f. But candidacy requires sharing a token, and every route was
+   checked: the AND query matches exactly one node; the OR fallback (never
+   fired — AND succeeded) scores GEORGE DREWYER at 3.76 on the shared
+   "george" vs. 11.38 for the top hit, far below the keep-ratio floor; even
+   Lucene's maximum fuzziness (`drouillard~2`) returns only GEORGE DROUILLARD
+   — "drewyer" is ~5 edits away. And it is symmetric: asking as "drewyer"
+   keeps the five DREWYER-cluster candidates and* cuts *GEORGE DROUILLARD
+   (1.56, below the floor). Multi-candidate resolution returns a few
+   candidates* per spelling cluster, *never across clusters.*
+2. **Vector discovery fails *worse* here than for role shards.** DREWYER —
+   81% of the man — ranks **#22** among vector candidates for "George
+   Drouillard" on both graphs, behind five Dorion variants (Pierre Dorion:
+   a *different* interpreter — 5e's co-typed substitution, now one layer
+   down, inside shard discovery), DREYER, DURIOUE, DURRIEN. A margin deep
+   enough to reach #22 admits ~21 nodes, mostly other people. Embedding
+   space clusters French-surname-shaped strings: similar names of different
+   people sit closer than different spellings of the same person. Sacagawea's
+   role shards had a usable-if-impure margin at 0.10; Drouillard has none.
+3. **The walk from the caught shard trails plain cosine.** Median corpus rank
+   of the 265 missed DREWYER chunks, seeded from what resolution caught:
+   **681** (budget: 862) — vs. cosine on a Drouillard question at **499**
+   (533). The shards never co-occur, so the bridge is three steps through
+   shared co-mentions, and those co-mentions are the expedition's hubs, which
+   the IDF weight exists to damp. The weighting that saves the walk from
+   Lewis kills the only route between a man's two spellings.
+4. **Resolution fixes it, cheaply, and then either tool works.** Both shards
+   df-proportional (arithmetically the merged node, 5f): median **168**
+   (196). Tag filter on both shards: every passage, by membership. And unlike
+   Sacagawea this is the *easy* merge — two pure, disjoint shards, exactly
+   the string-similarity-plus-judge case §3's machinery handles, no
+   bridge-node ambiguity. The pipeline simply never ran it on him.
+
+**The 2×2, candidate stage material:**
+
+| shard class | query-time discoverable? | build-time fix |
+|---|---|---|
+| spelling shards (Drouillard, 265/63 on the demo graph) | no — vector nominates similar names of *other people* first (#22, behind the Dorions) | string + judge merge — cheap, §3's machinery |
+| role shards (Sacagawea, 19 shards + 25 untagged) | partial and impure; shards×NEXT reaches ~rank 50 | coreference — the expensive pass |
+
+Both rows end at the entity layer, which is 5j-bis's landing generalized: the
+choice is never filter vs. walk, it is when the resolution bill gets paid —
+and Drouillard shows the bill exists even on the graph you thought was gold.
+
+*(Discipline notes: all medians are over tag-defined populations — no chunk
+was judged for relevance, and no claim is made about which DREWYER passages
+answer anything; the Drouillard question used for the cosine reference is not
+in the bank; the conflation shards — SHANNON DREWYER df 6, "Shannon &
+Drewyer" sentences fused into one node — are noted but unmodelled.)*
+
 #### 6. Damping: shorter walks win monotonically
 
 Share of walk mass within `k` steps is `1 − d^(k+1)`.
@@ -2313,6 +3151,15 @@ passage is correct. Every *accuracy* claim still waits for section 8.
 
 ### Design notes not yet folded into the sections
 
+- **Entity retrieval split, decided 2026-09-07 (not yet built):** fulltext-only
+  for Person / Place / WaterBody / NativeNation (queries are name-shaped, and
+  disambiguation folded the descriptive Person forms into aliases); vector
+  embeddings only for AnimalSpecies / PlantSpecies / Taxon / Event (taxonomy
+  replaced the user's vocabulary with binomials, and Event queries are
+  paraphrases). **Idea for later:** keep `person_embeddings` as a fallback
+  index the agent consults only when fulltext returns empty, for pure-paraphrase
+  person queries with no alias token overlap ("the enslaved man on the
+  expedition" → York). None of the current 14 demo questions needs it.
 - ~~**Section 4 has a full implementation design**~~ — **built.** Candidate
   pairs are carried as node-id tuples, projected via `gds.graph.cypher.project`
   over `UNWIND $pairs`, and real `gds.wcc.stream` runs against them. Confirmed
@@ -2595,10 +3442,19 @@ That is why adjudication runs *before* closure, not after.
 "find chunks that sound like this chunk," and it catches things embeddings
 miss. Carried into the benchmark in section 8 as the `cooccurrence` strategy.
 
-**Demo** — `demo_resolution.py`, read-only, runs in ~2 s:
-- Sacagawea's nineteen surface forms, as the problem statement
-- live candidate generation, then `--adjudicate`, then the closed component
-- the write audit proving zero writes
+**Demo** — validated end to end 2026-09-07, timings and conditions in finding
+3h. Three acts, two databases:
+- `demo_resolution.py --adjudicate --max-calls 0` on **`rawluna`** (read-only,
+  2.6 s): the nineteen surface forms, live candidates, and the write audit —
+  and the trap: WCC over the *confirmed* pairs still welds Sacagawea into a
+  91-node component
+- `tools/disambiguate_layered.py --database rawluna --max-calls 0
+  --consistency-max-calls 0` (dry run, 2.2 s, 151 lines): the consistency
+  layer prints `SPLIT [17 → 12]` — her clean cluster, the impostors expelled
+  by name (prerequisite: one cache-filling run before rehearsal, see 3h)
+- **`lewisclark`**, the applied after graph: receipts table (SACAGAWEA, 32
+  absorbed forms), `Crusatte~` → PETER CRUZATTE, and `demo_paths.py` with
+  dated chunk citations (project `lc-retrieval` there first)
 
 **Take-home for this section.** Fix entity resolution before you tune retrieval,
 and note that build-time work is what makes query-time work possible — the

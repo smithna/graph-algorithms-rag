@@ -117,10 +117,16 @@ def k_shortest_paths(
         return []
 
     paths: list[Path] = []
+    seen_routes: set[tuple[int, ...]] = set()
     for row in frame.itertuples():
         node_ids = list(row.nodeIds)
         if len(node_ids) - 1 > config.max_hops:
             continue
+        # Yen's treats parallel relationships as distinct paths; a route here is
+        # a node sequence, and _hydrate shows one relationship per hop anyway.
+        if tuple(node_ids) in seen_routes:
+            continue
+        seen_routes.add(tuple(node_ids))
         hydrated = _hydrate(node_ids, total_cost=float(row.totalCost))
         if hydrated:
             paths.append(hydrated)
@@ -161,16 +167,22 @@ def _hydrate(node_ids: list[int], *, total_cost: float) -> Path | None:
         MATCH (b) WHERE id(b) = bId
         MATCH (a)-[r]-(b)
         WHERE type(r) <> 'MENTIONED_IN'
-        WITH i, a, b, r
-        ORDER BY i, r.date
+        // Entity merges combine parallel relationships, leaving list-valued
+        // date/chunkId on ~400 relationships; take the first element of each.
+        WITH i, a, b, r,
+             CASE WHEN valueType(r.date) STARTS WITH 'LIST'
+                  THEN r.date[0] ELSE r.date END       AS relDate,
+             CASE WHEN valueType(r.chunkId) STARTS WITH 'LIST'
+                  THEN r.chunkId[0] ELSE r.chunkId END AS relChunkId
+        ORDER BY i, relDate
         RETURN i,
                head(labels(a))                       AS fromType,
                coalesce(a.canonicalName, a.name, '') AS fromName,
                type(r)                               AS relType,
                head(labels(b))                       AS toType,
                coalesce(b.canonicalName, b.name, '') AS toName,
-               r.chunkId                             AS chunkId,
-               toString(r.date)                      AS date
+               relChunkId                            AS chunkId,
+               toString(relDate)                     AS date
         """,
         nodeIds=node_ids,
     )
