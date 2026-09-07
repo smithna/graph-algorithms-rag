@@ -346,6 +346,31 @@ def adjudicate(
     return verdicts
 
 
+def cached_verdict(
+    left: str, right: str, label: str, model: str = DEFAULT_MODEL
+) -> bool | None:
+    """Look up a previously adjudicated pair without calling the model.
+
+    Returns True/False if this exact pair was judged before, else None.
+
+    This is what makes transitivity verification affordable. Candidate
+    adjudication rejects most of what it sees and the pipeline throws those
+    rejections away — but a rejection is precisely the evidence the transitivity
+    check needs. `SACAGAWEA ~ TOUSSAINT CHARBONNEAU` co-occur in nearly every
+    passage, so they are almost certainly proposed as a candidate and rejected
+    long before anything asks whether `HIS WIFE` bridges them.
+
+    Keeping negatives turns "ask the model again" into a dictionary lookup.
+    """
+    path = _cache_path(model, label, (left, right))
+    if not path.exists():
+        return None
+    try:
+        return bool(json.loads(path.read_text())["same_entity"])
+    except Exception:
+        return None
+
+
 def confirmed_pairs(verdicts: list[Verdict]) -> list[CandidatePair]:
     """The pairs the judge accepted — the correct input to transitive closure.
 

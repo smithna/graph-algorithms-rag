@@ -763,6 +763,151 @@ def components(
     return result
 
 
+# ── Transitivity verification: catching bridge nodes before closure ───────────
+
+
+@dataclass
+class Bridge:
+    """A node whose confirmed neighbours are *not* the same as each other."""
+
+    node: EntityRef
+    left: EntityRef
+    right: EntityRef
+    #: True when the contradiction came from the cache rather than a fresh call
+    from_cache: bool
+
+    def describe(self) -> str:
+        return (
+            f"{self.node.name}  bridges  {self.left.name}  ~/~  {self.right.name}"
+        )
+
+
+@dataclass
+class TransitivityReport:
+    bridges: list[Bridge]
+    checks_needed: int
+    cache_hits: int
+    llm_calls: int
+
+    @property
+    def bridge_nodes(self) -> set[int]:
+        return {b.node.node_id for b in self.bridges}
+
+
+def verify_transitivity(
+    pairs: list[CandidatePair],
+    *,
+    judge=None,
+    max_calls: int = 200,
+) -> TransitivityReport:
+    """Find bridge nodes among confirmed pairs, before WCC closes over them.
+
+    **The assumption nobody checks.** WCC closure is exactly the claim that
+    "same entity" is transitive: A~X and B~X therefore A~B. Adjudication never
+    tests that, because it only ever sees pairs. Bridge nodes are precisely
+    where the assumption fails — `THE INTERPRETER` is legitimately confirmed
+    against both Charbonneau and Drouillard, and closure then fuses two men who
+    share nothing but a job.
+
+    So: verify it, but only where it can bite. For each node with two or more
+    confirmed neighbours, ask whether those neighbours are the same as each
+    other. A "no" means the node is a bridge and is dropped from the merge
+    graph — left unmerged, which is the safe default.
+
+    **Most of these questions have already been answered.** Candidate
+    adjudication rejects far more pairs than it confirms and the pipeline throws
+    those rejections away, but a rejection is exactly the evidence needed here.
+    Two people who co-occur constantly — Sacagawea and Charbonneau, say — are
+    almost certainly proposed as a candidate and rejected long before anything
+    asks whether `HIS WIFE` bridges them. ``judge`` is consulted only for pairs
+    with no recorded verdict, and the report says how many were free.
+
+    ``judge(left_name, right_name, label) -> bool | None`` returns None when it
+    declines to answer; such pairs are treated as consistent, because refusing
+    to merge on an unanswered question is the conservative choice.
+    """
+    neighbours: dict[int, set[int]] = defaultdict(set)
+    refs: dict[int, EntityRef] = {}
+    confirmed: set[tuple[int, int]] = set()
+    for pair in pairs:
+        a, b = pair.left, pair.right
+        refs[a.node_id], refs[b.node_id] = a, b
+        neighbours[a.node_id].add(b.node_id)
+        neighbours[b.node_id].add(a.node_id)
+        confirmed.add(pair.key)
+
+    bridges: list[Bridge] = []
+    checks = cache_hits = llm_calls = 0
+
+    for node_id, nbrs in sorted(neighbours.items()):
+        if len(nbrs) < 2:
+            continue
+        ordered = sorted(nbrs)
+        for i, left_id in enumerate(ordered):
+            for right_id in ordered[i + 1 :]:
+                key = (min(left_id, right_id), max(left_id, right_id))
+                # already confirmed same -> transitivity holds here by definition
+                if key in confirmed:
+                    continue
+                left, right = refs[left_id], refs[right_id]
+                checks += 1
+                verdict = None
+                if judge is not None:
+                    verdict, was_cached = judge(left.name, right.name, left.label)
+                    if was_cached:
+                        cache_hits += 1
+                    else:
+                        llm_calls += 1
+                        if llm_calls >= max_calls:
+                            judge = None  # stop spending; remaining treated as consistent
+                if verdict is False:
+                    bridges.append(
+                        Bridge(
+                            node=refs[node_id],
+                            left=left,
+                            right=right,
+                            from_cache=bool(verdict is not None and was_cached),
+                        )
+                    )
+                    break
+            else:
+                continue
+            break
+
+    return TransitivityReport(
+        bridges=bridges,
+        checks_needed=checks,
+        cache_hits=cache_hits,
+        llm_calls=llm_calls,
+    )
+
+
+def components_verified(
+    pairs: list[CandidatePair],
+    inventory: dict[int, EntityRef],
+    report: TransitivityReport,
+    *,
+    max_component: int | None = 25,
+) -> tuple[list[Component], list[Component]]:
+    """Close over confirmed pairs with bridge nodes removed.
+
+    Returns ``(accepted, refused)``. A component larger than ``max_component``
+    is refused rather than merged — a backstop for whatever the bridge check
+    did not catch. Refusing to merge is always recoverable; merging is not.
+    """
+    bridge_ids = report.bridge_nodes
+    kept = [
+        p for p in pairs
+        if p.left.node_id not in bridge_ids and p.right.node_id not in bridge_ids
+    ]
+    closed = components(kept, inventory)
+    if max_component is None:
+        return closed, []
+    accepted = [c for c in closed if c.size <= max_component]
+    refused = [c for c in closed if c.size > max_component]
+    return accepted, refused
+
+
 # ── Gold set ──────────────────────────────────────────────────────────────────
 
 GOLD_PATH = Path(__file__).resolve().parent.parent / "questions" / "corps_members.yaml"
