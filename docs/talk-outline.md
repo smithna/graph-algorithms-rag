@@ -1152,71 +1152,105 @@ So the structure that would answer this question was never built. **No retrieval
 algorithm over this graph can find it by structure**, and that bound is set by
 extraction, not by ranking.
 
-##### The algebraic limit — stated correctly on the second attempt
+##### Combining evidence — stated correctly on the third attempt
 
-*(An earlier version of this finding claimed "PPR can never do conjunction."
-That runs together two separate claims and the second one was not established.
-Corrected below.)*
+*(Two earlier versions of this were wrong. The first said "PPR can never do
+conjunction." The second corrected that to "additive scoring cannot represent
+AND." Nathan then pointed out that my worked example presupposed its own
+conclusion, and he was right. Full history kept, because the final answer is
+more useful than any of the drafts.)*
 
-**What is provable.** PPR is **linear in the restart distribution**, so a
-multi-seed call computes `w_A·PPR_A(c) + w_B·PPR_B(c)`. A weighted sum has **no
-interaction term** — `∂²score/∂a∂b = 0` — so it never asks whether *both*
-values are non-zero:
+**Where I went wrong.** I argued a weighted sum has no interaction term, so
+`(1.0, 0.0)` and `(0.5, 0.5)` both score 1.0 and the sum cannot tell "near one
+seed" from "near both". But if chunk X mentions entity A only and chunk Y
+mentions A **and** B, then both sit one hop from A and receive *the same* mass
+from it — and Y receives B's contribution **on top**. For my numbers to hold, Y
+would have to be more weakly attached to A than X is, which is a different
+scenario I had quietly assumed. **The sum does give a bonus for being connected
+to both.**
 
-| | near A | near B | sum | product | min |
-|---|---|---|---|---|---|
-| chunk X | 1.0 | 0.0 | **1.0** | 0.0 | 0.0 |
-| chunk Y | 0.5 | 0.5 | **1.0** | 0.25 | 0.5 |
+**Measured, on comparable-degree seeds:**
 
-The sum is indifferent between concentration and spread. Conjunction is exactly
-the requirement that Y beat X, which is non-linear by construction. So **a single
-`sourceNodes` call cannot express AND.** Verified numerically: batched equals the
-sum of the single-seed runs to 4e-07.
+| seeds | group | n | median rank | median score |
+|---|---|---|---|---|
+| `SACAGAWEA` (64) + `TOUSSAINT CHARBONNEAU` (62) | **both** | 9 | **5** | 0.004425 |
+| | only A | 55 | 71 | 0.002166 |
+| | only B | 53 | 51 | 0.002244 |
 
-**What is NOT true, and what I wrongly concluded.** That conjunction is
-therefore unreachable. `combine_seeds()` returns the per-seed vectors, so they
-can be combined any way one likes — product, min, geometric mean. The additivity
-belongs to PPR-as-called, not to the architecture. My first test of this ran
-`MIN` only on `shoshone-horses` — the one question whose answering passage has
-**no horse entity attached** — so there was no conjunctive structure to find and
-the 0/8 result said nothing about the combiner.
+The "both" score is exactly the sum of the two singles (0.00217 + 0.00224 =
+0.00441), and that additivity puts **all nine** dual-mention chunks in the
+top-20 — median rank 5 against 51 and 71. That is a large, reliable conjunction
+bonus, and it is the answer to "can PPR combine evidence": **yes, and well.**
 
-**Tested fairly**, on the two questions where the structure does exist:
+**Where it actually degrades — degree, not additivity:**
 
-| combiner | charbonneau-role | sacagawea-interpreting |
-|---|---|---|
-| SUM (what PPR gives) | 7 promoted | 7 promoted |
-| MIN / PRODUCT / GEO-MEAN | **6 of 7 identical** | 5-6 of 7 identical |
+| seeds | group | n | median rank | median score |
+|---|---|---|---|---|
+| `SHOSHONE` (192) + `EQUUS CABALLUS` (14) | both | 2 | 4 | 0.010669 |
+| | only A | 190 | 110 | 0.000733 |
+| | **only B** | 12 | **8** | **0.010007** |
 
-**The combiner barely matters, and the reason is the same one that makes seed
-weighting a no-op.** Per-seed PPR vectors on this graph are highly correlated —
-mean pairwise `r` of +0.64 to +0.78 — and a deliberately far-apart pair
-(`EQUUS CABALLUS` + `SHOSHONE`) comes out at **+0.670, no less correlated than
-the near-synonyms.** On a bipartite graph over 2,913 chunks every entity's
-diffusion floods the same well-connected middle, so orthogonal PPR vectors are
-not obtainable here. Any symmetric combination of near-parallel vectors gives
-nearly the same ranking.
+Mass-per-chunk from a seed is roughly `1/degree`. The rare entity's 14 chunks
+each take a big share; the hub's 192 each take a sliver. So a chunk mentioning
+*only* `EQUUS CABALLUS` scores 0.0100 against 0.0107 for one mentioning both —
+a **6.6%** bonus for also containing the Shoshone, and the top-20 holds 12
+"only B" against 2 "both".
 
-*(Those `r` values are computed on percentile ranks and are inflated by a large
-near-zero tail whose ordering reflects general connectivity rather than the
-seed. The direct evidence is the near-identical top-8s.)*
+> **PPR does conjoin — but with weights you did not choose.** Each seed's
+> contribution is set by its degree in the graph, not by what the question
+> needs. Pair a rare entity with a hub and the hub is nearly free to ignore.
 
-**So the honest statement is:**
+**And you cannot normalise that away.** Percentile-ranking each seed's vector
+*before* summing equalises them and gives a clean conjunction signal —
+dual-mention chunks separate from single-mention by 30-60× in rank:
 
-> PPR's own multi-seed scoring is additive and cannot represent AND. Conjunction
-> needs a non-linear combiner applied outside the algorithm — and on a graph
-> this small and this well-connected, that combiner has almost nothing to work
-> with. Conjunction is a *pattern match*, which is Cypher's job.
+| seeds | combination | both | only A | only B |
+|---|---|---|---|---|
+| SHOSHONE + EQUUS CABALLUS | raw sum (ships) | 4 | 110 | **8** |
+| | per-seed percentile | 6 | **307** | **329** |
+| MERIWETHER LEWIS (377) + CYNOMYS (23) | raw sum (ships) | 6 | 208 | **16** |
+| | per-seed percentile | 10 | **401** | **387** |
 
-And for `shoshone-horses` specifically the binding constraint is still
-extraction, not combination: no combiner can select a chunk that is in neither
-seed's neighbourhood, and the Aug 18 1805 passage is in neither because it has
-no horse.
+**But it wrecks retrieval on the only ground truth available** — the hand-read
+passages from finding 5d:
 
-> **One property, two consequences, both worth stage time.** Linearity is why the
-> whole seed set batches into one `sourceNodes` call (3-8× faster) *and* why the
-> algorithm itself cannot conjoin. The speedup and the expressive limit are the
-> same fact.
+| | hand-judged passages in the top-8 |
+|---|---|
+| normalise **after** the sum (what ships) | `charbonneau-role` **3/3**, `sacagawea-interpreting` **1/1** |
+| normalise **per seed** | **0/3**, **0/1** (best ranks 22, 11, 14 and 22) |
+
+**Why**, and this is the load-bearing mechanic. Percentile-ranking a sparse PPR
+vector inflates its near-zero tail into the whole score range:
+
+```
+seed                                 deg   chunks >1e-6   % near-zero
+TOUSSAINT CHARBONNEAU                 62           2339         19.7%
+JEAN BAPTISTE CHARBONNEAU              1           1637         43.8%
+BIRTH OF JEAN BAPTISTE CHARBONNEAU     1            990         66.0%
+
+BIRTH OF JEAN BAPTISTE CHARBONNEAU: 1,923 chunks sit at PPR <= 1e-6, and
+percentile-ranking spreads them across 0.044 .. 0.660 — noise is handed
+66% of the available score range.
+```
+
+Two of the three seeds have **degree 1**. Normalising per seed gives those two
+noise fields equal footing with the one real signal.
+
+**So the shipped design is right, for a reason worth saying out loud:**
+
+> Normalising *after* the sum lets absolute PPR magnitude act as an **implicit
+> confidence weight** on each seed. A degree-1 seed with nothing to say
+> contributes almost nothing. The algorithm weights your seeds by how much they
+> actually know.
+
+**And that unifies this with finding #5.** Explicit seed weighting measured as a
+no-op because the seeds are *already* self-weighted, by orders of magnitude in
+PPR mass, while my explicit weights varied by about 2%. Weighting was never
+going to matter — the sum had already done it better.
+
+**What survives of the linearity point.** Not an expressive limit. Linearity is
+why the whole seed set goes into one `sourceNodes` call *and* why the seeds
+self-weight by informativeness. One property, two benefits.
 
 ##### What section 5 can honestly claim, after all this
 

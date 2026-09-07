@@ -373,15 +373,26 @@ BIRTH OF JEAN BAPTISTE CHARBONNEAU  (Event)
 
 **Slide:** all three, measured.
 
-> ### 1. It cannot conjoin.
+> ### 1. It combines evidence — but you don't choose the weights.
 
-> PPR is **linear in the restart distribution.** A passage near two seeds gets
-> the **sum** — never a bonus for being near **both**. `(1.0, 0.0)` and
-> `(0.5, 0.5)` both score 1.0. A linear combination cannot represent AND.
+> Good news first: additivity **is** a conjunction bonus. Seed `SACAGAWEA` and
+> `CHARBONNEAU` — comparable degree — and every one of the nine passages
+> mentioning **both** lands in the top-20, median rank **5**, against 51 and 71
+> for passages mentioning either alone.
 >
-> And the same property is why the whole seed set goes into **one** call instead
-> of one per seed. **The speedup and the expressive limit are the same fact.**
-> Conjunction is a pattern match — that is Cypher's job.
+> Now seed `SHOSHONE` (192 passages) with `EQUUS CABALLUS` (14). A passage
+> mentioning **only the horse** scores 0.0100. One mentioning **both** scores
+> 0.0107. A 6.6% bonus for also being about the Shoshone.
+>
+> Because each seed's contribution is roughly `1 / its degree`. **Pair a rare
+> entity with a hub and the hub is nearly free to ignore** — and you did not
+> pick that weighting, your graph did.
+>
+> *(And no, you can't just normalise the seeds to equal footing. I tried. It
+> gives you a beautiful conjunction signal and it drops every passage I'd
+> hand-verified out of the top-8 — because normalising a sparse walk hands its
+> noise floor 66% of the score range. The un-normalised sum is quietly weighting
+> each seed by how much it actually knows.)*
 
 > ### 2. It cannot enumerate or order.
 
@@ -420,7 +431,7 @@ UNIFORM COAT · PAIR OF LEGINGS · THREE KNIVES · HANDKERCHIEFS   (all Supply)
 > | | good at | blind to |
 > |---|---|---|
 > | cosine | topical resemblance | telling same-type entities apart |
-> | entity-seeded PPR | identity, corroboration | conjunction, ordering, completeness |
+> | entity-seeded PPR | identity, corroboration | ordering, completeness, choosing its own weights |
 > | Cypher / filters | exact enumeration and constraints | anything you can't write down |
 
 > This is why the answer is not one retriever. It is knowing which question
