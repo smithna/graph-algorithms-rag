@@ -82,8 +82,8 @@ independently built graphs:
 | database | what it is | status |
 |---|---|---|
 | `rawluna` | pre-disambiguation, `gpt-5.6-luna` extraction | **keep, frozen** — the section-4 measurement baseline |
-| `lewisclark` | clone of `rawluna`, then the rest of the pipeline | **keep** — the new demo graph |
-| `neo4j` | the v1.0 dump — `gpt-4o-mini` extraction throughout | retiring, once `lewisclark` verifies |
+| `lewisclark` | clone of `rawluna` + mentions + taxonomy, **pre-disambiguation** | parked — disambiguation unresolved, see 3f |
+| `neo4j` | the v1.0 dump — `gpt-4o-mini` extraction throughout | **keep** — still the demo graph; `lewisclark` did not supersede it |
 | `rawgraph` | pre-disambiguation, `gpt-4o-mini` extraction | retired |
 
 **Why `neo4j` is being replaced rather than kept as the "after" graph.** It is
@@ -741,6 +741,69 @@ contaminants is a stronger claim on stage than a 14-node one with
 
 **Status: implemented read-only in `graphrank/resolution.py`, not wired into
 `disambiguate.py`.** Running it on `lewisclark` is a separate decision.
+
+#### 3f. Applying the design failed — and the root cause was reusing read-only defaults
+
+The two-layer design in 3e verifies cleanly on a scoped test and **does not hold
+at full scale**. Two dry runs on `lewisclark` (Person, 2,144 candidates,
+nothing written), differing only in how a bridge is removed:
+
+| | node removal | edge removal |
+|---|---|---|
+| components accepted | 31 | 42 |
+| Sacagawea | **fragmented into 2, her own node in neither** | whole again, but **contaminated** |
+| obvious bad merges | some | more |
+
+**Node removal** deleted 48 nodes including `MERIWETHER LEWIS`, tearing apart
+the clusters the exercise exists to build. **Edge removal** kept them together
+but left paths open, producing merges that are plainly wrong:
+
+```
+[9]  HUGH BRATTON + ISAAC BRATTON + JOHN BRATTON + RICHARD BRATTON + W BRATTEN…
+[8]  BLACK CAT + CHIEF OF THE MAH HAR + GEORGE DROUILLARD + KA KAW ISSASSA…
+[11] AD HAKO HO PIN NEE + AR-RAT-TA NA-MOCK-SHE + BEL-LAR SA RA + …
+```
+
+Five Brattons as one man. Drouillard merged with Mandan chiefs. Eleven
+unrelated Native names in one blob.
+
+**The root cause was not the layers.** The script drove candidate generation
+from `graphrank/resolution.py`'s defaults — OVERLAP, `minCount=1`, `topK=100` —
+which exist for **read-only analysis where nothing merges**. That is exactly the
+configuration finding 3c identifies as unsafe under WCC closure, and it was
+reused anyway. `disambiguate_fixed.py` already carries the conservative
+settings; the layered script bypassed them.
+
+So 3c's lesson has now been learned twice, the second time by ignoring it:
+
+> The operating point that is right for **generating candidates** is not
+> automatically right for **generating merges**.
+
+**What did work, and is worth keeping:**
+
+- adjudication rejected **1,638 of 2,144** candidates — the recall/precision
+  division of labour behaving exactly as section 4 claims
+- the evidence filter cut the survivors **506 → 297**, removing the
+  one-chunk-to-one-chunk confirmations
+- transitivity found **48 bridges**, and **444 of 444 checks came free from
+  cache** on the second run — the negative-cache idea fully vindicated
+- several components are unambiguously correct and would be real wins:
+  `P CRUSAT + PETER CROUSAT + PETER CROUZATT + …` (16 spellings of Cruzatte),
+  Frazer (7), Weiser (5), Goodrich (4), Howard (3)
+
+**Status: not applied.** `lewisclark` remains pre-disambiguation at 794 Person
+nodes, checkpointed at
+`data/checkpoints/lewisclark-pre-disambiguation/`. `neo4j` and `rawluna` were
+never touched, and section 4 demos against them.
+
+**What finishing this actually needs** — a future session, not a pre-deadline
+patch. The real problem is correlation clustering with must-not-link
+constraints: closure has to respect the negative verdicts, not just the positive
+ones. Greedy approximations are order-dependent, which is the question Nathan
+raised about majority voting and which applies here too. Doing it properly means
+choosing a deterministic edge order (descending evidence, say) and accepting
+that the result is an approximation — or refusing to merge wherever constraints
+conflict, which is recoverable and probably right for a demo corpus.
 
 #### 4. The default model is three generations stale
 

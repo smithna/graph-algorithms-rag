@@ -929,17 +929,35 @@ def components_verified(
     *,
     max_component: int | None = 25,
 ) -> tuple[list[Component], list[Component]]:
-    """Close over confirmed pairs with bridge nodes removed.
+    """Close over confirmed pairs with the offending *edges* cut.
 
-    Returns ``(accepted, refused)``. A component larger than ``max_component``
-    is refused rather than merged — a backstop for whatever the bridge check
-    did not catch. Refusing to merge is always recoverable; merging is not.
+    **Cut edges, not nodes.** An earlier version dropped every pair touching a
+    bridge node, which is far too blunt: the same node is often a genuine
+    cluster member *and* a bridge. `SQUAR INTERPRETRESS` legitimately belongs
+    with Sacagawea's forms and wrongly links to `THE INTERPRETER`; removing the
+    node throws away the first to fix the second, and at full scale it removed
+    48 nodes including `MERIWETHER LEWIS`, fragmenting exactly the clusters the
+    exercise exists to build.
+
+    When X bridges A ~/~ B we know only that A and B must not end up together,
+    so at least one of X–A, X–B has to go. Which one is decided the same way
+    layer 1 decides everything: **cut the edge to the endpoint with less
+    support.** `INDIAN WOMAN` has 24 chunks and `THE INTERPRETER` has 2, so the
+    interpreter edge is cut and her cluster survives intact.
+
+    Deterministic and order-independent — it reads mention counts, not the
+    sequence pairs happen to arrive in.
+
+    Returns ``(accepted, refused)``; a component larger than ``max_component``
+    is refused rather than merged, as a backstop. Refusing is recoverable.
     """
-    bridge_ids = report.bridge_nodes
-    kept = [
-        p for p in pairs
-        if p.left.node_id not in bridge_ids and p.right.node_id not in bridge_ids
-    ]
+    cut: set[tuple[int, int]] = set()
+    for b in report.bridges:
+        weaker = b.left if b.left.mentions <= b.right.mentions else b.right
+        cut.add((min(b.node.node_id, weaker.node_id),
+                 max(b.node.node_id, weaker.node_id)))
+
+    kept = [p for p in pairs if p.key not in cut]
     closed = components(kept, inventory)
     if max_component is None:
         return closed, []

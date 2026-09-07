@@ -249,6 +249,7 @@ def adjudicate(
     max_calls: int = DEFAULT_MAX_CALLS,
     use_cache: bool = True,
     strict_cap: bool = False,
+    max_workers: int = 8,
 ) -> list[Verdict]:
     """Adjudicate candidate pairs. Returns one verdict per input pair.
 
@@ -267,83 +268,66 @@ def adjudicate(
             for p in pairs
         ]
 
-    verdicts: list[Verdict] = []
-    calls_made = 0
-
-    for pair in pairs:
-        label = pair.left.label
-        names = pair.names
-        path = _cache_path(model, label, names)
-
+    # Cache lookups first, serially and cheaply: they cost nothing and they
+    # decide how much real work is left.
+    results: list[Verdict | None] = [None] * len(pairs)
+    todo: list[int] = []
+    for i, pair in enumerate(pairs):
+        path = _cache_path(model, pair.left.label, pair.names)
         if use_cache and path.exists():
-            cached = json.loads(path.read_text())
-            verdicts.append(
-                Verdict(
+            try:
+                cached = json.loads(path.read_text())
+                results[i] = Verdict(
                     pair=pair,
                     same_entity=bool(cached["same_entity"]),
                     canonical_name=cached.get("canonical_name"),
                     source="cache",
                 )
-            )
-            continue
+                continue
+            except Exception:
+                pass
+        todo.append(i)
 
-        if calls_made >= max_calls:
-            if strict_cap:
-                raise AdjudicationBudget(
-                    f"adjudication cap of {max_calls} calls reached with "
-                    f"{len(pairs) - len(verdicts)} pairs still unjudged"
-                )
-            verdicts.append(
-                Verdict(
-                    pair=pair,
-                    same_entity=False,
-                    canonical_name=None,
-                    source="skipped-cap",
-                )
-            )
-            continue
+    # The remainder in parallel. Serial adjudication of a few thousand pairs is
+    # hours; the calls are independent and IO-bound, so this is the whole fix.
+    import threading
+    lock = threading.Lock()
+    calls_made = 0
 
-        try:
-            decision = _parse(model, label, names[0], names[1])
+    def judge_one(i: int) -> Verdict:
+        nonlocal calls_made
+        pair = pairs[i]
+        label = pair.left.label
+        with lock:
+            if calls_made >= max_calls:
+                if strict_cap:
+                    raise AdjudicationBudget(
+                        f"adjudication cap of {max_calls} calls reached"
+                    )
+                return Verdict(pair=pair, same_entity=False, canonical_name=None,
+                               source="skipped-cap")
             calls_made += 1
-        except Exception as exc:  # network, quota, schema drift
-            verdicts.append(
-                Verdict(
-                    pair=pair,
-                    same_entity=False,
-                    canonical_name=None,
-                    source="error",
-                    error=str(exc),
-                )
-            )
-            continue
-
+        try:
+            decision = _parse(model, label, *pair.names)
+        except Exception as exc:
+            return Verdict(pair=pair, same_entity=False, canonical_name=None,
+                           source="error", error=str(exc))
         canonical = (decision.canonical_name or "").strip().upper() or None
         if use_cache:
             CACHE_DIR.mkdir(parents=True, exist_ok=True)
-            path.write_text(
-                json.dumps(
-                    {
-                        "same_entity": decision.same_entity,
-                        "canonical_name": canonical,
-                        "names": list(names),
-                        "label": label,
-                        "model": model,
-                    },
-                    indent=2,
-                )
-            )
+            _cache_path(model, label, pair.names).write_text(json.dumps({
+                "same_entity": decision.same_entity, "canonical_name": canonical,
+                "names": list(pair.names), "label": label, "model": model}, indent=2))
+        return Verdict(pair=pair, same_entity=bool(decision.same_entity),
+                       canonical_name=canonical, source="llm")
 
-        verdicts.append(
-            Verdict(
-                pair=pair,
-                same_entity=bool(decision.same_entity),
-                canonical_name=canonical,
-                source="llm",
-            )
-        )
+    if todo:
+        import concurrent.futures as futures
+        with futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+            for i, v in zip(todo, pool.map(judge_one, todo)):
+                results[i] = v
 
-    return verdicts
+    return [v for v in results if v is not None]
 
 
 def cached_verdict(
