@@ -922,12 +922,68 @@ def verify_transitivity(
     )
 
 
+def bridge_cut(
+    pairs: list[CandidatePair],
+    report: TransitivityReport,
+    verdict_map: dict[tuple[int, int], bool] | None = None,
+) -> list[CandidatePair]:
+    """Layer 2's remedy: for each bridge, keep the better of its two edges.
+
+    Exposed separately from :func:`components_verified` because layer 3 needs the
+    same kept-edge set — the surviving edges are the only ones allowed to union
+    nodes during constrained re-clustering.
+
+    With ``verdict_map`` (node-id pair key -> the judge's decision), the two
+    edges are ranked exactly the way layer 3 ranks merge edges — fewest
+    third-party contradictions, then :func:`evidence_key` — and the worse edge
+    is cut. The earlier rule cut the edge to the endpoint with fewer mentions,
+    which welded `JOHN BRATTEN` to John Ordway: Ordway out-mentions William
+    Bratton, so the multi-signal Bratten~Bratton edge was cut and the
+    co-occurrence-only Bratten~Ordway edge survived into a two-member component
+    nothing could contradict. Mention count measures fame; it does not measure
+    which confirmation to trust. Without ``verdict_map`` the old rule applies.
+    """
+    by_key = {p.key: p for p in pairs}
+
+    if verdict_map:
+        adjacency: dict[int, dict[int, bool]] = defaultdict(dict)
+        for (u, v), same in verdict_map.items():
+            adjacency[u][v] = same
+            adjacency[v][u] = same
+
+        def contradicted(edge: CandidatePair) -> int:
+            l, r = edge.left.node_id, edge.right.node_id
+            return sum(
+                1 for third, vl in adjacency[l].items()
+                if third != r and third in adjacency[r] and vl != adjacency[r][third]
+            )
+
+        def rank(edge: CandidatePair) -> tuple:
+            return (contradicted(edge), *evidence_key(edge))
+
+    cut: set[tuple[int, int]] = set()
+    for b in report.bridges:
+        key_left = (min(b.node.node_id, b.left.node_id),
+                    max(b.node.node_id, b.left.node_id))
+        key_right = (min(b.node.node_id, b.right.node_id),
+                     max(b.node.node_id, b.right.node_id))
+        edge_left, edge_right = by_key.get(key_left), by_key.get(key_right)
+        if verdict_map and edge_left is not None and edge_right is not None:
+            cut.add(key_left if rank(edge_left) > rank(edge_right) else key_right)
+        else:
+            weaker = b.left if b.left.mentions <= b.right.mentions else b.right
+            cut.add((min(b.node.node_id, weaker.node_id),
+                     max(b.node.node_id, weaker.node_id)))
+    return [p for p in pairs if p.key not in cut]
+
+
 def components_verified(
     pairs: list[CandidatePair],
     inventory: dict[int, EntityRef],
     report: TransitivityReport,
     *,
     max_component: int | None = 25,
+    verdict_map: dict[tuple[int, int], bool] | None = None,
 ) -> tuple[list[Component], list[Component]]:
     """Close over confirmed pairs with the offending *edges* cut.
 
@@ -951,19 +1007,344 @@ def components_verified(
     Returns ``(accepted, refused)``; a component larger than ``max_component``
     is refused rather than merged, as a backstop. Refusing is recoverable.
     """
-    cut: set[tuple[int, int]] = set()
-    for b in report.bridges:
-        weaker = b.left if b.left.mentions <= b.right.mentions else b.right
-        cut.add((min(b.node.node_id, weaker.node_id),
-                 max(b.node.node_id, weaker.node_id)))
-
-    kept = [p for p in pairs if p.key not in cut]
+    kept = bridge_cut(pairs, report, verdict_map)
     closed = components(kept, inventory)
     if max_component is None:
         return closed, []
     accepted = [c for c in closed if c.size <= max_component]
     refused = [c for c in closed if c.size > max_component]
     return accepted, refused
+
+
+# ── Layer 3: component consistency — closure must prove its claim ─────────────
+#
+# A component is the assertion "every member is the same entity", which is a
+# claim about all member *pairs* — but adjudication only ever saw the edges
+# that built it. Layer 2 verifies transitivity locally (pairs two hops apart)
+# and enforces it weakly (cut one edge, which alternate paths route around;
+# that is exactly 3f's "whole but contaminated" failure). This layer verifies
+# it globally — every member pair, at any distance — and enforces a negative
+# verdict absolutely: no sequence of merges may put a rejected pair in the
+# same cluster.
+#
+# Like layers 1 and 2, it never reads the words in a name. It routes questions
+# to the judge and enforces the answers. It can only veto — a fresh positive
+# verdict verifies a pair but never becomes a merge edge, so this layer cannot
+# add merges the earlier layers did not justify.
+
+
+def evidence_key(pair: CandidatePair) -> tuple:
+    """Strongest-evidence-first ordering for merge edges. Deterministic.
+
+    1. Signal agreement — the signals fail independently, so a pair proposed by
+       string *and* co-occurrence outranks any single-signal pair.
+    2. Weaker-endpoint attestation, ``min(mentions)`` — how much the judge's
+       confirmation is worth. Every contamination came from sparse pairs, so
+       when a constraint forces a cut, it should land on the sparse edge.
+    3. nodeSimilarity score, deliberately third: OVERLAP scores near 1.0 are
+       often trivial containment, and string/alias pairs carry no score at all.
+    4. The name pair — meaningless, but makes the key a total order so two runs
+       on the same data make byte-identical merge decisions.
+    """
+    return (
+        -len(pair.signals),
+        -min(pair.left.mentions, pair.right.mentions),
+        -(pair.similarity or 0.0),
+        tuple(sorted(pair.names)),
+    )
+
+
+def _constrained_clusters(
+    members: list[EntityRef],
+    edges: list[CandidatePair],
+    negatives: list[tuple[EntityRef, EntityRef]],
+    contradictions: dict[tuple[int, int], int] | None = None,
+) -> tuple[list[list[EntityRef]], list[CandidatePair]]:
+    """Greedy correlation clustering with cannot-link constraints.
+
+    Kruskal with a veto: positive edges union least-contradicted, then
+    strongest-first; a union that would put a must-not-link pair in one set is
+    skipped, and the constraint propagates to the merged set. Strong
+    sub-clusters therefore form before the sparse edge that would have fused
+    them gets its turn — the cut lands on the thinnest evidence between the
+    constrained nodes without anyone having to locate it.
+
+    ``contradictions`` maps an edge's key to how many third-party verdicts
+    dispute it (see :func:`verify_components`). It outranks evidence because a
+    wrong positive between two *well-attested* nodes ranks high on evidence —
+    that is precisely what let `SACAGAWEA ~ HOHAST-ILL-PILP` claim her node
+    ahead of `SACAGAWEA ~ INDIAN WOMAN`. Evidence measures how much the judge
+    had to work with; contradictions measure whether the judge's other answers
+    agree with this one. Disagreement is the stronger signal.
+
+    Returns ``(clusters, skipped_edges)``; singleton clusters are dropped
+    (unmerged is the recoverable outcome, never a forced assignment).
+    """
+    contradictions = contradictions or {}
+
+    def edge_order(edge: CandidatePair) -> tuple:
+        return (contradictions.get(edge.key, 0), *evidence_key(edge))
+
+    parent = {m.node_id: m.node_id for m in members}
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    # Enemy sets hold node ids and live on the current root; resolved through
+    # find() at check time, so they stay correct as roots change.
+    enemies: dict[int, set[int]] = defaultdict(set)
+    for a, b in negatives:
+        enemies[a.node_id].add(b.node_id)
+        enemies[b.node_id].add(a.node_id)
+
+    skipped: list[CandidatePair] = []
+    for edge in sorted(edges, key=edge_order):
+        ra, rb = find(edge.left.node_id), find(edge.right.node_id)
+        if ra == rb:
+            continue
+        if any(find(e) == rb for e in enemies[ra]) or any(
+            find(e) == ra for e in enemies[rb]
+        ):
+            skipped.append(edge)
+            continue
+        parent[rb] = ra
+        enemies[ra] |= enemies.pop(rb, set())
+
+    grouped: dict[int, list[EntityRef]] = defaultdict(list)
+    for m in members:
+        grouped[find(m.node_id)].append(m)
+    clusters = [c for c in grouped.values() if len(c) > 1]
+    clusters.sort(key=lambda c: (-len(c), sorted(m.name for m in c)))
+    return clusters, skipped
+
+
+@dataclass
+class ComponentVerification:
+    """The consistency verdict on one accepted component."""
+
+    component: Component
+    #: "clean"   — no negatives; merges as-is
+    #: "split"   — negatives found; merges as consistent sub-clusters
+    #: "refused" — could not be fully verified and the caller required it
+    status: str
+    #: member pairs the judge rejected — the must-not-link constraints
+    violations: list[tuple[EntityRef, EntityRef]]
+    #: what may merge (empty when refused)
+    subclusters: list[Component]
+    #: sub-clusters (or the whole component) withheld for unverified pairs
+    withheld: list[Component]
+    #: member pairs with no verdict (cap exhausted, judge error)
+    unverified: int
+    #: confirmed edges the constraints forced out of the merge forest
+    skipped_edges: list[CandidatePair]
+    #: confirmed edges excluded up front: more third-party verdicts dispute
+    #: them than corroborate them
+    disputed_edges: list[CandidatePair] = field(default_factory=list)
+
+    def describe(self) -> str:
+        sizes = "+".join(str(c.size) for c in self.subclusters) or "0"
+        head = f"{self.status.upper()} [{self.component.size} -> {sizes}]"
+        return f"{head} {self.component.describe()[:110]}"
+
+
+@dataclass
+class ConsistencyReport:
+    outcomes: list[ComponentVerification]
+    #: member pairs not already confirmed by the merge edges, i.e. what closure
+    #: asserted without anyone having asked
+    checks: int
+    cache_hits: int
+    llm_calls: int
+    unverified: int
+
+    @property
+    def violations(self) -> list[tuple[EntityRef, EntityRef]]:
+        return [v for o in self.outcomes for v in o.violations]
+
+
+def verify_components(
+    accepted: list[Component],
+    pairs: list[CandidatePair],
+    *,
+    adjudicator=None,
+    max_calls: int = 600,
+    require_complete: bool = False,
+    verdict_map: dict[tuple[int, int], bool] | None = None,
+) -> tuple[list[Component], ConsistencyReport]:
+    """Exhaustively verify each accepted component before anything merges.
+
+    ``pairs`` is the kept edge set the components were closed over (confirmed,
+    evidence-filtered, bridge-cut — see :func:`bridge_cut`). Every member pair
+    *not* among those edges is a claim closure made on its own; each one is
+    resolved through ``adjudicator``, which should be the batch adjudicator —
+    ``lambda ps, mc: adjudicate(ps, enabled=True, max_calls=mc)`` — so cache
+    hits are free and fresh calls run in parallel under ``max_calls``.
+
+    A rejected pair becomes a cannot-link constraint and the component is
+    re-clustered around it (:func:`_constrained_clusters`). With
+    ``require_complete`` (the ``--apply`` posture) a cluster merges only when
+    every internal pair carries a decided verdict and none is negative:
+    unverified clusters are withheld, which is recoverable — the cache fills a
+    little more each run, so they pass later or split for a reason.
+
+    **Disputed edges cannot support a merge.** For each merge edge, every third
+    entity with decided verdicts against both endpoints is a witness: opposite
+    verdicts dispute the edge (if A matches C and B does not, A and B are not
+    the same), matching confirmations corroborate it. An edge with more
+    disputes than corroborations is excluded from the merge forest before
+    clustering. This is what a wrong positive with no negative *between* its
+    endpoints looks like from the outside — `JOHN BRATTEN ~ JOHN ORDWAY` was
+    confirmed by the judge and disputed by William Bratton's verdicts, and no
+    witness corroborated it; without this rule it merged, because no veto can
+    fire inside a pair. ``verdict_map`` (the candidate-adjudication verdicts,
+    keyed by node-id pair) widens the witness pool beyond the component so a
+    bad pair cannot hide as its own two-member component.
+    """
+    confirmed: set[tuple[int, int]] = {p.key for p in pairs}
+
+    # Every unconfirmed member pair across all components, one batch.
+    unseen: dict[tuple[int, int], CandidatePair] = {}
+    for comp in accepted:
+        ordered = sorted(comp.members, key=lambda m: m.node_id)
+        for i, a in enumerate(ordered):
+            for b in ordered[i + 1:]:
+                key = (a.node_id, b.node_id)
+                if key not in confirmed and key not in unseen:
+                    unseen[key] = CandidatePair(left=a, right=b)
+
+    verdicts: dict[tuple[int, int], bool | None] = {}
+    cache_hits = llm_calls = unanswered = 0
+    if adjudicator is not None and unseen:
+        for v in adjudicator(list(unseen.values()), max_calls):
+            verdicts[v.pair.key] = v.same_entity if v.decided else None
+            if v.source == "cache":
+                cache_hits += 1
+            elif v.source == "llm":
+                llm_calls += 1
+            else:
+                unanswered += 1
+    else:
+        unanswered = len(unseen)
+
+    def verdict_of(a: EntityRef, b: EntityRef) -> bool | None:
+        key = (min(a.node_id, b.node_id), max(a.node_id, b.node_id))
+        if key in confirmed:
+            return True
+        return verdicts.get(key)
+
+    def internal_unverified(members: list[EntityRef]) -> int:
+        ordered = sorted(members, key=lambda m: m.node_id)
+        return sum(
+            1
+            for i, a in enumerate(ordered)
+            for b in ordered[i + 1:]
+            if verdict_of(a, b) is None
+        )
+
+    # The witness pool for dispute/corroboration: candidate-adjudication
+    # verdicts, the kept merge edges (positive by construction), and this
+    # sweep's own verdicts.
+    adjacency: dict[int, dict[int, bool]] = defaultdict(dict)
+
+    def _note(key: tuple[int, int], value: bool | None) -> None:
+        if value is None:
+            return
+        u, v = key
+        adjacency[u][v] = value
+        adjacency[v][u] = value
+
+    for key, value in (verdict_map or {}).items():
+        _note(key, value)
+    for p in pairs:
+        _note(p.key, True)
+    for key, value in verdicts.items():
+        _note(key, value)
+
+    def dispute_support(edge: CandidatePair) -> tuple[int, int]:
+        l, r = edge.left.node_id, edge.right.node_id
+        dispute = support = 0
+        for third, verdict_l in adjacency[l].items():
+            if third == r or third not in adjacency[r]:
+                continue
+            verdict_r = adjacency[r][third]
+            if verdict_l != verdict_r:
+                dispute += 1
+            elif verdict_l:
+                support += 1
+        return dispute, support
+
+    outcomes: list[ComponentVerification] = []
+    mergeable: list[Component] = []
+
+    for comp in accepted:
+        ordered = sorted(comp.members, key=lambda m: m.node_id)
+        negatives = [
+            (a, b)
+            for i, a in enumerate(ordered)
+            for b in ordered[i + 1:]
+            if verdict_of(a, b) is False
+        ]
+
+        member_ids = {m.node_id for m in comp.members}
+        internal = [
+            p for p in pairs
+            if p.left.node_id in member_ids and p.right.node_id in member_ids
+        ]
+        ds = {p.key: dispute_support(p) for p in internal}
+        disputed = [p for p in internal if ds[p.key][0] > ds[p.key][1]]
+        usable = [p for p in internal if ds[p.key][0] <= ds[p.key][1]]
+
+        if not negatives and not disputed:
+            missing = internal_unverified(comp.members)
+            if require_complete and missing:
+                outcome = ComponentVerification(
+                    component=comp, status="refused", violations=[],
+                    subclusters=[], withheld=[comp], unverified=missing,
+                    skipped_edges=[],
+                )
+            else:
+                outcome = ComponentVerification(
+                    component=comp, status="clean", violations=[],
+                    subclusters=[comp], withheld=[], unverified=missing,
+                    skipped_edges=[],
+                )
+        else:
+            clusters, skipped = _constrained_clusters(
+                comp.members, usable, negatives,
+                contradictions={p.key: ds[p.key][0] for p in usable},
+            )
+            kept_sub: list[Component] = []
+            held_sub: list[Component] = []
+            missing_total = 0
+            for members in clusters:
+                sub = Component(component_id=comp.component_id, members=members)
+                missing = internal_unverified(members)
+                missing_total += missing
+                if require_complete and missing:
+                    held_sub.append(sub)
+                else:
+                    kept_sub.append(sub)
+            outcome = ComponentVerification(
+                component=comp, status="split", violations=negatives,
+                subclusters=kept_sub, withheld=held_sub,
+                unverified=missing_total, skipped_edges=skipped,
+                disputed_edges=disputed,
+            )
+
+        outcomes.append(outcome)
+        mergeable.extend(outcome.subclusters)
+
+    report = ConsistencyReport(
+        outcomes=outcomes,
+        checks=len(unseen),
+        cache_hits=cache_hits,
+        llm_calls=llm_calls,
+        unverified=unanswered,
+    )
+    return mergeable, report
 
 
 # ── Gold set ──────────────────────────────────────────────────────────────────

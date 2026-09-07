@@ -355,6 +355,29 @@ def cached_verdict(
         return None
 
 
+def cached_canonical(
+    left: str, right: str, label: str, model: str = DEFAULT_MODEL
+) -> str | None:
+    """The canonical name the judge chose when it confirmed this pair, if any.
+
+    Every confirmation names the "most complete, modern, and widely accepted
+    form" — evidence the merge step should use instead of guessing. Picking the
+    longest member name instead is what left Sacagawea's merged node called
+    "Our Interpreter The Snake Woman" and Jefferson's called "President Of The
+    States Of America": length measures wordiness, not canonicity.
+    """
+    path = _cache_path(model, label, (left, right))
+    if not path.exists():
+        return None
+    try:
+        cached = json.loads(path.read_text())
+        if cached.get("same_entity"):
+            return cached.get("canonical_name") or None
+    except Exception:
+        pass
+    return None
+
+
 def confirmed_pairs(verdicts: list[Verdict]) -> list[CandidatePair]:
     """The pairs the judge accepted — the correct input to transitive closure.
 
