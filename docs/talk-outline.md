@@ -1238,6 +1238,94 @@ With three measured limits stated on stage, not hidden:
 Which is what makes the multi-tool argument **structural** rather than
 empirical: three retrieval modes, three different things they cannot do.
 
+#### 5e. Co-typed entity substitution — the mechanism, and the analogy that carries it
+
+This is the section's claim stated as a mechanism, and it is the part an
+audience can take home to a corpus that has nothing to do with Lewis and Clark.
+
+**The measurement.** For *"What was Toussaint Charbonneau's role on the
+expedition?"*:
+
+| | passages | median cosine rank | in top-8 |
+|---|---|---|---|
+| mention **Charbonneau** (the entity) | 62 | **296** | **2** |
+| interpreter vocabulary, **not** him | 108 | 578 | 2 |
+| neither | 2,743 | 1,524 | 4 |
+
+Cosine's top-8, tagged:
+
+```
+1. CHARBONNEAU        Chabono
+2. neither            Duriaur          <- a Sioux go-between
+3. neither            -                <- arrival at St. Charles
+4. interpreter vocab  Dourion          <- the Sioux interpreter
+5. CHARBONNEAU        Charbono
+6. interpreter vocab  Durion, Gravelin <- Sioux + Ricara interpreters
+7. neither            -                <- a Minetarree chief's visit
+8. neither            Gravline         <- the barge pilot
+```
+
+**Four of eight slots go to other French-speaking go-betweens on the same
+expedition.** Two more are diplomatic encounters naming no interpreter at all.
+Sixty of his sixty-two passages sit outside the window.
+
+*(Note for anyone re-running this: a naive `CONTAINS 'interpret'` filter is
+wrong on this corpus. The journals spell it `interpeter`, `enterpreter`,
+`inturpeter`, `interpter`, `interptr`, `interpetr`. Nineteenth-century
+orthography defeated my first version of this table.)*
+
+**The mechanism.** A whole-passage embedding is an **average over ~300 words**.
+The question encodes roughly `{interpreter, role, expedition, a French
+surname}`. In a passage about Dorion negotiating with the Sioux, the
+role-and-diplomacy vocabulary — *interpreter, chief, speech, presents, nation* —
+recurs and dominates that average, while a name appearing once contributes a
+sliver. So the passage that *is* about Charbonneau, whose name shows up once
+between a weather note and a hunting tally, sits **further** from the query
+centroid than a passage about a different interpreter doing interpreter things.
+
+Cosine cannot make identity a **hard** constraint. In a continuous similarity
+space "Dorion the Sioux interpreter" is genuinely near "Charbonneau the
+interpreter" — they differ by one low-mass token and agree on everything else.
+That is not a defect in the embedding; it is what averaging does.
+
+> **Name it: co-typed entity substitution.** Cosine answers *"an interpreter"*
+> when you asked about *"this interpreter."*
+
+**Why the entity layer fixes it.** `MENTIONED_IN` is a **discrete** edge —
+either extraction attached the entity or it did not. No averaging, so identity
+is binary: the hard constraint cosine can only express softly. Same thing the
+granularity measurement pointed at (median 60 words per entity in a 325-word
+passage): **the entity is a pointer, the embedding is an average.**
+
+**What it predicts — this is what makes the claim useful rather than anecdotal:**
+
+| | |
+|---|---|
+| **helps** | the question turns on a specific entity, and the corpus holds several of the same type |
+| **does not help** | no discriminating entity to seed — `illness-and-injury` is a category, not a thing |
+| **does not help** | only one entity of that type exists, so cosine has nothing to substitute — which is exactly why `prairie-dog` is a `control` question |
+
+> **The technique earns its place in proportion to how many same-type entities
+> your corpus contains.**
+
+##### The analogy for the stage — and get the mapping right
+
+Nathan's, adjusted. The first version — *"forty engineers, five of them named
+Chen"* — is **section 4's** problem, not section 5's. There is no name collision
+in the Charbonneau case; cosine returned Dorion and Gravelin, different names,
+same job. So:
+
+> **Section 5.** Your corpus has forty engineers. You ask what **Chen** owns.
+> Cosine hands you three passages about **Rodriguez** owning a similar service —
+> because *"engineer owns service"* is most of the sentence and *"Chen"* is one
+> word of it.
+
+> **Section 4** (callback, same imagined corpus). And five of those forty
+> engineers are named Chen.
+
+One company, two different failures, one per section. That pairing is stronger
+than either analogy alone, and it gives section 10 its spine for free.
+
 #### 6. Damping: shorter walks win monotonically
 
 Share of walk mass within `k` steps is `1 − d^(k+1)`.
