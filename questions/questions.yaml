@@ -60,6 +60,26 @@
     - HIDATSA
   notes: Tests whether a path through a spouse relationship surfaces context.
 
+- id: ordway-responsibilities
+  question: What responsibilities did Sergeant Ordway carry on the expedition?
+  kind: connection
+  gold:
+    - JOHN ORDWAY
+  notes: >
+    Designed as a PPR case (2026-09-07) and verified by reading both windows.
+    Co-typed substitution at the Sergeant rank: 74 passages mention Ordway at
+    median cosine rank 95, and the vector top-8 holds him in 5 slots — the rest
+    go to no-name sergeant duty orders and a Cameahwait scene. Entity-seeded
+    PPR fills 8/8, and two promotions cleared the finding-5d hand-read bar
+    with content no cosine passage had: his 1804-05-17 order convening a court
+    martial in the captains' behalf, and the 1804-05-26 detachment order
+    putting his squad in command of the batteaux crew. Cypher has no counter:
+    his 102 extracted edges are travel-diary noise (CAMPED_AT/VISITED/...)
+    and a 74-passage entity filter has nothing to ORDER BY. A companion case,
+    cameahwait-horses, FAILED the same hand read (PPR drops the best passage
+    and imports the rival Nez Perce horse-trading cluster via the passage
+    seeds) and was deliberately not added — see outline finding 5f.
+
 # ── Authority questions: many passages match, few are load-bearing ────────────
 
 - id: grizzly-encounters

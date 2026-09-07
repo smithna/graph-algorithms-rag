@@ -480,20 +480,43 @@ sourceNodes: [[nodeId1, bias1], [nodeId2, bias2], …]
 
 ---
 
-## 5.12 — Take home (0:30)
+## 5.12 — Take home: tags vs. graph (0:30)
 
-> ## Cosine retrieves the topic. The graph retrieves the entity.
+> ## Cosine retrieves the topic. The **entity layer** retrieves the entity.
 
-**Slide:** and when to bother.
+> Not "the graph" — the entity layer. The expensive, valuable thing this
+> section built is extraction, aliases, coreference: knowing *"one of his
+> wives"* means Sacagawea. That is build-time work, and it is
+> **storage-agnostic**.
 
-> ### It earns its place in proportion to how many **same-type entities** your corpus has.
+**Slide:** the decision rule. This is the slide people photograph.
 
-> Forty engineers, and you asked what Chen owns? This is for you.
+> ### Questions name one entity at a time, chunks well tagged?
+> ### → **entity tags in the store you already run.**
 >
-> One CEO, one product, one customer? Save yourself the projection.
+> ### Corroboration across entities · communities · paths · structured queries
+> ### — or extraction you can't fully trust?
+> ### → **that's when the graph earns its place.**
+
+> Forty engineers, and you asked what Chen owns? You need the entity layer —
+> and if that is the whole shape of your question load, a keyword filter on
+> well-tagged chunks in Postgres or Elasticsearch spends it fine. Go home
+> early.
 >
-> *(And five of those forty engineers are named Chen — which is the problem we
-> solved in the last section. One company, two different failures.)*
+> But five of those forty engineers are named **Chen** — and section 4's
+> problem poisons a tag filter exactly as it poisons a seed set. The entity
+> layer is the fix for both, wherever you keep it.
+>
+> The graph starts paying when entities relate to *each other* in ways your
+> questions exploit — which is exactly where we go next: communities, paths,
+> and Cypher.
+>
+> One CEO, one product, one customer? Save yourself the projection — and
+> probably the tags too.
+
+*(Q&A pocket, not stage time: on this corpus, entity-filter + cosine matches
+PPR on every hand-read case — finding 5g has the tables if someone pushes on
+"why not just filter". The stage version is the decision rule above.)*
 
 *(Hands to section 6: "and now every passage in that window is about the same
 afternoon.")*
@@ -515,7 +538,7 @@ afternoon.")*
 | 5.9 the payoff (demo) | 1:30 |
 | 5.10 three things it cannot do | 1:15 |
 | 5.11 what it costs | 0:45 |
-| 5.12 take home | 0:30 |
+| 5.12 take home: tags vs. graph | 0:30 |
 | **total** | **12:00** |
 
 ⚠️ **Over budget by 2:00.** Allotted 10:00. Cut candidates, in order, with the
@@ -568,3 +591,7 @@ argument honest, and it is the thing nobody else's PageRank talk will say.
    is the most valuable twenty seconds in the section. It is also the easiest
    thing to cut if a rehearsal runs long, and Nathan may prefer to keep the
    methodology out of a 10-minute slot.
+
+**Decided (2026-09-07):** 5.12 is the tags-vs.-graph decision rule (above);
+the filter-parity finding (outline 5g) gets **no stage time** — it is the Q&A
+pocket behind 5.12. Title remains open (decision #1).

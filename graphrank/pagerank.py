@@ -353,6 +353,27 @@ class ExpandConfig:
     #: and free either way — GDS takes per-seed bias in the same single call —
     #: so this is kept at the principled default rather than the cheap one.
     seed_weighting: str = "proportional"
+    #: "semantic" (default) matches the whole-question embedding against entity
+    #: descriptions — no LLM in the retrieval path, but measurably suffers from
+    #: cosine's disease (it seeds WISDOM RIVER for a Sacagawea question once a
+    #: degree filter removes the coreference junk above it — see decompose.py).
+    #:
+    #: "decomposed" asks an LLM to *name* the question's entities, then looks
+    #: each name up by full-text or per-label vector index — the same pattern
+    #: the corps text2cypher agent uses to resolve Cypher params, minus the
+    #: argmax: every strong match seeds, so duplicates still ride along. Each
+    #: *mention* gets one unit of restart mass, split across its matched nodes
+    #: by match score — the restart distribution mirrors the question's
+    #: structure instead of the accident of how many near-matches each phrase
+    #: has. Falls back to "semantic" when the question names nothing (thematic
+    #: questions legitimately name zero entities), recorded in ``debug``.
+    #:
+    #: ``entity_seed_k``, ``seed_weighting`` and ``min_seed_degree`` apply to
+    #: the semantic seeder only; a decomposed seed set is already sized and
+    #: weighted by the question itself.
+    entity_seeder: str = "semantic"
+    #: Model for the decomposition call. Cached on disk per (model, question).
+    decompose_model: str = ""
     #: Temperature for ``softmax`` weighting. Smaller is sharper.
     softmax_temperature: float = 0.01
     #: Walk horizon. Mass within k steps is ``1 - d**(k+1)``, so 0.45 keeps 96%
@@ -509,6 +530,89 @@ def entity_seeds(
         )
         for r, w in zip(kept, weights)
     ]
+
+
+def decomposed_entity_seeds(
+    question: str, *, config: ExpandConfig | None = None
+) -> tuple[list[Seed], dict]:
+    """Seed from the entities the question *names*, resolved by name.
+
+    The semantic seeder above delivers the remedy for co-typed substitution
+    through a mechanism that suffers from co-typed substitution — it embeds the
+    whole question and returns anything expedition-flavoured. This seeder does
+    what section 5 preaches: make identity the hard constraint. An LLM names
+    the question's entities (decompose.py), each name resolves against
+    full-text or per-label vector indexes, and *only those nodes* seed.
+
+    Weighting is structural rather than tuned. Each resolved mention gets one
+    unit of restart mass. Within the mention, candidates are grouped by exact
+    name: **groups** split the unit by match score (distinct names are distinct
+    guesses at what was meant), and **within a group** the share splits by
+    chunk degree. The df-proportional split is not a heuristic — it reproduces
+    the merged node exactly, to first hop: duplicates with degrees d1, d2 given
+    weights ∝ d1, d2 put mass ``share/(d1+d2)`` on each of their chunks, which
+    is precisely what one resolved node of degree d1+d2 would do. Seeding
+    unresolved duplicates this way *behaves as if you had resolved them* —
+    section 4's callback, upgraded from "it happens to be fine" to arithmetic.
+    (An even split instead hands a df-1 mislabelled twin its whole half-unit
+    on a single chunk — a 5d-ter spike by construction.)
+
+    GDS biases are unnormalised linear weights, so total mass = number of
+    mentions; every consumer downstream is rank- or percentile-based.
+
+    Returns ``(seeds, debug)``; ``seeds`` is empty when the question names
+    nothing the graph knows — callers fall back to the semantic seeder.
+    """
+    from .decompose import DEFAULT_DECOMPOSE_MODEL, decompose_and_resolve
+
+    config = config or ExpandConfig()
+    model = config.decompose_model or DEFAULT_DECOMPOSE_MODEL
+    resolved = decompose_and_resolve(
+        question, model=model, in_graph=mentions_membership()
+    )
+
+    by_node: dict[int, Seed] = {}
+    for rm in resolved:
+        groups: dict[str, list[dict]] = {}
+        for cand in rm.candidates:
+            groups.setdefault(cand["name"], []).append(cand)
+        # A group's evidence is its best retrieval score; twins carry an
+        # inherited floor score that must not dilute the group.
+        group_score = {name: max(c["score"] for c in g) for name, g in groups.items()}
+        total = sum(group_score.values())
+        if total <= 0:
+            continue
+        for name, group in groups.items():
+            g_share = group_score[name] / total
+            df_total = sum(max(c.get("df", 1), 1) for c in group)
+            for cand in group:
+                share = g_share * max(cand.get("df", 1), 1) / df_total
+                seed = by_node.get(cand["nodeId"])
+                if seed is None:
+                    by_node[cand["nodeId"]] = Seed(
+                        node_id=cand["nodeId"],
+                        name=cand["name"],
+                        label=cand["label"],
+                        match_score=float(cand["score"]),
+                        weight=float(share),
+                    )
+                else:
+                    # The same node named twice by the question earns both shares.
+                    seed.weight += float(share)
+
+    debug = {
+        "decompose_model": model,
+        "mentions": [
+            {
+                "phrase": rm.mention.phrase,
+                "label": rm.mention.label,
+                "via": rm.via,
+                "resolved_to": [c["name"] for c in rm.candidates],
+            }
+            for rm in resolved
+        ],
+    }
+    return list(by_node.values()), debug
 
 
 def seed_pagerank(node_id: int, *, config: ExpandConfig | None = None) -> pd.Series:
@@ -673,7 +777,21 @@ def expand(
 
     # ── 2. Entity-seeded PPR ─────────────────────────────────────────────────
     t0 = time.perf_counter()
-    seeds = entity_seeds(embedding, config=config)
+    seeder_debug: dict = {"seeder": config.entity_seeder}
+    if config.entity_seeder == "decomposed":
+        seeds, decompose_debug = decomposed_entity_seeds(question, config=config)
+        seeder_debug.update(decompose_debug)
+        if not seeds:
+            # A thematic question legitimately names zero entities. Fall back
+            # to the semantic seeder rather than losing the signal, and say so.
+            seeds = entity_seeds(embedding, config=config)
+            seeder_debug["seeder_fallback"] = "semantic"
+    elif config.entity_seeder == "semantic":
+        seeds = entity_seeds(embedding, config=config)
+    else:
+        raise ValueError(
+            f"entity_seeder={config.entity_seeder!r} is not 'semantic' or 'decomposed'"
+        )
     # One call, biased by seed weight. GDS bias == the linear weight exactly, so
     # any weighting is free; see batched_pagerank.
     entity_scores = (
@@ -736,6 +854,7 @@ def expand(
             "seed_weighting": config.seed_weighting,
             "damping_factor": config.damping_factor,
             "corpus_scored": len(chunk_index),
+            **seeder_debug,
             "entity_seeds": [
                 {
                     "name": s.name,

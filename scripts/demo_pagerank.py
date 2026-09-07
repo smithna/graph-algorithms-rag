@@ -198,6 +198,15 @@ def show_comparison(question: str, config: ExpandConfig, *, compare_rerank: bool
     plain = baseline.retrieve(question, k=config.k)
     blended = pagerank.expand(question, config=config)
 
+    for mention in blended.debug.get("mentions", []):
+        console.print(
+            f"[dim]named in the question:[/] {mention['phrase']} "
+            f"({mention['label']}, via {mention['via']}) → "
+            f"{', '.join(mention['resolved_to']) or '[red]nothing[/]'}"
+        )
+    if blended.debug.get("seeder_fallback"):
+        console.print("[yellow]question names no entities — fell back to the semantic seeder[/]")
+
     seeds = Table(title="Entity seeds — chosen from the question, not from an answer key",
                   show_header=True, header_style="bold")
     seeds.add_column("weight", justify="right")
@@ -284,6 +293,10 @@ def main() -> int:
     parser.add_argument("--damping", type=float, default=0.45, help="walk horizon")
     parser.add_argument("--weighting", choices=SEED_WEIGHTINGS, default="proportional")
     parser.add_argument("--entity-seeds", type=int, default=3)
+    parser.add_argument("--seeder", choices=("semantic", "decomposed"), default="semantic",
+                        help="semantic = whole-question embedding vs entity descriptions; "
+                             "decomposed = LLM names the entities, resolved by name "
+                             "(cached; needs OPENAI_API_KEY on first run per question)")
     parser.add_argument("--hubs", action="store_true", help="show the hub table and exit")
     parser.add_argument("--conjunction", action="store_true",
                         help="show cosine's conjunction blind spot across the question bank")
@@ -300,6 +313,7 @@ def main() -> int:
         damping_factor=args.damping,
         seed_weighting=args.weighting,
         entity_seed_k=args.entity_seeds,
+        entity_seeder=args.seeder,
     )
 
     if args.hubs:

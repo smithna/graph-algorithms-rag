@@ -18,7 +18,7 @@ before the section's slides can be written honestly.
 | 2 | What is Graph RAG / evidence | none (sources gathered) | not started |
 | 3 | Roadmap | none | not started |
 | 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ **built, verified, and the section's story settled** — Sacagawea cluster is the spine; see *Section 4 findings* |
-| 5 | Ranking can't tell people apart → entity-seeded PPR | `pagerank.py`, `projection.py`, `demo_pagerank.py`, `sweep_pagerank.py` | ✅ **built, verified live, slides drafted** — thesis settled on the third attempt (co-typed entity substitution); `charbonneau-role` is the spine. **Start at *Section 5 in one page*.** Open: title, demo-graph choice |
+| 5 | Ranking can't tell people apart → entity-seeded PPR | `pagerank.py`, `projection.py`, `decompose.py`, `demo_pagerank.py`, `sweep_pagerank.py`, `measure_seeds.py` | ✅ **built, verified live, slides drafted** — thesis settled on the third attempt (co-typed entity substitution); `charbonneau-role` is the spine. **Start at *Section 5 in one page*.** New: decomposed seeder (5d-ter's fix), built + measured — named-entity coverage 10/11 vs semantic 8/11, finding 5f. Open: title, demo-graph choice, whether 5f gets stage time |
 | 6 | Context is redundant → communities | `communities.py`, `demo_communities.py` | ✅ runs live; still needs Leiden + conductance |
 | 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | ✅ runs live (needed a resolution fix — see below) |
 | 8 | Does this help? | `benchmark.py`, `metrics.py` | runs; **gold set is broken worse than reported** — 4 labels missing *and* at least 4 more silently resolving to near-empty decoy nodes. See *Section 5 findings* #10 |
@@ -929,7 +929,8 @@ selection.** The entity seeder is itself a cosine step with cosine's disease —
 it returns `WISDOM RIVER` and `SAGITTARIA LATIFOLIA` for a Sacagawea question.
 Naming the entities from the question (NER, parse, or an agent choosing
 explicitly) is where the leverage is; edge weights, seed weights and degree
-filters all measured no-op or unmeasurable (5d-ter, 5d-quinquies).
+filters all measured no-op or unmeasurable (5d-ter, 5d-quinquies). **Now built
+and measured — see finding 5f.**
 
 **Reading guide:**
 
@@ -1601,7 +1602,7 @@ and doing that properly means *naming* the entities the question is about rather
 than embedding-matching the question as a whole. That is question decomposition
 — an NER or parse step, or the agent Nathan described choosing entities
 explicitly — and it is the single highest-leverage untested change to this
-section's pipeline.
+section's pipeline. *(Since built and measured: finding 5f, `decompose.py`.)*
 
 `min_seed_degree` is added and documented, **default 0**, with the measurement
 and the caveat that it can empty the seed set (all three `shoshone-horses` seeds
@@ -1882,6 +1883,242 @@ same job. So:
 
 One company, two different failures, one per section. That pairing is stronger
 than either analogy alone, and it gives section 10 its spine for free.
+
+#### 5f. The decomposed seeder — 5d-ter's conclusion, built and measured (2026-09-07)
+
+5d-ter ended with "the leverage is in seed selection, and doing that properly
+means *naming* the entities the question is about." Built, in
+`graphrank/decompose.py`: an LLM extracts a typed manifest of the entities the
+question explicitly names (cached on disk per model+prompt+question), and each
+mention resolves by name — per-label **full-text** index for proper nouns,
+per-label **vector** index for species/events, exact-name twins under other
+labels unioned back in. It is the corps repo's text2cypher param-resolution
+pattern minus the argmax: every strong match seeds. Select with
+`ExpandConfig(entity_seeder="decomposed")` or `demo_pagerank.py --seeder
+decomposed`; default remains `semantic` (no LLM in the retrieval path).
+
+**The diagnosis that motivated it, measured on the live graph.** Why does the
+semantic seeder return WISDOM RIVER for a Sacagawea question? Three effects:
+
+1. **Boilerplate floor.** Every `embeddingDescription` shares the template
+   suffix ("… documented in the Lewis and Clark Expedition journals"). The bare
+   template alone matches the sacagawea-interpreting question at raw cosine
+   0.288; WISDOM RIVER's full description at 0.383 — the shared boilerplate is
+   ~75% of the match. Any entity clears ~0.65 on the index scale against any
+   expedition-flavoured question.
+2. **Alias dilution.** "Sacagawea" alone matches the question at raw cosine
+   0.664; the full description with eight alias spellings averaged in matches
+   at 0.553. The alias list *lowers* the canonical-name match — and it is why
+   the mislabelled NativeNation duplicate (one alias) outranks the real Person
+   node (eight): 0.7998 vs 0.7764. That is the mechanism behind 5.4's demo
+   picking the duplicate first.
+3. **Scale optics.** Neo4j vector indexes report `(1+cosine)/2`, so raw
+   0.38-vs-0.55 reads as 0.69-vs-0.78. Relatedly, `proportional` seed
+   weighting operates on the compressed scale — flatter even than finding #5
+   measured.
+
+Full-text lookup bypasses 1 and 3 and inverts 2 (each alias is a separate
+field to hit). Lucene brings its own quirks, both handled: no stemming
+("horses" ≠ HORSE — de-pluralised tokens are appended to the query), and
+field-length norms bury a 32-alias species under short-named Supply junk
+(species route to vector indexes instead, same routing the corps agent chose).
+
+**The measurement — `scripts/measure_seeds.py`, and why it is exempt from
+5d-quinquies.** Seed selection is exact set membership against what the
+question's *text names* (an accept-set per phrase, hand-resolved against the
+live graph; checkable by reading one line). No relevance proxy, no rank
+threshold. Over the 13-question bank:
+
+| seeder | named-entity coverage | seeds outside named∪gold |
+|---|---|---|
+| semantic | 8/11 | 29 |
+| **decomposed** | **10/11** | 22 |
+
+Highlights, worth more than the totals:
+
+- `shoshone-horses`: semantic 0/2 (it seeds PURCHASE OF HORSES, df 2, and two
+  df-1 Events); decomposed 2/2 — SHOSHONE (df 192) + Supply HORSE (df 37).
+- `charbonneau-role`: one seed, TOUSSAINT CHARBONNEAU, weight 1.0. The two
+  degree-1 spike seeds from 5d-ter are simply gone.
+- Both SACAGAWEA duplicates still seed (0.5 each) via the exact-name twin
+  union — section 4's "you don't have to fix your entities first" survives
+  by identity evidence rather than by accident.
+- `keelboat-return`: MISSOURI RIVER (df 307) finally seeds; "the keelboat"
+  resolves to nothing because **no keelboat entity exists** — limit #3
+  surfacing at the seeder, correctly reported rather than papered over.
+- Thematic questions (`trade-goods`, `food-sources`, `illness-and-injury`)
+  parse to zero mentions and **fall back to the semantic seeder** by design —
+  a category question has no name to look up.
+- The one decomposed miss, `great-falls-portage`, is a corpus truth: there is
+  no GREAT FALLS place node. The biggest episode of the expedition exists as a
+  df-3 WaterBody (FALLS OF MISSOURI) and a df-2 Event. The semantic seeder's
+  "hit" there is the df-2 Event decoy — hollow either way. Finding #10's
+  gold-set audit applies to places too.
+
+**Retrieval effect: none measurable, as expected.** The four hand-read
+passages stay in the top-8 under both seeders (charbonneau [7,3,5] semantic vs
+[8,3,4] decomposed — the same rank-sum wash 5d-quater measured for
+single-seed; Nov-4 moves 8 → 7). Observation, not verdict — n=4, saturated
+metric, per 5d-quinquies. The measurable claim is "the seeds are now the
+question's entities," not "the answers got better."
+
+**Costs, stated plainly.** An LLM parse enters the retrieval path: ~0.8-2s
+uncached, ~0 cached (the cache also pins the parse, so demo behaviour is
+frozen after first run — parse variance was observed across prompt revisions
+before caching). Known rough edges, all visible in `--show-seeds` and all
+untuned by policy: PRAIRIE BIRD rides along with CYNOMYS at a 0.001 vector
+near-tie no constant margin can exclude; FORT MANDAN token-matches "Fort
+Clatsop" at the 0.5 full-text keep-ratio; Person SERGEANT (df 1) rides with
+CHARLES FLOYD. Legible failures — a name you can read on screen — where the
+semantic seeder's were not.
+
+**Two refinements after review (same day).** Measured effect: named coverage
+unchanged at 10/11, extras 22 → 19, hand-read ranks unchanged.
+
+1. **Name-twins split their mention's share by degree, not evenly** — and this
+   is arithmetic, not a heuristic: duplicates with degrees d1, d2 weighted
+   ∝ d1, d2 put ``share/(d1+d2)`` on each of their chunks, exactly what one
+   *merged* node of degree d1+d2 would do. Seeding unresolved duplicates
+   df-proportionally **behaves as if you had resolved them**, to first hop.
+   That upgrades section 4's callback from "seeding the duplicate happens to
+   be fine" to an identity. (The even split had handed the df-1 mislabelled
+   SHOSHONE twin half the unit — a 5d-ter spike by construction; it now gets
+   0.5%.) Distinct-name candidates still split by match score: different
+   names are different guesses, and degree is not evidence there.
+2. **Full-text resolves all-tokens-AND first, OR fallback.** ``+(sergeant)
+   +(floyd)`` returns CHARLES FLOYD alone (an alias carries the rank);
+   ``+(fort) +(clatsop)`` returns exactly CLATSOP VILLAGE — extraction stored
+   "Fort Clatsop" as its alias, so the AND query finds the right node
+   *precisely because* aliases are separate token fields. The OR fallback
+   fires only when no node carries the full name — the extraction-gap case,
+   where nearest-name nomination is the correct behaviour.
+
+**The question audition (same day) — one added, one retracted, two mechanisms.**
+
+Four new questions were engineered to be PPR-wins-over-both (identity
+constraint + no role-bearing edges + passage count ≫ k), screened by exact
+membership counts, then **judged by reading both windows in full** — and the
+reading overturned half of what the counts said, again.
+
+- **`ordway-responsibilities` — added to the bank.** 74 passages, median
+  cosine rank 95; vector top-8 holds him in 5 slots (rest: no-name sergeant
+  duty orders, a Cameahwait scene); PPR fills 8/8. Two promotions clear the
+  5d bar with content no cosine passage had: the 1804-05-17 order where
+  Ordway convenes a court martial in the captains' behalf, and the 1804-05-26
+  detachment order giving his squad the batteaux crew. Cypher side: 102 edges
+  of diary noise, 74 unrankable passages.
+- **`cameahwait-horses` — rejected, after I had proposed it for the demo.**
+  The counts looked favourable (vector 3/8, median 127, wrong slots all Nez
+  Perce horse-trading — a perfect co-typed substitution setup). Reading the
+  windows showed PPR **drops the corpus's best passage** (Aug-14, Lewis asks
+  Cameahwait to mobilise his village and 30 spare horses — cosine's #1,
+  absent from PPR's top-14) and imports the rival April-1806 cluster.
+- **Mechanism worth keeping, maybe worth stage time: the passage-seed half of
+  the structural signal is cosine wearing a graph costume.** `expand` seeds
+  one PPR run from the cosine top-5; on this question 3 of those 5 are the
+  wrong nation, so the structural signal *amplifies* the substitution instead
+  of correcting it. The entity signal can't outvote it: the "horses" mention
+  resolved to the Supply HORSE group, which attaches to every nation's horse
+  trading. When cosine is wrong, half the graph signal is wrong with it, by
+  construction.
+- **Recipe boundary, from the two that failed the audition** (York: vector
+  already 5/8; Twisted Hair: 6/8): a named entity is not enough. It takes
+  shared same-type vocabulary AND buried passages (median ≫ k). A
+  distinctive name atop a dominant cluster is the `prairie-dog` control
+  lesson at the Person label.
+
+**For the talk:** this is the "where the leverage actually is" beat (5.10/5.12
+or the bridge to the agent ending), one line: *the entity seeder is itself a
+retrieval step with cosine's disease, and the cure is the one you already know
+— name the entity, then look it up by name.* Same pattern as last year's
+text2cypher param resolution, which makes it a cross-talk callback for anyone
+who saw the community-days demo. The df-proportional twin split is a candidate
+one-liner for 5.4: *seeding both SACAGAWEA nodes, weighted by degree, is
+mathematically the same walk as having merged them.*
+
+#### 5g. Filter+cosine parity — the cheapest baseline matches PPR on every hand-read case (2026-09-07)
+
+Nathan's question: is PPR better than *prefilter passages to those mentioning a
+seeded entity, then rank by cosine*? Measured against the hand-read passages
+(membership checks only — no new relevance judgements):
+
+| question | judged passages in filter+cosine top-8 | in PPR top-8 | window overlap |
+|---|---|---|---|
+| `charbonneau-role` | **3/3** | 3/3 | 7/8 |
+| `sacagawea-interpreting` | **1/1** (Nov-4) | 1/1 | 6/8 |
+| `ordway-responsibilities` | **2/2** | 2/2 | 7/8 |
+
+**Equivalent on every single-entity case**, and the filter needs no GDS, no
+projection, no damping — one Cypher predicate plus the vector index.
+Conjunction, PPR's best structural claim, measured as a one-passage edge:
+"What did Sacagawea and Charbonneau do together?" puts 4 of the 9 dual-mention
+chunks in PPR's top-8 vs 3 for filter+cosine — and a count-matched-entities
+tiebreak would trivially close that.
+
+**So the entity *signal* ≈ the entity *filter*.** The 7-rank-positions
+delete-test (5d-quinquies) was measuring the value of the identity constraint,
+not of the walk. The load-bearing ingredients are build-time extraction with
+coreference, and naming the question's entities — PPR was the vehicle.
+
+**One candidate counter-receipt checked and killed.** The hope: the walk
+recovers passages the seeder's lookup missed (the CAMEAHWAT misspelling).
+Verified false — the promoted Aug-14 passage is tagged under canonical
+CAMEAHWAIT too, so the filter would also have included it. No case on this
+corpus shows the walk reaching a judged passage the filter excludes.
+
+**Where PPR still earns the extra machinery — with confidence labels:**
+
+1. *Entity-ranking consumers* (real, measured today). Filter+cosine emits no
+   entity ranking. Graph expansion, community seeding, subgraph extraction —
+   and all of finding #1/5.6's hub work — exist only in walk-land.
+2. *Ordinary-extraction corpora* (mechanism solid, not demonstrable here —
+   precisely because this extraction is unusually good). Nov-4 is inside the
+   filter only because `extract.py` resolved "one of his wives" → SACAGAWEA at
+   build time. On an NER-grade graph without coreference, the filter loses
+   Nov-4-class passages *categorically*; the walk still reaches them in ≤3
+   steps through co-mentions (CHARBONNEAU and SHOSHONE are tagged). Filter
+   parity is rented from build-time coreference.
+3. *Graded membership* (mechanism real, harm of the binary alternative
+   unmeasured). A filter includes a dubious match's passages at full strength
+   or not at all; the walk includes the df-1 SHOSHONE twin at 0.5%.
+4. *One mechanism instead of accumulating patches* (judgement). Union, dedup,
+   conjunction tiebreak, per-entity weights, a hop of reach — each patch on
+   filter+sort is a special case of walk parameters.
+
+**Where it loses money, already measured:** the passage-seed half amplifies
+cosine's substitution when cosine is wrong (5f, Cameahwait), a failure mode
+filter+cosine cannot have.
+
+**Nathan's sharpening, and it is the version that matters: the filter does not
+need a graph at all.** Entity tags in any store — a Postgres array column, an
+Elasticsearch keyword field, a vector-DB metadata filter — run filter+cosine.
+The audience-facing point is *when moving to a graph adds value and when it is
+just a headache*. The taxonomy, mapped to the talk's own sections:
+
+| capability | needs |
+|---|---|
+| single-entity identity questions (this section's headline failure) | **tags in the store you already run** |
+| conjunction, most of it | tags + a count-of-matched-tags tiebreak |
+| the entity layer itself — extraction, aliases, coreference, resolution | build-time work, storage-agnostic — **this is where the value lives**, and section 4's problem (five Chens) poisons a tag filter exactly as it poisons a seed set |
+| reach beyond the tags when extraction is ordinary | the bipartite graph (the walk) |
+| communities (§6), path explanations (§7), text2cypher enumeration | **graph only — no tag-store equivalent exists** |
+| entity-level outputs (expansion, agent routing) | the graph — a filter consumes entities, it cannot produce them |
+
+Decision rule for the stage: *questions name one entity at a time and your
+chunks are well tagged → add a keyword filter and go home early. The graph
+starts paying when entities relate to each other in ways your questions
+exploit — corroboration, communities, paths, structured queries — or when
+extraction can't be trusted to tag everything.* Extends 5.12's existing "one
+CEO, one product? save yourself the projection" to "forty engineers but
+single-entity questions? save yourself the database."
+
+**Editorial consequence — DECIDED (2026-09-07).** Nathan: 5.12 becomes the
+tags-vs.-graph decision rule (drafted in `section-05-slides.md`, take-home
+line upgraded to "cosine retrieves the topic, the **entity layer** retrieves
+the entity"); **filter parity itself gets no stage time** — it is the Q&A
+pocket behind 5.12, with this finding as the receipts. Title still open.
+Still to do: thread the same frame through sections 9 and 10 when those
+sections are built.
 
 #### 6. Damping: shorter walks win monotonically
 
