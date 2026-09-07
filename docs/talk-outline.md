@@ -18,7 +18,7 @@ before the section's slides can be written honestly.
 | 2 | What is Graph RAG / evidence | none (sources gathered) | not started |
 | 3 | Roadmap | none | not started |
 | 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ **built, verified, and the section's story settled** — Sacagawea cluster is the spine; see *Section 4 findings* |
-| 5 | Ranking can't combine evidence → multi-seed PPR | `pagerank.py`, `projection.py`, `demo_pagerank.py`, `sweep_pagerank.py` | ✅ **built, verified live, and the story settled** — thesis rebuilt on measurement, two claims retracted; the Floyd case is the spine. See *Section 5 findings* |
+| 5 | Ranking can't tell people apart → entity-seeded PPR | `pagerank.py`, `projection.py`, `demo_pagerank.py`, `sweep_pagerank.py` | ✅ **built, verified live, slides drafted** — thesis settled on the third attempt (co-typed entity substitution); `charbonneau-role` is the spine. **Start at *Section 5 in one page*.** Open: title, demo-graph choice |
 | 6 | Context is redundant → communities | `communities.py`, `demo_communities.py` | ✅ runs live; still needs Leiden + conductance |
 | 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | ✅ runs live (needed a resolution fix — see below) |
 | 8 | Does this help? | `benchmark.py`, `metrics.py` | runs; **gold set is broken worse than reported** — 4 labels missing *and* at least 4 more silently resolving to near-empty decoy nodes. See *Section 5 findings* #10 |
@@ -793,6 +793,86 @@ Real duplicates still in the graph after two resolution passes, for the slides:
 `LABICHE` in 11, `BRATTEN`(24)/`BRATTON`(23) split almost evenly.
 
 ### Section 5 findings — working notes, not slide material
+
+> **⚠️ This block is ~1,100 lines and went a long way into the weeds. Read this
+> one-page summary and stop, unless you need a specific mechanism. The reading
+> guide at the end says which sub-findings are load-bearing and which are
+> superseded.**
+
+#### Section 5 in one page
+
+**The settled thesis** (third version; the first two were measured and
+retracted):
+
+> **Cosine retrieves the topic. Entity-seeded PPR retrieves the entity.** When a
+> question turns on a specific thing and cosine's vocabulary match drags in the
+> wrong ones of the same type, seeding the entity fixes it — *provided
+> extraction attached that entity to the passage.*
+>
+> It earns its place in proportion to how many **same-type entities** your
+> corpus holds. Forty engineers and you asked what Chen owns: worth it. One CEO,
+> one product: don't bother.
+
+**The four pieces of evidence that hold.** Each is measured on mass, on hundreds
+of items, or by reading — never on a small-sample threshold:
+
+| | |
+|---|---|
+| **The failure is real and exact** | 62 passages mention Charbonneau; median cosine rank **296**; **2** in the top-8. Four of eight slots go to *other* interpreters — Dorion, Gravelin, Duriaur (5e) |
+| **The entity signal is load-bearing** | delete it and the hand-judged passages fall `[7,3,5] → [14,10,11]` and `[8] → [11]` — about **7 rank positions** (5d-quinquies) |
+| **The hand read** | 16 promoted passages read in full across 3 questions; **4 clear the bar.** Demo case is `charbonneau-role` (5d) |
+| **The best single instance** | a 305-char passage at cosine rank 22 that **never names Sacagawea**, reachable only because extraction resolved *"one of his wives"* → `SACAGAWEA` (5d) |
+
+**Three limits, all measured, all stated on stage** — this is what makes the
+multi-tool argument structural rather than a hedge:
+
+1. **Combines evidence with weights you didn't choose.** Additivity *is* a
+   conjunction bonus — comparable-degree seeds put all 9 dual-mention chunks in
+   the top-20 at median rank 5. But each seed's share goes as `1/degree`, so a
+   hub is nearly free to ignore (5d-quater's mechanism, and the corrected
+   linearity note).
+2. **Cannot enumerate or order.** 18 passages in the week before Floyd died;
+   cosine's top-8 holds 3, and so does *every* graph variant including
+   `NEXT_CHUNK` at long damping. A date filter returns 18 in one hop (5c).
+3. **Bounded by extraction.** The passage that answers "how did they get horses
+   from the Shoshone" has **no horse entity attached** (5d).
+
+**What was retracted, and why it matters more than the wins:**
+
+| retracted | why |
+|---|---|
+| The hub trap as the section's centrepiece | Lewis is the *third* hub (deer 589, elk 439); nothing is 2 hops from everything (15.4%); naive PPR does **not** return the same passages (0/8 overlap) — finding 1 |
+| The long-passage blur hypothesis | sign reversed — longer passages rank **better** (Spearman −0.252) — finding 3 |
+| The conjunction thesis | the co-mention proxy was hub-contaminated (100% for grizzly, 87% food-sources); the Floyd demo case was a **false positive** — the passage is from ten weeks before he died — findings 4, 10, 5d |
+| Four tuning conclusions (5d-bis…quater) | the judged passages saturate the entity percentile at 0.97–0.999, and a binary top-8 threshold on n=4 turned one-position drift into "findings" — **5d-quinquies** |
+
+**Open decisions — a fresh conversation should start here:**
+
+1. **Title sign-off.** *"Your ranking can't tell people apart."*
+2. **`neo4j` vs `lewisclark`.** Every number above is `neo4j`. `lewisclark`
+   descends from a different extraction (+39% mention edges). **If the demo
+   graph changes, all of it is re-measured.** This gates the slides.
+3. **Gold-set design fix** — gold should name what makes an answer *correct*,
+   not every entity present. Drop hub entities; fold `gold_overrides.yaml` into
+   `questions.yaml`; teach `verify_questions.py` to rank by mention count.
+   Unblocks Step 5 (finding 10).
+4. **How much of the retraction to tell** in slide 5.9 (~20 seconds).
+
+**Highest-leverage untested change**: **question decomposition for seed
+selection.** The entity seeder is itself a cosine step with cosine's disease —
+it returns `WISDOM RIVER` and `SAGITTARIA LATIFOLIA` for a Sacagawea question.
+Naming the entities from the question (NER, parse, or an agent choosing
+explicitly) is where the leverage is; edge weights, seed weights and degree
+filters all measured no-op or unmeasurable (5d-ter, 5d-quinquies).
+
+**Reading guide:**
+
+| load-bearing | 1, 2, 3, 4, 5b, 5c, 5d, 5e, 8, 9, 10, 11, 12 |
+|---|---|
+| **mechanisms hold, conclusions do not** | 5d-bis, 5d-ter, 5d-quater — see the warning on each |
+| **read before any of those three** | **5d-quinquies** |
+| superseded numbers | finding 5's blend/damping/seed sweeps were scored against the contaminated proxy; keep for history, do not quote |
+
 
 > ⚠️ **Two of this section's own claims did not reproduce and are retracted
 > below.** The history is kept, exactly as in section 4: "the mechanism I
