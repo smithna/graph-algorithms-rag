@@ -1,0 +1,108 @@
+--- /Users/nathansmith/Documents/kcdc-2026/corps-of-discovery-graph-rag/tag_corps_members.py	2026-09-06 14:51:02
++++ /private/tmp/claude-502/-Users-nathansmith-Documents-kcdc-2026/121e5b69-f273-438c-9505-e6896cc161eb/scratchpad/tag_corps_members_patched.py	2026-09-07 12:34:58
+@@ -22,6 +22,10 @@
+ NEO4J_USER     = os.environ["NEO4J_USER"]
+ NEO4J_PASSWORD = os.environ["NEO4J_PASSWORD"]
+ 
++# Explicit database targeting: these scripts otherwise use driver.session() with
++# no database, which silently follows the user's HOME DATABASE.
++NEO4J_DB = os.getenv("NEO4J_DATABASE", "neo4j")
++
+ # Canonical names of every person who travelled with the Corps of Discovery,
+ # including the permanent party, interpreters, and attached personnel.
+ CORPS_MEMBERS: frozenset[str] = frozenset({
+@@ -83,56 +87,70 @@
+     "RICHARD WARFINGTON",     # led the return keelboat party
+ })
+ 
++# Graph-specific canonical names on the disambiguated lewisclark database that
++# the roster's modern spellings cannot reach even case/diacritic-insensitively.
++# Each is a corps member under the name the journals (and the judge) gave it:
++EXTRA_GRAPH_NAMES: frozenset[str] = frozenset({
++    "M B REED",           # Moses B. Reed, the deserter
++    "WILLIAM WARNER",     # spelling variant of William Werner; the true pair
++                          # WARNER~WERNER was refused by the dispute rule, so
++                          # both nodes exist and both are him
++    "MY BLACK SERVENT",   # York's folk-name cluster; the judge's canonical
++                          # 'YORK' collided with the existing YORK node at
++                          # merge time, so this cluster kept a member name
++})
+ 
++
+ def main() -> None:
+     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+     driver.verify_connectivity()
+ 
+-    with driver.session() as s:
+-        # Set corpsMember=true on known members
++    with driver.session(database=NEO4J_DB) as s:
++        # Match case- and diacritic-insensitively against canonicalName AND
++        # aliases. The disambiguated graph's canonicals came from the judge
++        # (PETER CRUZATTE, FRANÇOIS LABICHE, JEAN-BAPTISTE LEPAGE), so the
++        # roster's exact modern spellings miss five members on strict equality.
+         result = s.run(
+             """
+             UNWIND $names AS name
+-            MATCH (p:Person {canonicalName: name})
+-            SET p.corpsMember = true
+-            RETURN count(*) AS tagged
++            MATCH (p:Person)
++            WHERE apoc.text.clean(p.canonicalName) = apoc.text.clean(name)
++               OR any(a IN coalesce(p.aliases, [])
++                      WHERE apoc.text.clean(a) = apoc.text.clean(name))
++            WITH name, collect(DISTINCT p) AS hits
++            FOREACH (p IN hits | SET p.corpsMember = true)
++            RETURN name, [p IN hits | p.canonicalName] AS matched
++            ORDER BY name
+             """,
+-            names=list(CORPS_MEMBERS),
++            names=list(CORPS_MEMBERS | EXTRA_GRAPH_NAMES),
+         )
+-        tagged = result.single()["tagged"]
++        matches = {r["name"]: r["matched"] for r in result}
++        tagged_nodes = {c for hit in matches.values() for c in hit}
+ 
+         # Clear the flag from any node that shouldn't have it
+         # (guards against stale data from a previous run with a wider list)
+         result = s.run(
+             """
+             MATCH (p:Person)
+-            WHERE p.corpsMember = true AND NOT p.canonicalName IN $names
++            WHERE p.corpsMember = true AND NOT p.canonicalName IN $tagged
+             REMOVE p.corpsMember
+             RETURN count(*) AS cleared
+             """,
+-            names=list(CORPS_MEMBERS),
++            tagged=sorted(tagged_nodes),
+         )
+         cleared = result.single()["cleared"]
+ 
+-        # Report which known members were not found in the graph
+-        result = s.run(
+-            """
+-            UNWIND $names AS name
+-            OPTIONAL MATCH (p:Person {canonicalName: name})
+-            WITH name, p
+-            WHERE p IS NULL
+-            RETURN name
+-            ORDER BY name
+-            """,
+-            names=list(CORPS_MEMBERS),
+-        )
+-        missing = [r["name"] for r in result]
+-
+     driver.close()
+ 
+-    print(f"  Tagged {tagged} Corps members with corpsMember=true")
++    print(f"  Tagged {len(tagged_nodes)} Person nodes for "
++          f"{len(matches)} matched roster names")
++    for name in sorted(matches):
++        hit = matches[name]
++        if hit != [name]:
++            print(f"    {name} -> {', '.join(hit)}")
+     if cleared:
+         print(f"  Cleared stale corpsMember flag from {cleared} nodes")
++    missing = sorted((CORPS_MEMBERS | EXTRA_GRAPH_NAMES) - set(matches))
+     if missing:
+         print(f"  Not found in graph ({len(missing)}): {', '.join(missing)}")
+     else:

@@ -1,0 +1,22 @@
+--- /Users/nathansmith/Documents/kcdc-2026/corps-of-discovery-graph-rag/setup_fulltext_indexes.py	2026-09-06 14:51:02
++++ /private/tmp/claude-502/-Users-nathansmith-Documents-kcdc-2026/121e5b69-f273-438c-9505-e6896cc161eb/scratchpad/setup_fulltext_indexes_patched.py	2026-09-07 16:00:26
+@@ -20,6 +20,10 @@
+ NEO4J_USER     = os.environ["NEO4J_USER"]
+ NEO4J_PASSWORD = os.environ["NEO4J_PASSWORD"]
+ 
++# Explicit database targeting: these scripts otherwise use driver.session() with
++# no database, which silently follows the user's HOME DATABASE.
++NEO4J_DB = os.getenv("NEO4J_DATABASE", "neo4j")
++
+ INDEXES = [
+     ("Person",        "person_search"),
+     ("NativeNation",  "native_nation_search"),
+@@ -35,7 +39,7 @@
+ 
+ 
+ def create_indexes(driver) -> None:
+-    with driver.session() as s:
++    with driver.session(database=NEO4J_DB) as s:
+         # Per-label indexes for precise typed queries
+         for label, index_name in INDEXES:
+             s.run(f"""
