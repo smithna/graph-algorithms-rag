@@ -18,8 +18,8 @@ before the section's slides can be written honestly.
 | 2 | What is Graph RAG / evidence | none (sources gathered) | not started |
 | 3 | Roadmap | none | not started |
 | 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ **built, verified, and the section's story settled** — Sacagawea cluster is the spine; see *Section 4 findings* |
-| 5 | Ranking can't tell people apart → entity-seeded PPR | `pagerank.py`, `projection.py`, `decompose.py`, `demo_pagerank.py`, `sweep_pagerank.py`, `measure_seeds.py`, `measure_extraction_grade.py`, `measure_ablation.py`, `measure_budget_graph.py`, `measure_name_shards.py` | ✅ **built, verified live, slides drafted** — thesis settled on the third attempt (co-typed entity substitution); `charbonneau-role` is the spine. **Start at *Section 5 in one page*.** New: decomposed seeder (5d-ter's fix), built + measured — named-entity coverage 10/11 vs semantic 8/11, finding 5f. Open: title, demo-graph choice, whether 5f gets stage time. New: 5h screens PPR's remaining case after 5g's filter parity; **framing approved** (5h-5: gold-plated §4 path vs budget cheap-extraction path, walk compensates at query time). **Ablation built and measured (5i, `measure_ablation.py`): the filter goes blind to the coref-only passages and the walk does NOT buy them back — ranks 114–1108 ablated vs 11–62 full; SACAGAWEA keeps 6/64 edges; NEXT_CHUNK is no coref patch. Replicated on a REAL budget graph (5j, `measure_budget_graph.py` on new `budgetluna` = rawluna + indexes, no resolution): harsher — identity shattered across 19 shards + 25 untagged chunks, fever/Aug-14 at rank 1709/1475, and the edge-support metric scores the worse graph better. Multi-shard seeding measured (5j-bis): oracle shards restore even the FILTER on 2 of 3 — query-time compensation is query-time entity resolution; the sole adjacency win needs the impure shard the correct merge excludes. "About as good, less work up front" refuted; surviving beat: the walk covers duplicates and hubs; shards need resolving — at build time once or at query time forever. Spelling-shard case measured (5k, `measure_name_shards.py`): DREWYER 265 / GEORGE DROUILLARD 63 unmerged ON THE DEMO GRAPH — 5g's parity requires *resolved* tags; vector discovery ranks the other spelling #22 behind the Dorions; the walk trails cosine at bridging it; the df-prop merged walk (median 168) or a two-tag filter fixes it — the easy §3-machinery merge the pipeline never ran** |
-| 6 | Context is redundant → communities | `communities.py`, `demo_communities.py` | ✅ runs live; still needs Leiden + conductance |
+| 5 | Ranking can't tell people apart → entity-seeded PPR | `pagerank.py`, `projection.py`, `decompose.py`, `demo_pagerank.py`, `sweep_pagerank.py`, `measure_seeds.py`, `measure_extraction_grade.py`, `measure_ablation.py`, `measure_budget_graph.py`, `measure_name_shards.py` | ✅ **built, verified live, slides drafted** — thesis settled on the third attempt (co-typed entity substitution); `charbonneau-role` is the spine. **Start at *Section 5 in one page*.** New: decomposed seeder (5d-ter's fix), built + measured — named-entity coverage 10/11 vs semantic 8/11, finding 5f. Open: title, demo-graph choice, whether 5f gets stage time. New: 5h screens PPR's remaining case after 5g's filter parity; **framing approved** (5h-5: gold-plated §4 path vs budget cheap-extraction path, walk compensates at query time). **Ablation built and measured (5i, `measure_ablation.py`): the filter goes blind to the coref-only passages and the walk does NOT buy them back — ranks 114–1108 ablated vs 11–62 full; SACAGAWEA keeps 6/64 edges; NEXT_CHUNK is no coref patch. Replicated on a REAL budget graph (5j, `measure_budget_graph.py` on new `budgetluna` = rawluna + indexes, no resolution): harsher — identity shattered across 19 shards + 25 untagged chunks, fever/Aug-14 at rank 1709/1475, and the edge-support metric scores the worse graph better. Multi-shard seeding measured (5j-bis): oracle shards restore even the FILTER on 2 of 3 — query-time compensation is query-time entity resolution; the sole adjacency win needs the impure shard the correct merge excludes. "About as good, less work up front" refuted; surviving beat: the walk covers duplicates and hubs; shards need resolving — at build time once or at query time forever. Spelling-shard case measured (5k, `measure_name_shards.py`): DREWYER 265 / GEORGE DROUILLARD 63 unmerged ON THE DEMO GRAPH — 5g's parity requires *resolved* tags; vector discovery ranks the other spelling #22 behind the Dorions; the walk trails cosine at bridging it; the df-prop merged walk (median 168) or a two-tag filter fixes it — the easy §3-machinery merge the pipeline never ran. New: 5l (`measure_thematic.py`, on `lewisclark`): thematic questions are the no-filter class — all three decompose to zero mentions, bar drops to cosine alone; hand-read verdict: expand **wins trade-goods** (buttons-off-coats promoted from cosine 77, Twisted Hair gun payment from 112, month coverage 3→7, carried by df-4..16 Supply nodes) **and food-sources** (5→7 months, ration passage from rank 34), **collapses illness-and-injury onto one episode** (4→1 months, 7/8 chunks from Long Camp May 1806) — the measured hand-off to §6 diversification. Passage half discriminative; junk Event entity seeds mattered by demotion, not promotion. New: 5m (`measure_neighborhood.py`, `lewisclark`): neighborhood questions ("Sacagawea's brother") — filter covers 2/16 and 1/8 by construction; hub-anchor flagship fails ALL strategies in the top-8 (bridge = 2 of the anchor's 85 edges; delete-test 338→601 median confirms the bridge is the mechanism) but pure walk surfaces the *name* at rank 4 → two-step retrieval; low-df-anchor replication (Walla Walla chief, anchor df 3) wins one-shot: blend median 10 vs cosine 43, walk crosses 1-of-12 nation shards to the chief's untagged chunks. New: 5n (`measure_bridge_decay.py`): Nathan's agent rule measured as a curve — 38k anchor/satellite pairs, median walk-rank of exclusive chunks monotonic in anchor df (39 at df 2-5 → 1058 at df 300+, no exceptions); routing table: df≲15 expand, df≳40 filter (5g) or two-step (5m), zero mentions passage-expand (5l); §9 material — the graph-tool decision is one COUNT query. **Stage close redrafted (2026-09-07): 5.12–5.14 in `section-05-slides.md` now tell the 5l/5m/5n story (buttons → the brother's name → the routing table), decay curve parked for §9; section runs 14:00 raw, cut plan to 10:00 drafted; sign-offs pending: trims inside protected beats, or 5.12→§6.** **MIGRATED to `lewisclark` (2026-09-07, finding 5o): every 5.1–5.11 number re-measured — failure table 69/300/2; Lewis is now the TOP hub (825 chunks, 28.3%: the deer punchline is dead, elk-outranks-Clark replaces it); ladder 2.84→0.47/8; damping direction holds; alpha=1.0 verifies 14/14; fresh question ~215 ms; hand read redone on the new windows, 3/11 clear (Nathan's read pending); receipts adapted — duplicate seeding now PACIFIC OCEAN/OCIAN df-proportional (one SACAGAWEA remains, §4 merged it), degree imbalance now LEWIS+CYNOMYS (6.1% bonus), extraction bound now the missing keelboat (the horse receipt got FIXED by luna: Aug-18 passage carries HORSES and ranks #1). Slides updated; `neo4j` history kept in findings 1–5k** |
+| 6 | Context is redundant → communities | `communities.py`, `demo_communities.py`, `measure_communities.py` | ✅ **built, measured on `lewisclark`, slides drafted** — Leiden + conductance added; seeded Leiden is the measured partition (Louvain redraws every run, 6a); Louvain's disconnected-community flaw caught live (1,089-node case) and GDS Leiden's guarantee has a measured asterisk (6b); `diversify()` caps *any* strategy's slate — capping the walk repairs 5l's illness collapse (1→4 months, recovers Lewis's gunshot + Fort Clatsop sick-list, hand-read) and is byte-identical on the two questions the walk already wins (6c). Read-pack: `results/communities-lewisclark.md`; slides [`docs/section-06-slides.md`](section-06-slides.md). **Stage scope decided 2026-09-07: Leiden only — Louvain findings are Q&A backup, no slide time** |
 | 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | ✅ runs live (needed a resolution fix — see below) |
 | 8 | Does this help? | `benchmark.py`, `metrics.py` | runs; **gold set is broken worse than reported** — 4 labels missing *and* at least 4 more silently resolving to near-empty decoy nodes. See *Section 5 findings* #10 |
 | 9 | How to implement | docs only | not started |
@@ -1137,24 +1137,28 @@ of items, or by reading — never on a small-sample threshold:
 
 | | |
 |---|---|
-| **The failure is real and exact** | 62 passages mention Charbonneau; median cosine rank **296**; **2** in the top-8. Four of eight slots go to *other* interpreters — Dorion, Gravelin, Duriaur (5e) |
-| **The entity signal is load-bearing** | delete it and the hand-judged passages fall `[7,3,5] → [14,10,11]` and `[8] → [11]` — about **7 rank positions** (5d-quinquies) |
-| **The hand read** | 16 promoted passages read in full across 3 questions; **4 clear the bar.** Demo case is `charbonneau-role` (5d) |
-| **The best single instance** | a 305-char passage at cosine rank 22 that **never names Sacagawea**, reachable only because extraction resolved *"one of his wives"* → `SACAGAWEA` (5d) |
+| **The failure is real and exact** | 69 passages mention Charbonneau; median cosine rank **300**; **2** in the top-8. Four of eight slots go to *other* interpreters — Dorion, Gravelin, Duriaur (5e; `lewisclark` numbers, 5o — `neo4j` was 62/296/2) |
+| **The entity signal is load-bearing** | delete it and the hand-judged passages fall `[3,6] → [26,14]` and `[6] → [15]` (5o; on `neo4j` it was ~7 rank positions, 5d-quinquies) |
+| **The hand read** | redone on `lewisclark` windows: 11 promoted passages read in full across 3 questions; **3 clear the bar** (5o, Nathan's read pending). Demo case is `charbonneau-role` (`neo4j` history: 4 of 16, 5d) |
+| **The best single instance** | a 305-char passage at cosine rank 20 that **never names Sacagawea**, reachable only because extraction resolved *"one of his wives"* → `SACAGAWEA` — retagging confirmed on `lewisclark` (5d, 5o) |
 
 **Three limits, all measured, all stated on stage** — this is what makes the
 multi-tool argument structural rather than a hedge:
 
 1. **Combines evidence with weights you didn't choose.** Additivity *is* a
-   conjunction bonus — comparable-degree seeds put all 9 dual-mention chunks in
-   the top-20 at median rank 5. But each seed's share goes as `1/degree`, so a
-   hub is nearly free to ignore (5d-quater's mechanism, and the corrected
-   linearity note).
+   conjunction bonus — comparable-degree seeds put all 17 dual-mention chunks
+   in the top-20 at median rank 9 (SAC+CHAR, 5o). But each seed's share goes
+   as `1/degree`, so a hub is nearly free to ignore — LEWIS(825)+CYNOMYS(42):
+   a 6.1% bonus (5o; 5d-quater's mechanism, and the corrected linearity note).
 2. **Cannot enumerate or order.** 18 passages in the week before Floyd died;
    cosine's top-8 holds 3, and so does *every* graph variant including
-   `NEXT_CHUNK` at long damping. A date filter returns 18 in one hop (5c).
-3. **Bounded by extraction.** The passage that answers "how did they get horses
-   from the Shoshone" has **no horse entity attached** (5d).
+   `NEXT_CHUNK` at long damping — replicated exactly on `lewisclark` (5c, 5o).
+   A date filter returns 18 in one hop.
+3. **Bounded by extraction.** No keelboat entity exists anywhere in the graph,
+   so the question that names one can seed nothing (5o; the `neo4j` receipt —
+   the horse missing from the horse-trading passage — was *fixed* by the luna
+   extraction, which is the measured "better extraction moves the boundary,
+   it does not remove it" coda).
 
 **What was retracted, and why it matters more than the wins:**
 
@@ -1168,9 +1172,31 @@ multi-tool argument structural rather than a hedge:
 **Open decisions — a fresh conversation should start here:**
 
 1. **Title sign-off.** *"Your ranking can't tell people apart."*
-2. **`neo4j` vs `lewisclark`.** Every number above is `neo4j`. `lewisclark`
-   descends from a different extraction (+39% mention edges). **If the demo
-   graph changes, all of it is re-measured.** This gates the slides.
+2. **`neo4j` vs `lewisclark` — DECIDED and DONE (2026-09-07): `lewisclark`
+   for everything; the 5.1–5.11 migration landed.** Full record in
+   **finding 5o**; slides updated; `neo4j` tables kept in findings 1–5k as
+   history. How the checklist resolved, item by item:
+   - **Re-measured, shifts as predicted and one bigger**: failure table
+     69/300/2 (Charbonneau df 69, as predicted); hub table — the *unpredicted*
+     shift: **Lewis is now the top hub** (825 chunks, 28.3%), so the
+     deer-outranks-the-captains punchline died and 5.6 now runs on
+     elk-outranks-Clark + "a better extractor moved the hub"; Drewyer
+     297/Drouillard 84 row survives on screen; ladder 2.84 → 0.47/8 (Lewis
+     3.2 → 18.1; decomposed-seed methodology note in 5o); damping direction
+     holds (0.85 worst); `alpha=1.0` 14/14; latency ~215 ms fresh; Nov-4 at
+     cosine rank 20, SACAGAWEA/SHOSHONE tags confirmed.
+   - **Mechanism change executed**: demo path is `--seeder decomposed`
+     everywhere; `charbonneau-role` seeds one node at weight 1.0. The
+     duplicate-seeding receipt pivoted to **PACIFIC OCEAN / PACIFIC OCIAN**
+     (df 19/5, weights 0.605/0.395) rather than Drewyer/Drouillard — measured:
+     cross-token spelling shards do NOT get hedged (GEORGE DROUILLARD scores
+     2.99 vs DREWYER 10.15 on `'Drewyer'`, below the 0.5 keep-ratio), which
+     is 5k's boundary and is now an honesty line on slide 5.4.
+   - **Hand reads redone, not ported**: 11 promotions read, 3 clear (5o) —
+     **Nathan's read pending**.
+   - **Projection**: `lc-retrieval` projected on `lewisclark`
+     (8,139 / 63,836, 78 ms).
+   - **Heap**: found already at **8 GiB** — no restart needed.
 3. **Gold-set design fix** — gold should name what makes an answer *correct*,
    not every entity present. Drop hub entities; fold `gold_overrides.yaml` into
    `questions.yaml`; teach `verify_questions.py` to rank by mention count.
@@ -1196,6 +1222,38 @@ multi-tool argument structural rather than a hedge:
    as well be filtering on tags again* — every query-time trick measured is
    the tag filter or entity resolution in disguise; the value lives in the
    entity layer. How to stage that is the open decision.
+6. **The thematic beat (5l) — the walk's one clean win on a good graph, now
+   measured on `lewisclark`.** Zero-mention questions have no filter to run;
+   hand reads give expand trade-goods (buttons-off-coats from cosine 77) and
+   food-sources (month coverage 5→7) and take illness-and-injury (window
+   collapses onto one episode, 4→1 months — the measured entrance to §6).
+   Open: how much stage time, and whether the 5.12 decision table gains the
+   row *"questions name nothing → passage-seeded expansion + community cap."*
+7. **The neighborhood beat (5m) — Class 1 measured, and it splits on anchor
+   degree.** "Sacagawea's brother": filter sees 2/16 by construction, but no
+   strategy top-8s a single target (bridge = 2 of her 85 edges — reachable,
+   not ranked, with a denominator); the walk's contribution is surfacing the
+   *name* Cameahwait at pure-walk rank 4 → two-step retrieval, hand-off to
+   §7. The low-df replication (Walla Walla chief, anchor df 3) wins one-shot:
+   blend median 10 vs cosine 43, crossing 1-of-12 nation shards to the
+   chief's untagged chunks. The delete-test (median 338→601 with the two
+   bridge chunks removed) is the section's cleanest mechanism demo. Open:
+   stage time, and the decision-table row *"the answer's entity is the
+   unknown → low-df anchor: walk and done; hub anchor: walk for the name,
+   then query it."*
+8. **The agent routing rule (5n) — Nathan's, measured.** Seed degree predicts
+   whether expansion pays, monotonically across 38k anchor/satellite pairs
+   (median exclusive-chunk walk-rank 39 at df 2–5 → 1,058 at df 300+). The
+   routing table (zero mentions → passage-expand; df≲15 → expand; df≳40 →
+   filter or two-step) is one COUNT query to implement. Open: whether it
+   lives in §5's close or §9's implementation beat — it is the talk's
+   sharpest "when do I actually need the graph" answer. **Drafted
+   (2026-09-07): §5 close redrafted as 5.12–5.14 around this story
+   (`section-05-slides.md`), routing table on stage in 5.14, decay curve
+   parked for §9. Pending Nathan: the cut plan to 10:00 (trims inside
+   previously-protected beats, or 5.12 moves to open §6), and the fact that
+   5.1–5.11 quote `neo4j` while 5.12–5.14 quote `lewisclark` — open decision
+   #2's re-measurement question is now forced.**
 
 **Highest-leverage untested change**: **question decomposition for seed
 selection.** The entity seeder is itself a cosine step with cosine's disease —
@@ -1207,7 +1265,7 @@ and measured — see finding 5f.**
 
 **Reading guide:**
 
-| load-bearing | 1, 2, 3, 4, 5b, 5c, 5d, 5e, 5g, 5h, 5i, 5j, 5k, 8, 9, 10, 11, 12 |
+| load-bearing | 1, 2, 3, 4, 5b, 5c, 5d, 5e, 5g, 5h, 5i, 5j, 5k, 5l, 5m, 5n, **5o (the migrated numbers — quote these)**, 8, 9, 10, 11, 12 |
 |---|---|
 | **mechanisms hold, conclusions do not** | 5d-bis, 5d-ter, 5d-quater — see the warning on each |
 | **read before any of those three** | **5d-quinquies** |
@@ -1219,6 +1277,11 @@ and measured — see finding 5f.**
 > assumed was wrong, and here is what the data said instead" is the most useful
 > thing in the section. Measured 2026-09-07 against the **`neo4j`** demo graph,
 > read-only. Every number below is `neo4j`-specific — see finding #12.
+>
+> **Migration note (2026-09-07, later):** the demo graph is now `lewisclark`
+> and every number slides 5.1–5.11 quote was re-measured there — see
+> **finding 5o** for the old-vs-new record. The `neo4j` tables in findings
+> 1–5k stay as written, as history; quote 5o, not them.
 
 #### 1. RETRACTED: the hub trap as the outline stated it
 
@@ -2958,6 +3021,450 @@ answer anything; the Drouillard question used for the cosine reference is not
 in the bank; the conflation shards — SHANNON DREWYER df 6, "Shannon &
 Drewyer" sentences fused into one node — are noted but unmodelled.)*
 
+#### 5l. Thematic questions on `lewisclark` — the class with no filter, and the walk's first clean win on a good graph (2026-09-07)
+
+After 5g, a PPR win needs a question the filter cannot run on. 5h-2(b) named
+the class: the bank's three thematic questions (`trade-goods`, `food-sources`,
+`illness-and-injury`) decompose to **zero entity mentions** — re-verified live
+against the cached `gpt-5.6-luna` parses before this run — so no tag filter
+can be constructed and the bar honestly drops back to cosine alone. Run on
+**`lewisclark`** (chunk embeddings + `chunk_embeddings` index restored with
+the clone; `lc-mentions` projects at 7,354 nodes / 44,900 rels / 220 ms), so
+a win cannot be credited to extraction gaps the way 5i's inverse was. New
+`scripts/measure_thematic.py`; fresh hand reads of every window
+(`results/thematic-lewisclark.md`, 48 distinct chunks); the old finding-4/5
+thematic numbers used the contaminated proxy and are not comparable.
+
+Three windows per question: `vector` (cosine top-8), `passage-blend` (cosine
+0.6 + passage-PPR 0.4 — pure 5h-2(b)), `expand` (shipped 0.6/0.2/0.2, semantic
+entity seeder — on `lewisclark` that means the species/event/taxon indexes).
+
+**The hand read, trade-goods — cosine's thematic failure is co-typed
+substitution writ large.** The question asks what *the expedition* traded;
+cosine's top-8 answers with *other people's* trade — the coastal
+maritime-trade cluster (two near-duplicate Lewis/Clark journal pairs among
+them) and the Skillute middleman economy. Read honestly, only 2 of 8 vector
+slots show the expedition trading anything. `expand` promoted, from cosine
+ranks 28–112, the passages that *are* the answer:
+
+| promotion | cosine rank | carried by |
+|---|---|---|
+| the captains cut the **buttons off their coats** (+ eye-water, basilicon) to buy roots and bread, 1806-06-02 | **77** | BUTTONS df 5 |
+| **gun + 100 balls + 2 lbs powder** paid to Twisted Hair for horse-keeping; the gun itself bought "of the indians below for 2 Elkskins", 1806-05-12 | **112** | KNIVES df 16, POWDER df 64 |
+| Ordway ferries **elk skins, two coats, 4 robes** downriver "to add to the Stores… for the purchase of horses"; 3 dogs bought as food, 1806-04-18 | 28 | COATS df 4, PACK SADDLES df 4 |
+| Blackfeet parley — flag, medal, handkerchief given; their Saskatchewan trade described, 1806-08-12 | 108 | GUNS df 35, BLANKETS df 19 |
+
+Window month-coverage goes **3 → 7**; distinct entities 93 → 125; the
+near-duplicate pair count drops 2 → 1. The mechanism is exactly 5h-2(b)'s
+prediction: **the question says "goods", cosine retrieves the passages that
+*describe* goods (trader inventories), and the walk crosses the low-df Supply
+nodes — BUTTONS, COATS, ELKSKINS, BEADS — from the descriptions to the
+passages where the expedition actually spent them.** Vocabulary-free query
+expansion, receipts printed per promotion by the script.
+
+**food-sources reads the same way.** Promotions from ranks 34–90 include the
+corpus's best quantified ration passage ("it requires 4 deer, an Elk and a
+deer, or one buffaloe, to supply us plentifully 24 hours", rank 34), horse
+beef for supper on the Kooskooske (57), dogs purchased to eat (60), the
+meat-exhausted buffalo hunt of the return (90), and the subsistence-planning
+council ("we now view the horses as our only Certain resource for food", rank
+9). Month coverage **5 → 7**, entities 41 → 83. The question literally asks
+"across different stretches", and the stretch coverage is the win. One
+promotion is a clean miss: the Cameahwait village-arrival scene (rank 13) has
+no food content and rode in on the CAMEAHWAIT bridge — the graded-membership
+cost, visible and priced.
+
+**illness-and-injury is the anti-case, and it is the section's honest bound.**
+Per-slot relevance actually *improves* — vector's #1 is Clark doctoring forty
+Nez Perce with eye-water, topic-match-wrong-subject again — but `expand`
+collapses the window onto **one episode**: 7 of 8 chunks from the May 1806
+Long Camp medical drama (the child's imposthume, Bratton's back, the paralyzed
+chief), month coverage **4 → 1**, near-duplicate pairs 0 → 2. Gone: the
+Sept-1805 mass sickness, the dysentery-and-skin-eruptions passage, the Fort
+Clatsop sick-list. The mechanism is the same one that wins above: when a
+theme's rare entities all co-occur in one episode (JEAN BAPTISTE CHARBONNEAU
+df 9, WILLIAM BRATTON df 40, JOHN SHIELDS df 118, in the same chunks), the
+walk's conjunction-seeking *is* episode-seeking, and it anti-diversifies.
+Which theme breaks it is a fact about the corpus's entity co-occurrence
+structure, not about the question's wording — nothing in the two question
+texts predicts trade-goods wins and illness loses. **This is §6's entrance,
+measured**: the bank note always said community diversification should shine
+on a thematic question; it turns out the walk is what *creates* the need on
+this one.
+
+**Attribution, so the entity half doesn't get oversold.** The semantic entity
+seeds are junk-on-paper for these questions — `DEPARTURE OF JOHN COLTER` seeds
+two *different* questions (cosine's disease at the entity level, 5d-ter as
+predicted). A percentile diagnostic on the star promotions shows both halves
+agreeing (passage-PPR 0.87–0.99, entity-PPR 0.89–1.0 — the latter inflated by
+sparsity, where "reachable at all" is a high percentile), so the promotions
+are jointly supported with the passage half discriminative. The entity half's
+real, measurable act was **demotion**: it pushed the native-trade-network
+passages (entity percentile 0.16–0.77) out of the trade window, which is why
+`expand` diverges from `passage-blend` far more than its 0.2 weight suggests.
+`passage-blend` alone is conservative — 5–6 of 8 slots unchanged, promotions
+only from ranks 9–30.
+
+*(Discipline notes: three questions, windows of 8, judged by reading — no
+gold, no rank metrics, and the near-dup/month/entity counts are descriptive
+corroboration, not verdicts. The blend weights are the shipped defaults,
+deliberately untuned — after 5d-quinquies, no knob sweeps against hand-read
+outcomes. Single corpus; the illness collapse in particular should be
+replicated on any second corpus before it becomes a general claim.)*
+
+**What section 5 gets to say, and it completes the arc:** on a good graph,
+single-entity questions belong to the tag filter (5g); questions that name
+nothing belong to the walk, because there is no tag to filter and cosine
+retrieves the *description* of the theme rather than its instances. The
+buttons passage is the stage demo — one sentence of setup, one promotion, one
+receipt (BUTTONS, df 5, shared with a trader-inventory passage the vector
+already had). Illness is the stated bound and the hand-off to §6. Candidate
+extension to the 5.12 decision table: *"questions name nothing at all →
+passage-seeded expansion, and cap the window per community."*
+
+#### 5m. Neighborhood questions — the filter can't be built, and the walk finds the name rather than the answer (2026-09-07)
+
+Class 1 of the post-5g screen (5h-4's candidate): questions where the entity
+holding the answer is *the thing the asker doesn't know*. Two cases built on
+`lewisclark` in `scripts/measure_neighborhood.py`, both with tag-defined
+target populations that were **read in full before the questions were
+engineered** (16 Cameahwait chunks, 8 Yelleppit/Yellept chunks — all
+substantive). Resolution uses the decomposed seeder's deterministic full-text
+path, as in 5k. Strategies: cosine; filter+cosine on the resolvable mention;
+pure entity-seeded PPR from the resolved nodes (df-proportional); 0.6/0.4
+blend. Population medians, the 5e/5k form.
+
+**The filter receipts are total.** "What do we know about Sacagawea's
+brother?" resolves only SACAGAWEA (df 85), whose filter covers **2 of 16**
+Cameahwait chunks. "Which chief hosted the expedition among the Walla Walla
+on the return?" resolves ONE of the nation's **twelve** spelling shards
+(WALLA WALLA, df 3 — resolution is spelling-hostage, 5k one layer up), whose
+filter covers **1 of 8** Yelleppit chunks; 4 of the 8 carry no nation tag of
+any spelling, so even an oracle OR-filter over all twelve shards is blind to
+half the answer.
+
+**The flagship fails everyone — and the failure is arithmetic.** Median
+corpus rank of the 16 target chunks: cosine **319**, pure walk **314**, blend
+**172**. The reunion passage that states the relation ("the Indian woman, who
+proved to be a sister of the Chif Cameahwait"): cosine 149, blend **26**,
+filter+cosine 15-of-85. **No strategy puts a single target in its top-8**,
+and both top-8 windows were read: cosine's is tomahawk-recovery and
+horse-butchering junk, the blend's is Sacagawea-biography junk. The reason is
+5i's lesson with a denominator: the bridge is 2 chunks out of the anchor's 85
+first-hop edges, ~2% of the walk's first-hop mass, and no damping value
+turns 2% into a top-8. Reachable, not ranked.
+
+**The delete-test confirms the bridge is the mechanism.** Reproject without
+the 2 bridge chunks and rerun the walk: every one of the 14 satellite-only
+chunks worsens, median **338 → 601** (worst cases 666→1733, 829→1782). The
+mass really does cross those two chunks; there is just not enough of it.
+
+**The replication wins, and the contrast isolates the variable: anchor
+degree.** wallawalla-chief medians: cosine 43, walk **16**, blend **10**;
+blend's top-8 holds 3 targets to cosine's 2. Seeded at one df-3 shard, the
+walk put a third of its first-hop mass on a chunk co-mentioning Yelleppit and
+crossed to the chief's other chunks — including the four no filter of any
+kind can reach — doing **query-time shard resolution through the satellite
+himself as the bridge**. Same mechanism as the flagship, opposite outcome,
+because the bridge was 1 edge of 3 instead of 2 of 85. The walk crosses a
+bridge in proportion to how little else the anchor touches; ask for the
+brother of the corpus's most-storied woman and the bridge drowns in her own
+biography.
+
+**What the walk actually contributes on the hub-anchored case: the name.**
+Pure walk ranks the second bridge chunk (Charbonneau, the Indian woman, and
+*Cameahwait* arriving together) at **4** — cosine has it at 1187. One-shot
+retrieval cannot answer the brother question, but the walk's top-8 hands the
+asker the missing name, after which the question collapses (his 16 chunks
+*are* his tag population). Class 1's honest landing: **on a hub anchor it is
+a two-step retrieval — the walk performs the name-discovery step, and the
+follow-up is a tag lookup**; agentic retrieval, or §7's path business, not a
+better ranker. On a low-df anchor, one shot suffices and the blend simply
+wins.
+
+*(Discipline notes: two cases; populations tag-defined and read; medians over
+16 and 8 chunks; window verdicts by reading both top-8s; no gold, no
+proxy. The Le Borgne case was screened out — his passages hinge on "swivel,"
+which cosine finds unaided. The wallawalla blend's remaining top-8 slots were
+not judged; the claim there is target coverage, not window purity.)*
+
+**Stage candidates:** the delete-test is the cleanest mechanism demo the
+section owns (one projection, one rerun, every rank moves the same
+direction); the brother question is honest theatre — every retrieval mode
+whiffs, then the walk quietly surfaces the name — and it hands off to §7's
+"explain the connection" beat. The anchor-degree contrast (85 vs 3) extends
+5.12's decision table: *"the answer's entity is the unknown → low-df anchor:
+walk and done; hub anchor: walk to discover the name, then query it."*
+
+#### 5n. Bridge decay — Nathan's agent rule, measured as a curve (2026-09-07)
+
+5m ended on a two-point contrast (anchor df 3 wins, df 85 loses), and Nathan
+generalized it into an **agent routing rule: resolve the question's mentions,
+count their chunk degree, and route — low-df seeds justify expansion, high-df
+seeds say filter and stop.** Degree is one COUNT query after resolution,
+observable before any retrieval runs. The bridge fraction — how much of the
+anchor's edge mass crosses toward the satellite — is the true mechanism but
+is *not* observable a priori (the satellite is the unknown), so df is the
+entire signal an agent gets.
+
+`scripts/measure_bridge_decay.py` turns the two points into a curve with no
+relevance judgements: every (anchor, satellite) co-mention pair on
+`lewisclark` (satellite df 4–30, ≥3 exclusive chunks; 38,098 pairs, anchors
+stratum-sampled 385 of 1,575), single-seed PPR per anchor, median corpus rank
+of the satellite's **exclusive** chunks per pair — tag-defined populations,
+the 5e/5k mass form. By anchor degree:
+
+| anchor df | pairs | median of pair-medians | % pairs ≤50 | % ≤100 |
+|---|---|---|---|---|
+| 2–5 | 840 | **39** | 59% | 82% |
+| 6–15 | 2,589 | 112 | 23% | 46% |
+| 16–40 | 5,885 | 223 | 5% | 19% |
+| 41–100 | 5,606 | 388 | 0% | 5% |
+| 101–300 | 6,377 | 624 | 0% | 0% |
+| 301+ | 2,332 | 1,058 | 0% | 0% |
+
+Monotonic top to bottom, no exceptions. Binned instead by bridge fraction
+(shared/df_a) the same pairs run 700 → 29 median across six bins — the
+fraction is the mechanism, degree its observable proxy (the two are coupled
+by construction: a df-3 anchor sharing one chunk has bridge fraction 0.33; a
+df-300 anchor sharing one has 0.003). 5m's cases sit on the curve: Walla
+Walla (df 3) measured walk-median 16 against the bin's 39; Sacagawea (df 85)
+measured 338 against the bin's 388.
+
+**The routing table an agent can execute** (thresholds are this corpus's —
+2,913 chunks — the shape is the claim, the numbers are not portable):
+
+| resolution outcome | route |
+|---|---|
+| zero mentions (thematic) | passage-seeded expansion, community cap (5l) |
+| seeds with df ≲ 15 | **expand** — the filter can't fill a window anyway, and the walk crosses bridges at useful rank |
+| seeds with df ~16–40 | marginal: blend, expect partial coverage |
+| seeds with df ≳ 40 | **filter+cosine and stop** (5g); if the question is relational ("X's brother"), go two-step — walk or read for the missing name, then query it (5m) |
+
+*(Discipline notes: this measures the walk's crossing capacity — how
+discoverable a neighbor's unshared chunks are from an anchor seed — not
+victory over cosine on any question; that comparison needs questions and
+reads, and 5m did two. Populations are tag-defined; medians over ≥3 chunks
+per pair; per-pair data in `results/bridge-decay-lewisclark.csv`. Single
+corpus, single damping (0.45), IDF weights; the monotonicity is robust to
+binning, the absolute medians are not.)*
+
+**Where it lands in the talk:** this is §9 material as much as §5 — "when
+does your agent reach for the graph tool" now has a measured answer and a
+one-query implementation. It also closes section 5's arc cleanly: 5g said
+tags beat the walk when extraction is good; 5l said the walk owns questions
+with no tags; 5m/5n say that in between, *the seed's degree tells you which
+regime you are in before you spend anything*.
+
+#### 5o. The `lewisclark` migration — 5.1–5.11 re-measured (2026-09-07)
+
+Decision #2 executed: **`lewisclark` is the demo graph for everything**, and
+every number slides 5.1–5.11 quote has been re-measured there. The `neo4j`
+tables in findings 1–5k above are kept unchanged as history, per this
+section's retraction precedent — do not quote them for the stage; quote this
+finding and the updated `section-05-slides.md`.
+
+Conditions: local Desktop DBMS (heap found already raised to **8 GiB** — the
+2 GiB pre-condition is more than met), `NEO4J_DATABASE=lewisclark` passed
+explicitly everywhere, home database untouched on `neo4j`, all work
+read-only. `lc-retrieval` projected on `lewisclark` for the first time
+(8,139 nodes / 63,836 rels, 78 ms); `lc-mentions` re-used (7,354 / 44,900,
+67 ms fresh). Question decompositions came from the 5f disk cache — zero new
+API calls for the bank; three probe questions (Drouillard phrasings, Pacific,
+prairie-dog) cost one parse each.
+
+##### The headline numbers, old vs new
+
+| measurement | `neo4j` (history) | **`lewisclark` (quote these)** |
+|---|---|---|
+| 5.1 failure table: mention Charbonneau | 62 · median 296 · 2 in top-8 | **69 · median 300 · 2 in top-8** |
+| 5.1: interpreter vocabulary, not him | 108 · 578 · 2 | **101 · 576 · 2** |
+| 5.1: neither | 2,743 · 1,524 · 4 | **2,743 · 1,523 · 4** |
+| 5.6 hub table top rows | deer 589 · elk 439 · Lewis 377 | **Lewis 825 (28.3%) · elk 587 · Clark 506 · mule deer 458 · bison 396 · Missouri 348 · DREWYER 297** |
+| 5.6 unresolved-duplicate row | DREWYER 265 vs GEORGE DROUILLARD | **DREWYER 297 vs GEORGE DROUILLARD 84 — survives** |
+| 5.6 overlap ladder (naive → IDF → short → mentions+short+IDF) | 4.47 → 0.60 → 1.07 → 0.07 | **2.84 → 2.04 → 1.27 → 0.47** |
+| 5.6 Lewis mean rank, naive → final | 2.5 → 21.5 | **3.2 → 18.1** (median 3 → 10) |
+| 5.7/finding 6 damping | 0.85 worst of six (16 top-8 / 442) | **holds: 0.85 worst on both columns (19 / 542 vs 27 / 482 at 0.45)** |
+| 5.8/finding 7 `alpha=1.0` | 6/6 identical orderings | **14/14 identical** (0.9: 7/14; 0.5: 0/14, overlap 7.64; 0.0: 5.21) |
+| 5.4 Nov-4 passage | cosine rank 22 | **cosine rank 20**, promoted to blend #6; `SACAGAWEA` and `SHOSHONE` both tagged on `13c2e69bf03a0342` — the extraction-resolved coreference survives (a stray `ONE OF HIS WIVES` Person is also tagged, harmless) |
+| 5.4 granularity | median 60 words/entity in a 325-word chunk | **median 40 words/entity in a 333-word chunk** |
+| 5.10 conjunction, comparable degree | SAC(64)+CHAR(62): 9 dual chunks, median 5 vs 71/51, all in top-20 | **SAC(85)+CHAR(69): 17 dual chunks, median 9 vs 104/44, all 17 in top-20** (median score 0.00712 ≈ 0.00324+0.00402 — additivity holds) |
+| 5.10 degree imbalance | SHOSHONE(192)+EQUUS(14): 6.6% bonus | **pair replaced — see below. LEWIS(825)+CYNOMYS(42): only-B 0.00633 vs both 0.00672, a 6.1% bonus** |
+| 5.10 Floyd week | 18 passages; 3/18 in top-8, cosine and every variant | **identical: 18; 3/18 for cosine, shipped blend, `lc-retrieval` blend, and d=0.85** |
+| 5.10 bounded-by-extraction receipt | Aug-18 horse passage has no horse | **receipt replaced — see below. New: no keelboat/barge entity exists at all** |
+| entity-signal delete test | judged ranks [7,3,5]→[14,10,11], [8]→[11] | **[3,6]→[26,14] (charbonneau), [6]→[15] (Nov-4) — larger, still the section's basis** |
+| zero-entity recall floor | 179 chunks · 6.1% · 3.4% of text | **129 chunks · 4.4% · 2.2% of text** |
+| 5.11 latency | project 94 ms · cosine 4 ms · fresh ~196 ms · 8 seeds batched 56 vs 441 ms | **project 67 ms (mentions) / 78 ms (retrieval) · cosine 6 ms · fresh ~215 ms (cosine 45 + entity PPR 70 + passage PPR 70) · 8 seeds 66 vs 494 ms (7.5×)** |
+| finding 5's Floyd–Missouri demo case | 1 chunk names both; cosine 415 → blend 68 → pure structure 16 | **2 chunks name both; the buried one: cosine 412 → blend 95 → pure structure 8** |
+
+Ladder methodology note: the `lewisclark` ladder was run with the
+**decomposed** seeds each question actually uses on this graph (semantic
+fallback for the three thematic questions), over the current 14-question
+bank. Decomposed seeds are sharper — many questions carry a single seed — so
+the naive row starts lower than `neo4j`'s 4.47 partly for that reason. The
+story the slide tells survives intact: naive, Lewis sits in the top handful
+of entities for *every* question (mean rank 3.2); each fix helps alone and
+the three together take overlap to 0.47/8 and Lewis to 18.
+
+##### What changed in kind, not just in number
+
+1. **Lewis is now the top hub — the deer punchline is dead.** The luna
+   extraction tags people far more aggressively (Lewis 377 → 825, in 28.3% of
+   the corpus), so "the deer outranks both captains" is false on
+   `lewisclark`. What survives is better: **the elk still outranks Captain
+   Clark**, and the hub *moved* when the extractor changed — "whatever you
+   assumed your hub was, check" now has a measured demonstration across two
+   extractions of the same corpus. Slide 5.6 rewritten accordingly.
+2. **The seeder is the decomposed one, by necessity and by preference.**
+   `lewisclark` has no Person vector indexes by design, so the semantic
+   seeder cannot seed people at all; the decomposed seeder (5f) is the demo
+   path. Consequence for 5.9: `charbonneau-role` seeds **one** node,
+   `TOUSSAINT CHARBONNEAU` at weight 1.0 — the two degree-1 spike seeds are
+   gone, and the slide now shows the mention-resolution line instead of a
+   three-seed table.
+3. **The "seeds both duplicates" receipt pivots to `PACIFIC OCIAN`.**
+   Post-disambiguation there is one SACAGAWEA Person, so the old receipt is
+   impossible — which is itself the new slide's §4 callback ("the duplicate
+   that used to sit on this slide got merged; the pipeline left you PACIFIC
+   OCIAN instead"). Measured receipt: `pacific-arrival`'s mention `'Pacific'`
+   resolves to **PACIFIC OCEAN (df 19, weight 0.605) and PACIFIC OCIAN (df 5,
+   weight 0.395)** — a real spelling-shard duplicate, hedged automatically,
+   df-proportional split on screen. Bonus receipt in the same run:
+   `keelboat-return`'s `'Missouri'` seeds the exact-name twins MISSOURI
+   (WaterBody, df 7, 0.268) and MISSOURI (Place, df 1, 0.038).
+   **The honest limit, measured:** the hedge only covers shards sharing a
+   token. For `'Drewyer'`, fulltext returns DREWYER 10.15 and GEORGE
+   DROUILLARD 2.99 — below the 0.5 keep-ratio, so only the asked-for spelling
+   seeds; `'George Drouillard'` and `'Drouillard'` return GEORGE DROUILLARD
+   alone. Exactly finding 5k's boundary: a cross-token spelling shard is
+   build-time work. Stated on the slide as a parenthetical.
+4. **The horse receipt got fixed by the better extraction — and the
+   extraction-bound receipt moves to the keelboat.** On `lewisclark` the
+   Aug-18-1805 passage carries `Supply HORSES` (plus SHOSHONE, SHOSHONE COVE,
+   LEWIS, CLARK, JEFFERSON'S RIVER, ODOCOILEUS HEMIONUS), the decomposed
+   seeder resolves `'horses'` to the Supply shards (HORSE 61 / HORSES 110)
+   via the supply fulltext index, and the blend puts the Aug-18 answer at
+   **#1** for `shoshone-horses` (it sits at cosine rank 5 there too — the
+   re-embedded corpus is kinder to it). The replacement receipt is cleaner:
+   **no keelboat or barge entity exists anywhere in the graph** — the
+   decomposer reports `'keelboat' → nothing` (already noted in 5f), the
+   April-7 answer passages cannot be seeded by the question's word, and the
+   coda "better extraction moves the boundary, it does not remove it" is now
+   measured rather than asserted (horse fixed, keelboat still missing,
+   129 zero-entity chunks).
+5. **The degree-imbalance receipt pivots to LEWIS + CYNOMYS.** Luna's
+   EQUUS CABALLUS is df 65 against SHOSHONE 150 — only a 2.3× gap, and the
+   old pair no longer shows the effect cleanly (only-horse median rank 38,
+   both 6). MERIWETHER LEWIS (825) + CYNOMYS LUDOVICIANUS (42) is the same
+   mechanism at a 20× gap and lands within a hair of the old number: a
+   **6.1%** bonus for also mentioning Lewis (0.00633 only-B vs 0.00672 both).
+
+##### The hand read, redone on the `lewisclark` windows (5d-class)
+
+Same rule as 5d — *does the promotion contain something a correct answer
+needs that no cosine top-8 passage contains?* — applied to every passage the
+shipped blend (decomposed seeds) promotes into the top-8 from outside
+cosine's, across the three `kind: connection` questions. Judged by the
+migrating session by reading each window in full; **awaiting Nathan's read**
+before anything here is treated as settled.
+
+| question | cosine top-8 (lewisclark) | promotions | clear the bar |
+|---|---|---|---|
+| `charbonneau-role` | 2 of 8 carry him (the 1806 pay settlement at #1 — new, and strong — and the Lewis departure roster) | 6 | **2** |
+| `sacagawea-interpreting` | 4 strong + 2 partial — better than `neo4j`'s window | 4 | **1 (Nov-4, decisive)** |
+| `shoshone-horses` | 3 of 8 are Aug-1805, **including the Aug-18 answer at cosine rank 5** | 1 | **0** |
+
+**3 of 11.** The same shape as `neo4j`'s 4 of 16: real wins, not a rout, and
+the failures teach.
+
+Promotion-by-promotion, `charbonneau-role` (blend window: 6 of 8 tagged with
+him, vs cosine's 2 — that membership count is exact and slide-safe):
+
+- ✅ `1805-03-18` (cosine 22) — *"Mr. Tousent Chabono, Enlisted as an
+  Interpreter this evening"*. The hiring; the same passage that won on
+  `neo4j`. No cosine passage has the start of the role.
+- ✅ `1805-04-07`, Clark's departure roster (cosine 27) — *"Shabonah and his
+  Indian Squar to act as an Interpreter & interpretress for the snake
+  Indians"*. The assignment — WHICH language and why her. Cosine's window has
+  Lewis's roster, which lists him as interpreter but not the Snake
+  assignment; this is the which-language content that `1804-12-18` carried in
+  the old read. Judged as clearing on that basis; the closest call of the
+  three.
+- ❌ `1806-07-01` (cosine 35) — the return-split plan; Charbonneau listed
+  among Clark's ten. Mentions him, adds no role content.
+- ❌ `1806-08-11` (cosine 33) — Dixon/Hancock trappers; he is not in it
+  (promoted by blend mechanics, not by his tag).
+- ❌ `1806-06-01` (cosine 40) — the failed trading errand with LaPage. Real
+  color (he was used as a trader), not *needed* by a correct answer.
+- ❌ `1806-08-15` (cosine 59) — Colter's discharge + Charbonneau relaying
+  Minetarree war news. Color again.
+
+`sacagawea-interpreting` (cosine window now holds the 1805-08-17 council
+*"through the medium of Labuish, Charbono and Sah-cah-gar-weah"*, both copies
+of the 1806-05-11 Chopunnish chain council, and 1805-11-03 — her failing to
+converse with a coastal captive, which is a which-nations receipt in itself):
+
+- ✅ `1804-11-04` (cosine 20) — the hiring and the arrangement; never names
+  her. Still the best single passage, still reachable only through the
+  extraction-resolved coreference. Decisive, as before.
+- ❌ `1806-08-17` (cosine 15) — the family's discharge, "in the Capacity of
+  interpreter and interpretes[s]". Explicit, but the capacity is already
+  evidenced live by the Aug-17-1805 council in cosine's window.
+- ❌ `1805-08-17` continuation (cosine 19) — Clark to take "Carbono and the
+  indian woman" to hasten the horses. Logistics.
+- ❌ `1806-06-04` (cosine 30) — Chopunnish diplomacy, Shoshone messaging
+  plans; she is not in it.
+
+`shoshone-horses`: one promotion (`1806-02-15` horse-abundance/mules, cosine
+18) — Columbia-plains horse ethnography, not the Shoshone acquisition; does
+not clear. But the question's complexion changed: the Aug-18 answer passage
+is *inside* cosine's top-8 here (rank 5) and the blend ranks it #1, with
+Aug-14 and Aug-24 also in the window. The old triple failure (seeder matched
+the verb / forcing seeds barely helps / no combiner rescues) is `neo4j`
+history — on `lewisclark` the decomposed seeder resolves `'horses'` +
+`'Shoshone'` (df 150) and the window is respectable. The question is no
+longer a clean failure exhibit; it is also not a promotion win.
+
+##### Rough edges found in passing, for the 5f ledger
+
+- **`prairie-dog` decomposes to the wrong species on `lewisclark`.** The
+  mention `'prairie dog'` routes to the AnimalSpecies vector index and
+  resolves to `TYMPANUCHUS PHASIANELLUS` (sharp-tailed grouse — the journals'
+  "prairie fowl"), not `CYNOMYS LUDOVICIANUS` (df 42, present). The word
+  *prairie* carries the match — cosine's disease at the seeder, one more
+  time, in a legible form. The control question still functions (its point is
+  that cosine already wins it), but `--show-seeds` on stage would show a
+  grouse; worth knowing before Q&A.
+- **5.1's #2 slot (`Mr. Duriaur`, 1804-06-12) is tagged `GEORGE DROUILLARD`**
+  on `lewisclark` — the judge's-word-only merge 3g disclosed (`GEORGE
+  DROUILLARD + MR. DURIAUR`, accepted by Nathan; historically that man is
+  almost certainly Dorion Sr.). The slide's names column reads the text, not
+  the tags, so it is unaffected — but a hub-table or filter demo that touches
+  GEORGE DROUILLARD inherits that merge's chunks.
+
+##### Not re-measured, and why
+
+- **Finding 4's conjunction-bearing table and finding 5's blend/weighting/
+  seed-count sweeps** — scored against the co-mention proxy already retracted
+  for relevance; off slides by standing rule. The damping sweep (direction
+  only) was re-run because slide 5.7 quotes the direction.
+- **5f's coverage numbers (10/11 vs 8/11)** — the accept-sets in
+  `measure_seeds.py` were hand-resolved against `neo4j` names; re-scoring
+  them against `lewisclark` without re-resolving each accept-set would be the
+  gold-decoy mistake again. The seeds themselves were spot-verified above
+  (charbonneau 1 seed, shoshone-horses resolves both mentions, thematic
+  fall back). Re-resolving the accept-sets is Step-5-adjacent work.
+- **5i/5j/5j-bis (ablation and budget graph)** — they run on their own
+  databases (`budgetluna`, synthetic ablation) by construction; nothing to
+  migrate.
+- **5b's linearity checks** (bias = linear weight, flat = sum) — GDS-version
+  properties, not corpus properties; the batching ratio table was re-measured
+  (66 vs 494 ms) and the linearity claims were not re-tested.
+- **`keelboat-return` control re-confirmation at the shipped blend** (caveat
+  #12's last bullet) — superseded in spirit: the question's seeds and window
+  were inspected during the receipt work; a formal re-confirmation belongs
+  with Step 5's gold repair.
+
 #### 6. Damping: shorter walks win monotonically
 
 Share of walk mass within `k` steps is `1 − d^(k+1)`.
@@ -2976,6 +3483,9 @@ the shipped default is the worst of six values tested. On a bipartite walk the
 parity matters too: from an **entity** seed, step 1 = passages mentioning it,
 step 2 = co-mentioned entities, step 3 = passages of those entities.
 
+*Re-measured on `lewisclark` (5o): direction holds — 0.85 is the worst of the
+six on both columns (top-8 19, median 542) against 27/482 at 0.45.*
+
 #### 7. `alpha=1.0` verifies exactly — and the current architecture caps the gain
 
 | alpha | identical ordering to baseline | overlap |
@@ -2987,6 +3497,9 @@ step 2 = co-mentioned entities, step 3 = passages of those entities.
 
 `alpha=1.0` reproduces the vector baseline byte-for-byte, which is the
 credibility move: it proves the knob is real and the baseline was not swapped.
+
+*Re-measured on `lewisclark` (5o): 14/14 identical orderings at `alpha=1.0`
+(0.9: 7/14 identical, overlap 8.00; 0.5: 0/14, 7.64; 0.0: 0/14, 5.21).*
 
 **But it also exposes why the shipped design underdelivers.** `rerank()` seeds
 from the vector top-5 and then ranks *only the vector top-50*, so the upside is
@@ -3036,6 +3549,11 @@ Chunks are long enough for the mechanism to matter: **median 325 words, p90 486,
 median 60 words per entity** — roughly 5× finer granularity than the
 whole-passage embedding. 698 chunks (24%) carry four or more distinct entity
 types.
+
+*On `lewisclark` (5o): median 333 words, median **40** words per entity (the
+luna extraction is denser — 22,699 mention edges), and the zero-entity recall
+floor shrinks to 129 chunks (4.4%, 2.2% of text). The shape argument below is
+unchanged.*
 
 ```
 workable      (>=250 words, >=4 entities)   1,405   48.2%
@@ -3138,16 +3656,177 @@ passage is correct. Every *accuracy* claim still waits for section 8.
   answers. Same discipline as section 4's gold-set note.
 - **Thirteen questions is a small sample**, and one contributes nothing. Treat
   blend-weight differences of 1–3 top-8 hits as noise.
-- **All of it is `neo4j`.** The section 4 findings above record `lewisclark` as
-  the intended replacement demo graph. `lewisclark` descends from `rawluna`,
-  which has 39% more mention edges and names entities differently, so the hub
-  table, the overlap figures and the blend sweep will all shift. **If the demo
-  graph changes, section 5's numbers must be re-measured from scratch.** The
-  code is database-agnostic; the slide figures are not.
+- **Findings 1–5k are `neo4j`; the slides are `lewisclark`.** The predicted
+  re-measurement happened (2026-09-07): finding 5o holds the migrated numbers
+  and the shifts were real — the hub table changed its headline (Lewis top at
+  28.3%), the ladder shallowed (2.84 → 0.47 vs 4.47 → 0.07), two receipts had
+  to be replaced outright. The `neo4j` tables above stay as history; quote 5o
+  and `section-05-slides.md`.
 - The `control` question `keelboat-return` is *not* harmed by the blend (cosine
   1 in top-8 at median 164; blend 0.8/0.2 gives 2 at median 153), but this must
   be re-confirmed at whatever weight ships — it is the outline's own honesty
   check.
+
+### Section 6 findings — working notes, not slide material
+
+Conditions for every number below: local Desktop DBMS (heap raised to 8 GiB
+max after the 2026-09-07 OOM — projections rebuilt in <300 ms), database
+`lewisclark`, `NEO4J_DATABASE=` passed explicitly, home database untouched.
+`lc-retrieval` projects at 8,139 nodes / 63,836 rels; communities are detected
+over all three relationship types — including `NEXT_CHUNK`, deliberately: an
+"episode" is exactly a stretch of consecutive entries plus the entities they
+share, and the chain is what lets the algorithm see it.
+
+#### 6a. Validated on `lewisclark` — and seeded Leiden replaces Louvain as the *measured* partition (2026-09-07)
+
+`communities.py` and `demo_communities.py` had never run against `lewisclark`.
+They now do, live: ~47 communities covering all 2,913 chunks, modularity 0.56,
+and the themes table reads as a table of contents someone could have written —
+a Mandan-winter community, a Columbia-descent fishing community, a
+trade-goods community (`GUNS, AXES, MERCHANDIZE, FLOUR`), a Shoshone-horses
+community. Topic extraction at zero *additional* token cost — the community
+step itself is token-free; unlike Blumenfeld's natively-linked wiki corpus,
+ours rides on mention edges the extraction pass already paid for.
+
+**But Louvain redraws its partition every run.** Three observed runs gave 46,
+48 and 37 communities (modularity moved only 0.560 → 0.562), and the
+community-capped illness window kept only 5–6 of its 8 chunks across two
+process restarts. Nothing in the pipeline seeds it; GDS Louvain accepts no
+seed. **GDS Leiden does** (`randomSeed`, which requires `concurrency=1`), and
+with a fixed seed the *entire measurement* — every window of finding 6c — is
+byte-identical across processes, verified by diffing two full runs. So:
+
+> **Leiden is the measured partition and the demo default; Louvain is the
+> robustness check.** Their capped windows agree 8/8 on trade-goods and
+> food-sources in every observed Louvain draw, and 6–7/8 on illness across
+> three draws (it redraws). This repo's discipline is
+> that measurements re-run byte-for-byte; an unseeded partition cannot deliver
+> that, and a live demo whose "themes" differ every run reads as hand-waving
+> from the stage.
+
+`CommunityConfig` gained `algorithm` ("louvain"/"leiden"), and `detect()` now
+runs in **mutate** mode — membership lands as a property on the in-memory
+projection (never the database) and is streamed back, so `conductance()` and
+every window cap in a process read the *same run* rather than a fresh draw.
+
+#### 6b. Louvain's textbook flaw, caught live — and Leiden's guarantee has an asterisk (2026-09-07)
+
+> **Off-stage as of 2026-09-07 — Nathan's call: the talk covers Leiden alone.**
+> The Louvain half of this finding is Q&A backup and the reason the demo runs
+> Leiden; only the Leiden asterisk (one 24-node community split 13/11 — verify
+> with per-community WCC) and the conductance numbers get slide time.
+
+The outline's Leiden pitch ("Louvain can emit internally disconnected
+communities") was a claim waiting for a measurement. Measured, per community:
+filter the projection to the community's nodes and run WCC (also
+cross-checked against a pure-Python union-find over the same edge predicates —
+both methods agree):
+
+| partition | internally disconnected | worst case |
+|---|---|---|
+| Louvain (one draw) | **2 of 48** | a **1,089-node** "community" whose members are not mutually reachable |
+| Louvain (another draw) | 1 of 37 | — |
+| Leiden (seeded) | **1 of 47** | 24 nodes, split 13 / 11 |
+
+The Louvain number is the slide: a third of the projection's nodes sitting in
+one community that is not actually connected inside. But the honest surprise
+is the third row — **GDS's Leiden implementation also emitted one disconnected
+community** on this graph (not a `maxLevels` truncation; it converged at 6 of
+10 levels, and 30 levels reproduces it). The guarantee as implemented is not
+absolute. The takeaway stays what the section preaches: *verify, don't trust
+the algorithm's name* — connectivity per community is one WCC call.
+
+**Conductance behaves as the ki-post thresholds predict.** Median 0.27 across
+the partition; 35 of 47 communities ≤0.35 ("tight theme"), zero ≥0.60. The
+communities the thematic windows touch run 0.25–0.46 — cohesive enough to cap
+on, and the check costs one `gds.conductance.stream` call against the same
+mutated property.
+
+*(Also fixed in passing: `baseline.py`'s graph-context query did
+`toString(r.date)`, and on `lewisclark` 364 relationships carry date*
+**arrays** *— section 4's merge combined parallel relationships' conflicting
+dates. Section 4's footprints keep turning up in later sections' plumbing,
+which is worth one aside from the stage.)*
+
+#### 6c. The measured cold open: capping the walk repairs 5l's illness collapse — and is a provable no-op where the walk already wins (2026-09-07)
+
+5l ended with the walk collapsing `illness-and-injury` onto one week at Long
+Camp and named the fix: *cap the window per community*. The critical design
+point, easy to get wrong: the cap must apply to **the expansion walk's
+ranking**, not to cosine's — `communities.retrieve` capped only a vector
+slate, so `diversify()` now caps *any* strategy's wide slate (the walk runs at
+k=50, the cap walks that ranking admitting ≤2 chunks per community).
+`scripts/measure_communities.py` measures it in 5l's exact form — same three
+thematic questions, same window stats, fresh read-pack
+(`results/communities-lewisclark.md`) with 5l-judged chunks flagged — so the
+hand reads transfer. `expand` reproduces 5l's windows byte-for-byte first.
+
+| illness-and-injury | vs vector | entities | near-dup pairs | months | communities |
+|---|---|---|---|---|---|
+| vector | — | 64 | 0 | 4 | 3 |
+| expand (5l's window) | 2/8 | 68 | 2 | **1** | **1** |
+| **expand+community** | 3/8 | 86 | **0** | **4** | **5** |
+| vector+community | 5/8 | 60 | 0 | 5 | 5 |
+
+**All eight of the walk's chunks sit in one community.** The collapse 5l
+diagnosed by reading dates is visible as a single community id — the failure
+is *structural, and the structure the fix needs is already computed*. Capped,
+the window keeps Long Camp's two strongest chunks (the child + Bratton's
+sweat-hole, the chief + imposthume) and refills the freed slots from the same
+blended ranking.
+
+**The hand read of what came in** (new chunks judged by reading; the rest
+carry 5l's judgements):
+
+- **Lewis shot through the thigh by Cruzatte, 1806-08-12** (cosine 21) — the
+  expedition's most famous injury, absent from *every* 5l window; the walk had
+  it reachable and the collapse had buried it. The window's best promotion.
+- **The Fort Clatsop sick-list, 1806-02-22** (cosine 44) — "Gibson, Bratton,
+  Sergt. Ordway, Willard and McNeal are all on the recovery… something I
+  beleive of the influenza." One of the three passages 5l explicitly listed as
+  *gone* under the collapse, back in the window.
+- The June 8 recovery report (cosine 104): Bratton "no longer an invalid",
+  the chief bearing his own weight — legitimate closure of the medical arc,
+  though it extends the Long Camp storyline from a different community.
+- The costs: two May-1806 native-doctoring passages (cosine 79 and vector's
+  #1) — treating Nez Perce patients, 5l's "topic-match-wrong-subject" class —
+  now hold two slots. Diversity of *episode* is not diversity of *subject*.
+
+**Where the cap is a no-op, it is provably a no-op.** On `trade-goods` and
+`food-sources` — the walk's two clean 5l wins — the capped window is
+**byte-identical** to the uncapped one, because those windows already span 6
+communities. The cap only bites where the failure is. That is the argument
+for leaving it on: it is not a trade-off knob, it is a guard rail.
+
+**The honest bound, and it is mechanical.** The community grain is coarser
+than the episode grain. Community 23 is "the corps members" — 286 chunks
+spanning the whole expedition — and it contains Long Camp *and* the Sept-1805
+Lolo starvation-sickness passages. The cap's two slots for community 23 go to
+Long Camp (blend ranks 1–2), so the Sept-1805 dysentery chunk that sits at
+cosine rank 2 — in vector's window! — is **locked out** of the capped expand
+window. Capping fixes the collapse exactly insofar as the collapsed episode's
+competitors live in *other* communities. Second bound: the cap can only
+choose from the slate it is given — `vector+community` backfilled one
+plainly irrelevant chunk (damaged powder canisters) from cosine's deep slate.
+A cap diversifies a ranking; it cannot make the ranking deeper than it is.
+
+*(Discipline notes: three questions, windows of 8, judged by reading against
+5l's read-pack; month/near-dup/entity/community counts are descriptive
+corroboration, not verdicts. Cap settings are the shipped defaults —
+`max_per_community=2`, `k=8`, resolution 1.0, deliberately untuned; after
+5d-quinquies, no knob sweeps against hand-read outcomes. Leiden seed 42
+throughout; single corpus. `vector+community`'s month gain (4→5) rides partly
+on wrong-subject and one irrelevant chunk — the stat without the read would
+oversell it, same lesson as ever.)*
+
+**What section 6 gets to say:** the walk's conjunction-seeking is
+episode-seeking (5l), the episode is *visible in the graph* as a community,
+and a two-line cap over the algorithm's own output repairs the failure without
+touching the two questions the walk already wins. Retrieval diversity is not a
+reranker heuristic here; it falls out of the same structure that ranked the
+chunks. And the section's honesty beats — Louvain redrawing, Leiden's
+asterisk, the corps-members community being coarser than an episode — are all
+one-query demonstrations, which is the talk's whole thesis in miniature.
 
 ### Design notes not yet folded into the sections
 
@@ -3264,7 +3943,10 @@ Then the evidence, handled honestly:
 structure it can navigate, not just a box it can search."* Graph navigation
 supplies verbs a vector store doesn't have: traversal, paths, centrality. Also
 worth one beat: **community detection over link structure costs zero tokens** —
-no LLM extraction pass at build time. That's the thesis for section 3.
+on his wiki corpus the links are native, so no LLM touches that build step. On
+ours, say **zero *additional* tokens**: the community step itself is
+token-free, but the mention edges it reads came from the extraction pass
+earlier sections already paid for. That's the thesis for section 3.
 
 **From the NICD paper** (510 MoNaCo questions, 28k Wikipedia docs):
 
@@ -3616,26 +4298,51 @@ have. Read the parameter list first.
 
 ### 6. "Your context is redundant" → community detection (6 min) · 0:33
 
-**The failure.** Eight retrieved passages, all describing the same afternoon.
-Recall metrics look fine. Most of the context window is restatement.
+**The failure — measured, and inherited from section 5 (5l).** Eight retrieved
+passages, all describing the same week at Long Camp. Recall metrics look fine;
+month coverage went 4 → 1; most of the context window is restatement. And it
+was the *expansion walk* that did it — the smartest retriever in the talk so
+far is the one that collapses, because conjunction-seeking is episode-seeking.
+On screen: the eight dates, then the eight community ids — **all the same
+number**. The failure is structural and the structure is already computed.
 
-**Louvain and Leiden.** Densely connected relative to chance, not merely
-connected — the contrast with WCC from section 4. Leiden exists because Louvain
-can emit internally disconnected communities. *(Verify GDS tier for
-`gds.leiden` before this goes on a slide.)*
+**Leiden — alone. DECIDED 2026-09-07 (Nathan): six minutes doesn't fit two
+algorithms, so Louvain gets no stage time** — at most a name-drop in a speaker
+note. The stage beat: densely connected relative to chance, not merely
+connected — the contrast with WCC from section 4. Seeded (`randomSeed`,
+`concurrency=1`) it returns the same partition every run, which is what a
+measured claim and a live demo both require (finding 6a). Honest asterisk,
+kept: Leiden's paper guarantees internally connected communities, and GDS's
+run on this graph still left one 24-node community split 13/11 — verify with
+per-community WCC rather than trusting the name (finding 6b). The Louvain
+material (the 1,089-node disconnected community, the redrawing partition)
+stays in findings 6a/6b as Q&A backup only.
 
 **Conductance as a cohesion check** — from the ki post: ≤0.35 reads as a tight
-theme, ≥0.60 as a loose one. A cheap way to know whether a community means
-anything before you build on it.
+theme, ≥0.60 as a loose one. Measured here: median 0.27, 35 of 47 tight, none
+loose. A cheap way to know whether a community means anything before you build
+on it — one stream call against the same in-memory membership.
 
 **Two payoffs:**
-- *Diversification* — cap how many passages any one community contributes, and
-  the window covers the question instead of restating one answer
+- *Diversification* — cap how many passages any one community contributes **to
+  the walk's own ranking** (not just cosine's), and the window covers the
+  question instead of restating one answer: illness goes 1 month / 1 community
+  / 2 near-dup pairs → 4 months / 5 communities / 0, and the recovered
+  passages are Lewis's gunshot wound and the Fort Clatsop influenza sick-list
+  (finding 6c, judged by reading). On trade-goods and food-sources — the
+  walk's 5l wins — the capped window is *byte-identical*: the cap only bites
+  where the failure is. Say the bound too: community 23 is 286 chunks of
+  "corps members", coarser than an episode, and it locks the Sept-1805
+  sickness out of the capped window. A cap is a guard rail, not a ranker.
 - *Topic extraction* — a table of contents for the corpus that nobody wrote,
-  derived entirely from structure, at zero token cost (callback to section 2)
+  derived entirely from structure, at zero *additional* token cost (callback
+  to section 2: the community step is token-free; the mention edges it rides
+  on were already paid for): the Mandan winter, the Columbia fishery, the
+  trade-goods economy, each with its date span on screen.
 
-**Demo** — `demo_communities.py`: the themes, then the redundancy delta between
-plain top-k and community-capped retrieval.
+**Demo** — `demo_communities.py`: the themes table (with conductance), then
+`-q illness --base expand`: expand top-8 all `c23`, capped window spanning
+five communities and four months, redundancy 0.128 → 0.050.
 
 ### 7. "You can't explain the answer" → path finding (5 min) · 0:39
 
@@ -3706,6 +4413,13 @@ PageRank. If your corpus is small enough to fit in memory you may not need a
 graph database at all — and knowing that makes the case for one honest when you
 do.
 
+**New (2026-09-07): this section's strongest candidate beat is the measured
+routing rule from finding 5n** — "when does your agent reach for the graph
+tool" answered with the bridge-decay curve and a one-COUNT-query router. A
+stage draft is parked at the bottom of `section-05-slides.md` (banner: PARKED
+FOR §9). It coexists with §10's take-home #2: the router is retrieval-path
+code, not a model-side tool choice.
+
 ### 10. Three things to take home (2 min) · 0:51
 
 1. **Build time gates query time.** Personalized PageRank over a graph where
@@ -3720,7 +4434,7 @@ Repo link, plus a **further reading** list on the same slide (no time spent on
 it out loud — it exists for the PDF):
 
 - NICD, *Reducing hallucinations with GraphRAG* — the 510-question study
-- Neo4j, [*Scaling Karpathy's LLM wiki*](https://neo4j.com/blog/agentic-ai/scaling-karpathy-llm-wiki-graph/)
+- Blumenfeld (Neo4j), [*Scaling Karpathy's LLM wiki*](https://neo4j.com/blog/agentic-ai/scaling-karpathy-llm-wiki-graph/) — source of §6's seeded-Leiden practice and the conductance thresholds
 - Ghoshal, [*When Does Graph RAG Actually Add Value?*](https://medium.com/@arijitghoshal222/when-does-graph-rag-actually-add-value-a-hands-on-experiment-2f61a0c31736) — small experiment, useful framing
 - [Last year's talk repo](https://github.com/smithna/corps-of-discovery-graph-rag) — the pipeline that built this graph
 

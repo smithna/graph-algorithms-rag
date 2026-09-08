@@ -92,7 +92,13 @@ def fetch_relationships(chunk_ids: list[str], limit: int = 40) -> list[Relations
                head(labels(b))                       AS toType,
                coalesce(b.canonicalName, b.name, '') AS toName,
                r.chunkId                             AS chunkId,
-               toString(r.date)                      AS date
+               // On the disambiguated graph a merged entity's parallel
+               // relationships were combined, which turns conflicting date
+               // properties into arrays — 364 relationships on lewisclark.
+               toString(CASE
+                   WHEN valueType(r.date) STARTS WITH 'LIST'
+                   THEN r.date[0] ELSE r.date
+               END)                                  AS date
         LIMIT $limit
         """,
         chunkIds=chunk_ids,
