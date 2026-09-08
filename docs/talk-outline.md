@@ -21,7 +21,7 @@ before the section's slides can be written honestly.
 | 5 | Ranking can't tell people apart → entity-seeded PPR | `pagerank.py`, `projection.py`, `decompose.py`, `demo_pagerank.py`, `sweep_pagerank.py`, `measure_seeds.py`, `measure_extraction_grade.py`, `measure_ablation.py`, `measure_budget_graph.py`, `measure_name_shards.py` | ✅ **built, verified live, slides drafted** — thesis settled on the third attempt (co-typed entity substitution); `charbonneau-role` is the spine. **Start at *Section 5 in one page*.** New: decomposed seeder (5d-ter's fix), built + measured — named-entity coverage 10/11 vs semantic 8/11, finding 5f. Open: title, demo-graph choice, whether 5f gets stage time. New: 5h screens PPR's remaining case after 5g's filter parity; **framing approved** (5h-5: gold-plated §4 path vs budget cheap-extraction path, walk compensates at query time). **Ablation built and measured (5i, `measure_ablation.py`): the filter goes blind to the coref-only passages and the walk does NOT buy them back — ranks 114–1108 ablated vs 11–62 full; SACAGAWEA keeps 6/64 edges; NEXT_CHUNK is no coref patch. Replicated on a REAL budget graph (5j, `measure_budget_graph.py` on new `budgetluna` = rawluna + indexes, no resolution): harsher — identity shattered across 19 shards + 25 untagged chunks, fever/Aug-14 at rank 1709/1475, and the edge-support metric scores the worse graph better. Multi-shard seeding measured (5j-bis): oracle shards restore even the FILTER on 2 of 3 — query-time compensation is query-time entity resolution; the sole adjacency win needs the impure shard the correct merge excludes. "About as good, less work up front" refuted; surviving beat: the walk covers duplicates and hubs; shards need resolving — at build time once or at query time forever. Spelling-shard case measured (5k, `measure_name_shards.py`): DREWYER 265 / GEORGE DROUILLARD 63 unmerged ON THE DEMO GRAPH — 5g's parity requires *resolved* tags; vector discovery ranks the other spelling #22 behind the Dorions; the walk trails cosine at bridging it; the df-prop merged walk (median 168) or a two-tag filter fixes it — the easy §3-machinery merge the pipeline never ran. New: 5l (`measure_thematic.py`, on `lewisclark`): thematic questions are the no-filter class — all three decompose to zero mentions, bar drops to cosine alone; hand-read verdict: expand **wins trade-goods** (buttons-off-coats promoted from cosine 77, Twisted Hair gun payment from 112, month coverage 3→7, carried by df-4..16 Supply nodes) **and food-sources** (5→7 months, ration passage from rank 34), **collapses illness-and-injury onto one episode** (4→1 months, 7/8 chunks from Long Camp May 1806) — the measured hand-off to §6 diversification. Passage half discriminative; junk Event entity seeds mattered by demotion, not promotion. New: 5m (`measure_neighborhood.py`, `lewisclark`): neighborhood questions ("Sacagawea's brother") — filter covers 2/16 and 1/8 by construction; hub-anchor flagship fails ALL strategies in the top-8 (bridge = 2 of the anchor's 85 edges; delete-test 338→601 median confirms the bridge is the mechanism) but pure walk surfaces the *name* at rank 4 → two-step retrieval; low-df-anchor replication (Walla Walla chief, anchor df 3) wins one-shot: blend median 10 vs cosine 43, walk crosses 1-of-12 nation shards to the chief's untagged chunks. New: 5n (`measure_bridge_decay.py`): Nathan's agent rule measured as a curve — 38k anchor/satellite pairs, median walk-rank of exclusive chunks monotonic in anchor df (39 at df 2-5 → 1058 at df 300+, no exceptions); routing table: df≲15 expand, df≳40 filter (5g) or two-step (5m), zero mentions passage-expand (5l); §9 material — the graph-tool decision is one COUNT query. **Stage close redrafted (2026-09-07): 5.12–5.14 in `section-05-slides.md` now tell the 5l/5m/5n story (buttons → the brother's name → the routing table), decay curve parked for §9; section runs 14:00 raw, cut plan to 10:00 drafted; sign-offs pending: trims inside protected beats, or 5.12→§6.** **MIGRATED to `lewisclark` (2026-09-07, finding 5o): every 5.1–5.11 number re-measured — failure table 69/300/2; Lewis is now the TOP hub (825 chunks, 28.3%: the deer punchline is dead, elk-outranks-Clark replaces it); ladder 2.84→0.47/8; damping direction holds; alpha=1.0 verifies 14/14; fresh question ~215 ms; hand read redone on the new windows, 3/11 clear (Nathan's read pending); receipts adapted — duplicate seeding now PACIFIC OCEAN/OCIAN df-proportional (one SACAGAWEA remains, §4 merged it), degree imbalance now LEWIS+CYNOMYS (6.1% bonus), extraction bound now the missing keelboat (the horse receipt got FIXED by luna: Aug-18 passage carries HORSES and ranks #1). Slides updated; `neo4j` history kept in findings 1–5k** |
 | 6 | Context is redundant → communities | `communities.py`, `demo_communities.py`, `measure_communities.py` | ✅ **built, measured on `lewisclark`, slides drafted** — Leiden + conductance added; seeded Leiden is the measured partition (Louvain redraws every run, 6a); Louvain's disconnected-community flaw caught live (1,089-node case) and GDS Leiden's guarantee has a measured asterisk (6b); `diversify()` caps *any* strategy's slate — capping the walk repairs 5l's illness collapse (1→4 months, recovers Lewis's gunshot + Fort Clatsop sick-list, hand-read) and is byte-identical on the two questions the walk already wins (6c). Read-pack: `results/communities-lewisclark.md`; slides [`docs/section-06-slides.md`](section-06-slides.md). **Stage scope decided 2026-09-07: Leiden only — Louvain findings are Q&A backup, no slide time** |
 | 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | ✅ **built, measured on `lewisclark`, slides drafted** — both section claims audited by hand-reading 22 routes / 85 receipt passages (read-pack: `results/paths-lewisclark-readpack.md`, local only). The k claim was BACKWARDS on a typed graph (7a): mechanism at k=1 when the edge exists; the brother pair has NO sibling edge anywhere, so the recognition scene arrives at k=3 via the Event node, both hops citing the same chunk — 5m's two-step completes (7g). Receipts hold, and the five wrong edges they expose are the demo (7b: wrong-captain GUIDED, Cameahwait-as-Hidatsa). `[0]` receipt pick replaced — merged arrays are ragged, 11 chunkIds vs 8 dates (7c); BELONGS_TO fallback returns zero passages silently, taxonomy route needs raw k=40 (7d); Yen's dedup + deterministic tie-sort shipped (7e: k=25 raw → 7 unique, tie order unstable across runs); Step-0 resolver incident reproduces with SHOSHONE BOY as the decoy, fix verified; HIS WIFE tautology route is §4-refusal-meets-§7 (7f). Slides [`docs/section-07-slides.md`](section-07-slides.md) |
-| 8 | Does this help? | `benchmark.py`, `metrics.py` | runs; **gold set is broken worse than reported** — 4 labels missing *and* at least 4 more silently resolving to near-empty decoy nodes. See *Section 5 findings* #10 |
+| 8 | Does this help? | `benchmark.py`, `metrics.py`, `verify_questions.py` | ✅ **built, measured on `lewisclark` (4 runs), slides drafted** — gold set fixed as (name, label) pins in `questions.yaml` (re-verified per label: GREAT FALLS and FORT CLATSOP pins *flipped* on `lewisclark`, NEZ PERCE repaired 2→110 by luna, SALMON drops trout-aliased CLARKII); `verify_questions.py` rewritten around the prominence prior + alias-aware decoy cross-check, bank verifies clean (38 pins); metric hardened twice before quoting (union mention∨text recall — prairie-dog is unscoreable by text alone; token-boundary + shadow rule killed a live "great falls of the Columbia" false credit worth 2.4 pts). Headline is boring on purpose: vector 86.3%, best graph strategy +1.8 pts = **one gold entity** (32/38 vs 31/38); controls 100% for every strategy every run; hand-read demotes the wins (right entity, wrong episode) and the shared failures are coverage-shaped (Floyd at cosine rank 64, trade-goods ≤25% for all) → the Ghoshal split is the measured close. Run noise: only Louvain redraw (community/hybrid ±1 entity) and Yen's tie order (paths, n=3) — quote those as ranges. See *Section 8 findings*; read-pack `results/section-08-readpack.md` (local only). `gold_overrides.yaml` frozen for §5's scripts, not deleted — see 8a |
 | 9 | How to implement | docs only | **slides drafted** — [`docs/section-09-slides.md`](section-09-slides.md); 5n's parked routing-rule block transcribed there as 9.1 (canonical copy moved, §5 file points at it). Open: backing example for 9.3's "resolution (γ) is a corpus decision, not a tunable" line (2026-09-07 session) needs Nathan's confirmation |
 | 10 | Takeaways | none | **slides drafted** — [`docs/section-10-slides.md`](section-10-slides.md); talk-repo URL on 10.2 assumed `smithna/graph-algorithms-rag`, not yet confirmed |
 | — | **Step 6: the deck** | reveal.js, vendored offline | scaffold not started; **section 4 slide content drafted** — [`docs/section-04-slides.md`](section-04-slides.md) |
@@ -4035,6 +4035,170 @@ system can hand you eight diverse, relevant passages and still not tell you how
 two things are connected") as the bridge between the steps.
 
 
+### Section 8 findings — working notes, not slide material
+
+All measured on `lewisclark` (2026-09-07). Canonical numbers:
+`results/benchmark.{md,json,csv}`; hand-reads and variance evidence:
+`results/section-08-readpack.md` (results/ is local-only). Four full runs
+compared before quoting anything.
+
+#### 8a. The gold set fixed — and re-verifying on `lewisclark` was not optional
+
+Finding #10's prescription executed, with a twist: the pre-migration decoy
+table did **not** carry over. Re-checked every label against `lewisclark`:
+
+- **Flipped since the decoy table:** `GREAT FALLS` is now the prominent node
+  (WaterBody, 32) and GREAT FALLS OF THE MISSOURI shrank to 2 — the
+  gold_overrides pin had it *backwards* on this database. Same for
+  `FORT CLATSOP` (now a real Place, 36, vs CLATSOP VILLAGE's 3).
+- **Repaired by the luna re-extraction:** `NEZ PERCE` went from 2 mentions to
+  **110**, with every Chopunnish spelling in its alias list. One of the two
+  "genuinely thin" labels is no longer thin. `PACIFIC OCEAN` improved 4 → 19
+  (still the thinnest pin, and it has an unmerged PACIFIC OCIAN twin at 5).
+- **Changed on the merits:** `SALMON` now pins ONCORHYNCHUS TSHAWYTSCHA (121)
+  alone — CLARKII is aliased "TROUT" on `lewisclark` (cutthroat), and counting
+  it would score trout passages as salmon.
+
+Mechanics of the fold: `questions.yaml` gold entries stay display strings and
+each question gains a `targets:` map pinning name → `[canonicalName, label]`
+— the (name, label) pairs live in questions.yaml as prescribed, while §5's
+frozen scripts (`demo_pagerank.py`, `sweep_pagerank.py`, `measure_seeds.py`)
+keep reading `gold` as strings through `gold_overrides.yaml`, byte-identical.
+That file could NOT be deleted without editing §5's measured surfaces; its
+header now marks it superseded-and-frozen. Delete it when those scripts are
+next open.
+
+`verify_questions.py` rewritten around the prominence prior: a pin passes only
+if it exists, is unique under (name, label), is the most-mentioned bearer of
+its name, **and** survives an alias-aware cross-check — every node carrying the
+display name as name *or alias*, ranked by mentions. The alias half matters:
+the resolver's fulltext-first shape returns ELK RAPIDS for "ELK" and never
+reaches the vector fallback, so `resolve_entity` alone cannot catch the class
+of decoy that broke the old script (real node under a Latin name, decoy under
+the common name). Both historical failure modes now fail loudly; the full bank
+verifies clean, 38 pins.
+
+#### 8b. The metric needed two fixes before its numbers meant anything
+
+**Union recall (mention edge OR text match).** Alias text-matching alone is
+blind exactly where the thematic and control questions live: CAMASSIA QUAMASH
+text-matches **1/56** of its own mention chunks (journals write "quawmash"),
+CYNOMYS LUDOVICIANUS 6/42 ("prairie dog" never appears in the corpus — the
+journals say barking/burrowing squirrel), BISON BISON 239/396 ("buffaloe"),
+and the captains are mostly coreference (Lewis 420/825, Clark 237/506). The
+prairie-dog **control** is unscoreable by text alone. So a gold target counts
+if its pinned node has a MENTIONED_IN edge into a retrieved passage OR a
+surface form matches passage text. Both halves earned their place in the
+canonical run: 3 vector credits were mention-only, 2 were text-only (rivers
+named in untagged chunks).
+
+**The shadow rule.** First run handed `expand` a GREAT FALLS credit from
+"great falls **of the Columbia**" — the wrong falls, worth 2.4 of its then
++4.2 pts. Same class waiting to fire: MANDAN inside "Fort Mandan", CLATSOP
+inside "Fort Clatsop", CLARK inside "Clark's River". Text matches are now
+token-bounded and suppressed when every occurrence sits inside a longer
+surface form of a *different* node. The metric had a §4-shaped bug of its own:
+substring identity is entity confusion.
+
+Recall's haystack is passage text only — `context_text()`'s GRAPH
+RELATIONSHIPS block is an unordered LIMIT-40 slice, and letting it satisfy
+recall would score a decoration lottery. It still counts in context_tokens.
+
+#### 8c. The headline numbers, and they are boring on purpose
+
+Canonical run, k=8, macro recall over 14 questions:
+
+| strategy | n | recall | Δ vs vector | p50 ms | p95 ms |
+|---|---|---|---|---|---|
+| vector | 14 | 86.3% | — | 5 | 5 |
+| ppr | 14 | 86.3% | +0.0 | 88 | 103 |
+| expand | 14 | 88.1% | +1.8 | 198 | 218 |
+| community | 14 | 86.3–88.1%* | ±0–1.8 | 7 | 8 |
+| cooccurrence | 14 | 82.1% | −4.2 | 16 | 17 |
+| paths | 3† | 69.4–86.1%* | n/a | 23 | 23 |
+| hybrid | 14 | 86.3–88.1%* | ±0–1.8 | 89 | 95 |
+
+\* run ranges (8e). † paths runs only where the question pins two anchors —
+its own §7.5 architecture ("triggers off the question shape"); on this
+database the anchor-inference fallback cannot run at all because
+Person/Place/WaterBody/NativeNation nodes carry **no embeddings** (675/513/
+795/362 nodes, 0 embedded — only species/Event/Taxon/Chunk were embedded).
+
+Micro recall says it plainer: **expand's entire margin over vector is one gold
+entity** (32/38 vs 31/38). On a §4-resolved graph, with an alias-aware metric,
+plain vector already reaches 86% — the "maybe you don't need this" slide is
+the measured result, not a rhetorical concession.
+
+**Controls: every strategy scored 100% on both control questions in every
+run.** Vector loses nothing; no strategy pays for hard questions with easy
+ones. keelboat-return re-confirmed at the shipped blend — §5's standing caveat
+closed.
+
+#### 8d. The hand-read demotes the wins further — and locates the real failures
+
+expand's +1.8 pts decomposes into three flips, read before believing:
+
+- `shoshone-horses` +SACAGAWEA: metric-legitimate (mention edges + "the squaw
+  collected a parcel of roots"), but the promoted passages are **June–July
+  1806 return journey**, not the Aug 1805 horse negotiation. Entity present,
+  episode wrong — finding #10's proxy caveat biting a headline win.
+- `trade-goods` +MANDAN: a genuinely topical trade-goods passage (Shoshone
+  metalware "obtained in exchange for horses from the Crow"), with the Mandan
+  in a comparative aside. Real but incidental.
+- `food-sources` −CAMAS: a real regression. Vector's top-8 holds the
+  1806-07-14 camas chunk; the walk replaces it with entity-dense camp passages
+  and no camas survives. The walk can *lose* a thin gold cosine had.
+
+Where everything fails identically, and why it is the Ghoshal split:
+
+- `trade-goods`: all strategies ≤25%. The top-8 fills with goods-inventory
+  passages (vector's #1 is about *European traders'* vocabulary); the
+  nation-specific trading episodes exist and never come back in 8. Coverage,
+  not ranking.
+- `illness-and-injury`: all strategies miss CHARLES FLOYD. The expedition's
+  only death sits at cosine rank 28 (best chunk) / 64 (death-day entry), and
+  the walk deepens the May-1806 Long Camp cluster instead (8/8 of expand's
+  slate) — 5l's illness collapse, now visible in the benchmark.
+- `great-falls-portage`: post-shadow-rule, everyone misses GREAT FALLS — while
+  vector's top-8 *does* contain the real June 1805 portage passages (truck
+  wheels, Portage Creek, iron boat). The portage happened away from the falls;
+  no falls mention, no credit. The gold entity is a strict judge: topical
+  correctness without the entity earns nothing. The proxy cuts both ways.
+
+#### 8e. Run noise has exactly two sources, both inherited
+
+Four full runs: `vector`/`ppr`/`expand`/`cooccurrence` byte-identical.
+`community`/`hybrid` flip COLUMBIA RIVER on pacific-arrival (±1 entity, ±2.4
+pts) — the unseeded Louvain partition redraws per run, finding 6a surfacing in
+§8 (the §6 *demos* moved to seeded Leiden; the registered strategies still use
+the default). `paths` flips one entity on 2 of its 3 questions across runs —
+Yen's tie order + the sampled 3-hop tail (7e), confirmed by three back-to-back
+trials returning different receipt slates. Consequence for the stage: quote
+vector/ppr/expand/cooccurrence as exact; quote community/hybrid/paths as
+ranges or not at all.
+
+#### 8f. §4 residuals measured as bounds, not noise
+
+SHABONO (31 chunks) and TOUSSAINT CHARBONNEAU (69) share **zero** chunks — the
+unmerged twins partition the man's coverage, so TC's mention set cannot see a
+third of his passages (DREWYER/DROUILLARD family, same mechanism). It did not
+flip a k=8 score this bank — TC was found via other passages everywhere — but
+it is the standing §4-breaks-§8 case and one honest sentence from the stage.
+PACIFIC OCEAN's OCIAN twin (5) likewise. Deliberately not patched around in
+the gold set.
+
+#### 8g. Stage facts checked
+
+- Corpus ≈ **942k tokens** (2,913 chunks). It fits in a 1M context window —
+  Ghoshal's whole-corpus frontier baseline is not hypothetical here, and the
+  caveat costs nothing to say.
+- Latency: worst p95 in the table is ~220 ms; the graph adds milliseconds,
+  not seconds.
+- **128** chunks carry zero entities on `lewisclark` (the oft-quoted 179 was
+  the pre-migration graph — re-counted 2026-09-07): unreachable by any walk
+  and unscoreable by mention — the standing recall floor and the reason
+  blends exist.
+
 ## Context
 
 Nathan is giving a 60-minute KCDC session on using graph algorithms to improve
@@ -4701,9 +4865,15 @@ is not automatically right for another. `ExpandConfig` uses `0.45`.
 
 **Step 4 — Section 7.** Already built; verify against live data only.
 
-**Step 5 — Section 8 numbers.** Run `verify_questions.py` and fix the gold
-labels (they are currently unverified). Add markdown table output to
-`benchmark.py`. Run it for real numbers.
+**Step 5 — Section 8 numbers.** ✅ **Done (2026-09-07).** Gold pins folded into
+`questions.yaml` as (name, label) `targets:` maps (display names kept as
+strings so §5's frozen scripts don't break; `gold_overrides.yaml` frozen, not
+deleted — see finding 8a); `verify_questions.py` rewritten around the
+prominence prior plus an alias-aware decoy cross-check; `metrics.py` recall
+hardened (mention∨text union, token boundaries, shadow suppression);
+`benchmark.py` gained markdown output, per-kind tables, an explicit control
+check, per-strategy Δ over shared questions, and `paths` (anchored questions
+only). Real numbers quoted in *Section 8 findings*.
 
 **Step 6 — The deck.** Only after the demos have run and the numbers exist.
 

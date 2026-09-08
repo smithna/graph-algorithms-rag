@@ -1,6 +1,22 @@
 # Corrected gold-entity targets for the question bank.
 #
 # ─────────────────────────────────────────────────────────────────────────────
+# ⚠️ SUPERSEDED (Step 5, 2026-09-07) — DO NOT USE FOR NEW WORK
+#
+# The fold this header asked for happened: corrected (name, label) pairs now
+# live in `questions/questions.yaml` under each question's `targets:` map,
+# re-verified against `lewisclark` (where two of the mappings below FLIPPED:
+# GREAT FALLS is now the prominent node, not GREAT FALLS OF THE MISSOURI, and
+# FORT CLATSOP now exists with 36 mentions vs CLATSOP VILLAGE's 3; SALMON
+# dropped ONCORHYNCHUS CLARKII, which is aliased TROUT there). Section 8's
+# benchmark and `verify_questions.py` read questions.yaml only.
+#
+# This file could not be deleted as planned because section 5's frozen scripts
+# (`demo_pagerank.py`, `sweep_pagerank.py`) still read it by path, and those
+# are measured surfaces this step does not touch. The values below are kept
+# byte-identical to what section 5's findings were measured with. Delete this
+# file the next time those scripts are open for changes.
+# ─────────────────────────────────────────────────────────────────────────────
 # WHY THIS FILE EXISTS, AND WHY IT IS TEMPORARY
 #
 # `questions.yaml` names gold entities by common name. Several of those names

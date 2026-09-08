@@ -1,24 +1,51 @@
 # Benchmark question bank.
 #
 # `gold` is the set of entities a correct answer must be grounded in. Recall is
-# measured by checking whether each gold entity — or any alias the graph knows
-# for it — appears in the context a strategy assembled.
+# measured by checking whether each gold entity is present in the context a
+# strategy assembled — by mention edge or by any surface form the graph knows.
 #
 # ─────────────────────────────────────────────────────────────────────────────
-# IMPORTANT: every `gold` value below must match a `canonicalName` in your
-# graph exactly. These were written against the documented schema but have NOT
-# been checked against a live database. Run:
+# GOLD FORMAT (Step 5, 2026-09-07)
 #
-#     python scripts/verify_questions.py
+# Each entry in `gold` is a display name. Each question's `targets` map pins
+# that name to the ONE node that carries it in the graph, as a
+# [canonicalName, label] pair. The pair is what gets scored; the display name
+# is what reports and slides show.
 #
-# which reports every gold name that does not resolve and suggests the closest
-# match in the graph. Fix them before trusting a benchmark number.
+# Why pairs: several display names used to resolve to near-empty decoy nodes
+# ("a node named ELK exists" ≠ "the elk"), and a bare name cannot distinguish
+# the NativeNation SHOSHONE from a stray Person of the same name. The pin is
+# chosen by the mention-count prominence prior — the same tie-breaker
+# `resolve.py` uses — and every pair below was re-verified against `lewisclark`
+# on 2026-09-07. `scripts/verify_questions.py` enforces all of it: the pinned
+# node must exist, be unique under (name, label), and be the most-mentioned
+# node bearing that name.
+#
+# Why `gold` stays a list of plain strings: section 5's frozen scripts
+# (demo_pagerank.py, sweep_pagerank.py, measure_seeds.py) read `gold` as
+# strings and map them through questions/gold_overrides.yaml. This file is the
+# source of truth for section 8; the overrides file survives only as their
+# compatibility shim — see its header.
+#
+# Mapping changes made when re-verifying on `lewisclark` (the pre-migration
+# decoy table did NOT carry over unchanged):
+#   GREAT FALLS   the plain name is now the real falls node (WaterBody, 32
+#                 mentions); GREAT FALLS OF THE MISSOURI shrank to 2. The old
+#                 override has this backwards on this database.
+#   FORT CLATSOP  now a real Place (36); the old CLATSOP VILLAGE pin has 3.
+#   SALMON        ONCORHYNCHUS CLARKII is aliased "TROUT" on lewisclark
+#                 (cutthroat trout) — counting it would score trout passages
+#                 as salmon. Pinned to ONCORHYNCHUS TSHAWYTSCHA (121) alone.
+#   NEZ PERCE     no longer thin: 110 mentions, every Chopunnish spelling
+#                 merged in as an alias. The pre-migration extraction gap
+#                 (2 mentions) was repaired by the luna re-extraction.
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # Fields:
 #   id        stable key, used by `--only`
 #   question  the query as a user would ask it
-#   gold      canonical entity names a correct answer requires
+#   gold      display names of the entities a correct answer requires
+#   targets   display name -> [canonicalName, label], the node that is scored
 #   anchors   optional pair for the `paths` strategy; inferred if omitted
 #   kind      which retrieval property the question is designed to stress
 #   notes     why this question is in the bank
@@ -34,6 +61,11 @@
     - SHOSHONE
     - MERIWETHER LEWIS
     - WILLIAM CLARK
+  targets:
+    SACAGAWEA: [SACAGAWEA, Person]
+    SHOSHONE: [SHOSHONE, NativeNation]
+    MERIWETHER LEWIS: [MERIWETHER LEWIS, Person]
+    WILLIAM CLARK: [WILLIAM CLARK, Person]
   notes: >
     The mechanism spans several entries and hinges on Sacagawea's kinship tie.
     Vector search finds passages about horses; it does not assemble the chain.
@@ -46,9 +78,16 @@
     - SACAGAWEA
     - SHOSHONE
     - TOUSSAINT CHARBONNEAU
+  targets:
+    SACAGAWEA: [SACAGAWEA, Person]
+    SHOSHONE: [SHOSHONE, NativeNation]
+    TOUSSAINT CHARBONNEAU: [TOUSSAINT CHARBONNEAU, Person]
   notes: >
     Sacagawea is rarely named directly. Alias-aware recall is the point here —
-    canonical-name-only matching badly understates every strategy.
+    canonical-name-only matching badly understates every strategy. Known bound:
+    SHABONO (31 chunks) is still a separate node from TOUSSAINT CHARBONNEAU
+    (69) on lewisclark, so passages that name him only as Shabono earn no
+    credit — section 4's residue, deliberately not patched around here.
 
 - id: charbonneau-role
   question: What was Toussaint Charbonneau's role on the expedition?
@@ -58,6 +97,10 @@
     - TOUSSAINT CHARBONNEAU
     - SACAGAWEA
     - HIDATSA
+  targets:
+    TOUSSAINT CHARBONNEAU: [TOUSSAINT CHARBONNEAU, Person]
+    SACAGAWEA: [SACAGAWEA, Person]
+    HIDATSA: [HIDATSA, NativeNation]
   notes: Tests whether a path through a spouse relationship surfaces context.
 
 - id: ordway-responsibilities
@@ -65,6 +108,8 @@
   kind: connection
   gold:
     - JOHN ORDWAY
+  targets:
+    JOHN ORDWAY: [JOHN ORDWAY, Person]
   notes: >
     Designed as a PPR case (2026-09-07) and verified by reading both windows.
     Co-typed substitution at the Sergeant rank: 74 passages mention Ordway at
@@ -88,6 +133,9 @@
   gold:
     - GRIZZLY BEAR
     - MERIWETHER LEWIS
+  targets:
+    GRIZZLY BEAR: [URSUS ARCTOS HORRIBILIS, AnimalSpecies]
+    MERIWETHER LEWIS: [MERIWETHER LEWIS, Person]
   notes: >
     Dozens of passages mention bears. Personalized PageRank should favour the
     entries that are structurally central to the bear-encounter cluster.
@@ -99,6 +147,10 @@
     - GREAT FALLS
     - MISSOURI RIVER
     - MERIWETHER LEWIS
+  targets:
+    GREAT FALLS: [GREAT FALLS, WaterBody]
+    MISSOURI RIVER: [MISSOURI RIVER, WaterBody]
+    MERIWETHER LEWIS: [MERIWETHER LEWIS, Person]
   notes: Long multi-week episode; vector top-k tends to land on one day of it.
 
 - id: fort-clatsop-winter
@@ -108,6 +160,10 @@
     - FORT CLATSOP
     - WILLIAM CLARK
     - CLATSOP
+  targets:
+    FORT CLATSOP: [FORT CLATSOP, Place]
+    WILLIAM CLARK: [WILLIAM CLARK, Person]
+    CLATSOP: [CLATSOP, NativeNation]
   notes: Tests whether reranking pulls the whole winter rather than one entry.
 
 # ── Thematic questions: the answer needs breadth, not depth ───────────────────
@@ -120,6 +176,11 @@
     - SHOSHONE
     - NEZ PERCE
     - CLATSOP
+  targets:
+    MANDAN: [MANDAN, NativeNation]
+    SHOSHONE: [SHOSHONE, NativeNation]
+    NEZ PERCE: [NEZ PERCE, NativeNation]
+    CLATSOP: [CLATSOP, NativeNation]
   notes: >
     A correct answer spans nations and geography. Vector top-k typically
     returns eight near-duplicate passages about one trading session.
@@ -132,6 +193,11 @@
     - SALMON
     - ELK
     - CAMAS
+  targets:
+    BISON: [BISON BISON, AnimalSpecies]
+    SALMON: [ONCORHYNCHUS TSHAWYTSCHA, AnimalSpecies]
+    ELK: [CERVUS CANADENSIS, AnimalSpecies]
+    CAMAS: [CAMASSIA QUAMASH, PlantSpecies]
   notes: Community diversification should beat plain similarity clearly here.
 
 - id: illness-and-injury
@@ -141,6 +207,10 @@
     - CHARLES FLOYD
     - WILLIAM CLARK
     - MERIWETHER LEWIS
+  targets:
+    CHARLES FLOYD: [CHARLES FLOYD, Person]
+    WILLIAM CLARK: [WILLIAM CLARK, Person]
+    MERIWETHER LEWIS: [MERIWETHER LEWIS, Person]
   notes: Spread thinly across the whole corpus rather than clustered.
 
 # ── Sequence questions: order matters ─────────────────────────────────────────
@@ -151,6 +221,9 @@
   gold:
     - CHARLES FLOYD
     - MISSOURI RIVER
+  targets:
+    CHARLES FLOYD: [CHARLES FLOYD, Person]
+    MISSOURI RIVER: [MISSOURI RIVER, WaterBody]
   notes: >
     ⚠️ MEASURED FALSE (2026-09-07). This note used to claim NEXT_CHUNK edges let
     PageRank flow along the journal's reading order. They do not help here.
@@ -170,7 +243,15 @@
     - PACIFIC OCEAN
     - WILLIAM CLARK
     - COLUMBIA RIVER
-  notes: A well-known moment — a fair test of whether graph methods hurt easy cases.
+  targets:
+    PACIFIC OCEAN: [PACIFIC OCEAN, WaterBody]
+    WILLIAM CLARK: [WILLIAM CLARK, Person]
+    COLUMBIA RIVER: [COLUMBIA RIVER, WaterBody]
+  notes: >
+    A well-known moment — a fair test of whether graph methods hurt easy cases.
+    Known bound: PACIFIC OCEAN has 19 mentions on lewisclark and an unmerged
+    twin, PACIFIC OCIAN (5) — a real section-4 residual that bounds every
+    strategy here, reported rather than patched around.
 
 # ── Control questions: plain vector search should already win ────────────────
 
@@ -180,6 +261,9 @@
   gold:
     - MISSOURI RIVER
     - FORT MANDAN
+  targets:
+    MISSOURI RIVER: [MISSOURI RIVER, WaterBody]
+    FORT MANDAN: [FORT MANDAN, Place]
   notes: >
     Narrow factual lookup. If a graph strategy loses badly here, the ranking
     blend is over-weighted toward structure. Control questions keep the
@@ -190,4 +274,9 @@
   kind: control
   gold:
     - PRAIRIE DOG
-  notes: Single distinctive entity, single cluster of passages. Vector is enough.
+  targets:
+    PRAIRIE DOG: [CYNOMYS LUDOVICIANUS, AnimalSpecies]
+  notes: >
+    Single distinctive entity, single cluster of passages. Vector is enough.
+    The journals never say "prairie dog" — they say barking/burrowing squirrel
+    — so scoring this question at all depends on mention edges, not text match.
