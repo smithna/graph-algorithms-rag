@@ -7,12 +7,13 @@
     python scripts/demo_pagerank.py --weighting-check   # a knob that does nothing
     python scripts/demo_pagerank.py "your question here" --blend 0.4
 
-The default question is the section's demo case. Exactly one passage in the
-corpus names both Charles Floyd and the Missouri River; cosine ranks it 415 of
-2,913, because a passage that answers by *combining* entities does not read
-like the question. Blended retrieval reaches it: rank 68 at the default
---blend 0.6, and rank 16 at --blend 0.0. Worth showing both — the passage that
-most needs the graph is the one cosine's weight costs the most.
+The default question is the section's demo case. On ``lewisclark`` two
+passages name both Charles Floyd and the Missouri River; cosine ranks the
+buried one 412 of 2,913, because a passage that answers by *combining*
+entities does not read like the question. Blended retrieval reaches it: rank
+95 at the default --blend 0.6, and rank 8 at --blend 0.0. Worth showing both —
+the passage that most needs the graph is the one cosine's weight costs the
+most. (On the retired ``neo4j`` graph: one passage, 415 -> 68 -> 16.)
 """
 
 from __future__ import annotations
@@ -65,15 +66,18 @@ def show_hubs() -> None:
     console.print(table)
     console.print(
         "\nTwo things worth saying out loud about this table:\n"
-        "  • The corpus is a daily record of what the party shot and ate, so the\n"
-        "    [bold]deer outranks both captains[/]. The hub is rarely who you assume.\n"
-        "  • [bold]DREWYER[/] is here with 265 chunks while [bold]GEORGE DROUILLARD[/] is a\n"
+        "  • Lewis sits in [bold]28% of the corpus[/] — and the [bold]elk outranks Captain Clark[/].\n"
+        "    A daily record of what the party shot and ate. The hub is rarely who\n"
+        "    you assume: on the previous extraction the white-tailed deer outranked\n"
+        "    both captains. A better extractor moved the hub; it did not remove it.\n"
+        "  • [bold]DREWYER[/] is here with 297 chunks while [bold]GEORGE DROUILLARD[/] is a\n"
         "    separate node. Section 4's unresolved entities, on screen, for free.\n"
     )
     console.print(
-        "The IDF weight is the one-line fix: a shared mention of the deer is worth\n"
+        "The IDF weight is the one-line fix: a shared mention of the top hub is worth\n"
         f"{rows[0]['idfWeight']:.2f}, a rare entity's is worth far more. Measured effect on\n"
-        "cross-question entity overlap: [bold]4.53/8 naive → 0.60/8 IDF-weighted[/].\n"
+        "cross-question entity overlap: [bold]2.84/8 naive → 0.47/8[/] with mentions-only +\n"
+        "short walk + IDF (each choice helps; it takes all three — outline finding 5o).\n"
         "Hubs concentrate at the entity level and dissipate at the passage level —\n"
         "so IDF matters most when the entity set is what you consume."
     )
