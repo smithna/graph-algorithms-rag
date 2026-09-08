@@ -24,6 +24,7 @@ before the section's slides can be written honestly.
 | 8 | Does this help? | `benchmark.py`, `metrics.py`, `verify_questions.py` | ✅ **built, measured on `lewisclark` (4 runs), slides drafted** — gold set fixed as (name, label) pins in `questions.yaml` (re-verified per label: GREAT FALLS and FORT CLATSOP pins *flipped* on `lewisclark`, NEZ PERCE repaired 2→110 by luna, SALMON drops trout-aliased CLARKII); `verify_questions.py` rewritten around the prominence prior + alias-aware decoy cross-check, bank verifies clean (38 pins); metric hardened twice before quoting (union mention∨text recall — prairie-dog is unscoreable by text alone; token-boundary + shadow rule killed a live "great falls of the Columbia" false credit worth 2.4 pts). Headline is boring on purpose: vector 86.3%, best graph strategy +1.8 pts = **one gold entity** (32/38 vs 31/38); controls 100% for every strategy every run; hand-read demotes the wins (right entity, wrong episode) and the shared failures are coverage-shaped (Floyd at cosine rank 64, trade-goods ≤25% for all) → the Ghoshal split is the measured close. Run noise: only Louvain redraw (community/hybrid ±1 entity) and Yen's tie order (paths, n=3) — quote those as ranges. See *Section 8 findings*; read-pack `results/section-08-readpack.md` (local only). `gold_overrides.yaml` frozen for §5's scripts, not deleted — see 8a |
 | 9 | How to implement | docs only | **slides drafted** — [`docs/section-09-slides.md`](section-09-slides.md); 5n's parked routing-rule block transcribed there as 9.1 (canonical copy moved, §5 file points at it). Open: backing example for 9.3's "resolution (γ) is a corpus decision, not a tunable" line (2026-09-07 session) needs Nathan's confirmation |
 | 10 | Takeaways | none | **slides drafted** — [`docs/section-10-slides.md`](section-10-slides.md); talk-repo URL on 10.2 assumed `smithna/graph-algorithms-rag`, not yet confirmed |
+| — | **Compile pass: all sections in one document** | none | ✅ **done (2026-09-07)** — [`docs/talk-full-draft.md`](talk-full-draft.md) is all eleven sections merged verbatim (headings demoted, boilerplate lifted) with a timing ledger, consolidated assets checklist, consolidated open decisions, and a numbers-on-screen index. **All 19 cross-section findings RESOLVED (2026-09-08)** — closed out in Appendix E of [`docs/talk-full-draft.md`](talk-full-draft.md), which is now the copy the deck gets built from (the `section-NN-slides.md` files are behind it). Nathan's edits from `talk-full-draft-nathan.md` are applied, and his four review annotations drove R1, R2, R7 and R11. What changed in the **code**: `CommunityConfig.algorithm` defaulted to `louvain`, so §8's `community`/`hybrid` rows had been benchmarked with the algorithm §6 tells people to avoid — default is now `leiden` and `results/benchmark.*` is re-generated (R2). Measurements that settled findings: path latency is **~212 ms cold / ~23 ms warm**, not a contradiction (R5); community 23 spans to **1806-09-11** (R12); **DREWYER 297** on `lewisclark`, so 5k's 265 is annotated as `neo4j` history (R16); Sacagawea is **8 → 47** passages from resolution, and 85 only with the scraper — so the review's suggested "8→85" framing would have over-credited resolution (R10); `demo_pagerank.py` runs `expand`, so §5's flagship demo is the **+1.8** row, not the +0.0 one (R3). **New finding the review missed:** §8's `paths` row is **not reproducible** — 10 runs spread 69.4–88.9% (mean 76.1%), because Yen's samples its tied 3-hop tail; the old table quoted the lowest draw as the value. **NICD paper verified 2026-09-08** (review-adjacent, outline decision #8): every number §2.3 shows is exact against `nicd-reducing-hallucinations-graphrag.pdf` (Wedge, Stutter, Dixon & Cała, NICD/Newcastle, long version) — precision 0.15/0.36/0.43, recall 0.13/0.33/0.39, coarse truthfulness −31/−49/**−127**, fine-grained 35/63/40.5, total tokens 41,694/45,695/1,108, 510 questions, 28,240 source articles, Neo4j funding in the conflict-of-interest statement. Nothing needed correcting. **PDF now in the repo** at `docs/nicd-reducing-hallucinations-graphrag.pdf`; it is **CC BY-NC-SA 4.0**, so verbatim redistribution is permitted and ShareAlike does not reach the repo's own licence (it attaches to adaptations) — but an attribution line naming the authors and the licence is required, and is an open asset task. Their code: `github.com/NICD-UK/graph-based-rag-qa`. Three things the check *added*: coarse truthfulness goes on-slide because zero-shot's −127 is where its apparent win collapses; the refusal caveat gains the paper's own numbers (vector RAG answers ~27% of questions, vector+graph 65.3% — the authors' line is that the graph "more than halved" refusals); and §2.4's "models reach for tools that look like what they saw in training" is confirmed as the **authors' own** explanation, not ours ("LLMs are conservative in their tool selection, and are biased towards tools that align with their training"). Timing: **55:10 against 53:00** (was 58:30) — §5's eleven cuts and §4's 4.9 applied, the remaining +1:55 is new material Nathan asked for (bio/sponsors/ToC, the personalized-PageRank mechanism, the WCC definition) |
 | — | **Step 6: the deck** | reveal.js, vendored offline | scaffold not started; **section 4 slide content drafted** — [`docs/section-04-slides.md`](section-04-slides.md) |
 
 ### Step 0 results (2026-09-06)
@@ -2950,6 +2951,14 @@ like Drouillard, named constantly but under wild spellings? Measured,
 section now owns: *role shards* (rarely named, identity in descriptions —
 5j) vs. *spelling shards* (always named, identity split by orthography).
 
+> **⚠️ Counts below are `neo4j`, not the demo graph (review finding R16,
+> annotated 2026-09-08).** On `lewisclark` — which is what every slide quotes
+> and what Nathan will be standing next to — it is **DREWYER 297 / GEORGE
+> DROUILLARD 84**, re-verified 2026-09-08. The *finding* survives intact (still
+> unmerged, still disjoint); only the two numbers moved. This matters because
+> 5.4's honesty line points at 5k as a **Q&A pocket**, so these are numbers
+> that may get said out loud with no chance to caveat — say 297/84.
+
 **Finding zero, and it relocates the problem: this one is live on the DEMO
 graph.** The gold pipeline never merged DREWYER (df **265**) into GEORGE
 DROUILLARD (df **63**) — disjoint, zero co-occurring chunks, 328 chunks
@@ -4177,6 +4186,39 @@ trials returning different receipt slates. Consequence for the stage: quote
 vector/ppr/expand/cooccurrence as exact; quote community/hybrid/paths as
 ranges or not at all.
 
+> **RESOLVED 2026-09-08, and one of the two sources is gone.** This finding
+> named the Louvain leak precisely — *"the §6 demos moved to seeded Leiden; the
+> registered strategies still use the default"* — and it stayed unfixed until
+> the compile review flagged it as R2 and Nathan said *"I don't want to use or
+> teach Louvain."*
+>
+> - **`community`/`hybrid`: fixed.** `CommunityConfig.algorithm` now defaults
+>   to `leiden` (was `louvain`), so the registered strategies run what §6
+>   teaches. Three consecutive full runs are now identical to the digit:
+>   **88.1% recall, redundancy 0.049 / 0.050**. The ±1-entity range is gone,
+>   and these can be quoted exactly. Headline recall did not move (still +1.8),
+>   but the per-kind split did: connection **93.8% → 100%**, thematic
+>   **63.9% → 55.6%**, and trade-goods went 1-of-4 → **0-of-4** for both. That
+>   last one is the §8.4 disagreement in raw form and is on the record in the
+>   draft's Appendix D.
+> - **`paths`: not fixable, now quantified.** Ten consecutive runs:
+>   69.4% ×4, 77.8% ×3, 80.6% ×2, 88.9% ×1 — **mean 76.1%, range 69.4–88.9**
+>   (vector on those same 3 anchored questions is 91.7%, so mean Δ = −15.6
+>   pts). The `section-08-slides.md` draft quoted **69.4%** — a single draw,
+>   and the lowest — as though it were the value. §8.2 now reports the mean and
+>   the range and says why in one sentence, and `benchmark.py` emits the same
+>   caveat into `results/benchmark.md` so a re-run by anyone else lands on the
+>   spread rather than on one draw.
+> - **Also measured while here:** path latency is **~212 ms cold / ~23 ms
+>   warm**, reproducibly (first call in a fresh process vs every call after).
+>   That closes review finding R5, which had read §7's ~220 ms against §8's
+>   23 ms as a contradiction. Neither was wrong; §7 quoted a cold start. Stage
+>   consequence: warm the projection before §7 or pay it on stage.
+> - **And a gap worth knowing:** `infer_anchors` **raises** on `lewisclark` —
+>   no `person_embeddings` vector index by design — so `paths` only works with
+>   pinned anchors on the demo graph. Both §7 demos pin them, so nothing on
+>   stage is affected, but do not improvise an un-anchored path query.
+
 #### 8f. §4 residuals measured as bounds, not noise
 
 SHABONO (31 chunks) and TOUSSAINT CHARBONNEAU (69) share **zero** chunks — the
@@ -4487,7 +4529,14 @@ miss. Carried into the benchmark in section 8 as the `cooccurrence` strategy.
 and note that build-time work is what makes query-time work possible — the
 callback section 10 lands.
 
-### 5. "Your ranking can't combine evidence" → multi-seed PPR (10 min) · 0:23
+### 5. "Your ranking can't tell people apart" → entity-seeded PPR (10 min) · 0:23
+
+> **Header corrected 2026-09-08 (review finding R15).** It read *"can't combine
+> evidence" → multi-seed PPR*, which was written for a conjunction thesis that
+> was measured and **retracted**. Nathan signed off the current title the same
+> day (*"Title is fine"*), so the outline, §3's roadmap row and
+> `section-05-slides.md` now all agree. The retracted thesis is kept below as
+> history — that is deliberate — but the header no longer advertises it.
 
 *(Title changed and thesis rebuilt — the previous version's hub-trap centrepiece
 did not reproduce against live data. Retraction and replacement in

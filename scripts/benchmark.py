@@ -189,6 +189,16 @@ def write_markdown(
         "(`paths` runs only where the question pins two anchors — section 7's "
         "own trigger condition).")
     add("")
+    if "paths" in stats:
+        add("> **`paths` is the one row here that does not reproduce.** Yen's "
+            "enumerates tied routes, and the 3-hop cost class holds more ties "
+            "than `k_paths * 5` requests, so *which* ties fill the tail differs "
+            "per invocation. Ten consecutive runs on `lewisclark` (2026-09-08) "
+            "returned 69.4% ×4, 77.8% ×3, 80.6% ×2 and 88.9% ×1 — **mean 76.1%, "
+            "range 69.4–88.9**. Whatever single value appears in the table above "
+            "is one draw from that spread; quote the mean and the range, not the "
+            "draw. Every other strategy is identical run to run.")
+        add("")
 
     kinds = kinds_present(all_rows)
     counts = {kind: len({r.question_id for r in all_rows if r.kind == kind})

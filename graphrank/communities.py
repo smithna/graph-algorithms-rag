@@ -1,4 +1,4 @@
-"""Louvain/Leiden community detection over the retrieval graph.
+"""Leiden community detection over the retrieval graph.
 
 Communities are the thematic structure that pure similarity cannot see. Two
 passages about "trading for horses in the mountains" are similar in embedding
@@ -23,7 +23,8 @@ On the mechanics: :func:`detect` runs the algorithm in **mutate** mode — the
 membership lands as a node property on the in-memory projection (never the
 database) and is streamed back from there. That way :func:`conductance` and
 every window cap in one process read the *same run*, which matters because
-neither Louvain nor Leiden is deterministic across runs.
+community detection is only reproducible when the seed and the run are pinned
+together.
 """
 
 from __future__ import annotations
@@ -57,11 +58,14 @@ class CommunityConfig:
     k: int = 8
     #: Max chunks any one community may contribute to the context window
     max_per_community: int = 2
-    #: "louvain" or "leiden". Leiden exists because Louvain can emit internally
-    #: disconnected communities; Leiden guarantees connectivity.
-    algorithm: str = "louvain"
-    #: Louvain/Leiden resolution (GDS calls it gamma for Leiden) — higher
-    #: yields more, smaller communities
+    #: "leiden" (the default, and the only algorithm the talk uses) or
+    #: "louvain". Leiden is the default because Louvain can emit internally
+    #: disconnected communities, and because Louvain has no seed parameter —
+    #: it redraws its partition on every run. `louvain` stays selectable only
+    #: so the difference can be demonstrated on request.
+    algorithm: str = "leiden"
+    #: Resolution (GDS calls it gamma) — higher yields more, smaller
+    #: communities
     resolution: float = 1.0
     max_levels: int = 10
     weighted: bool = True
@@ -134,7 +138,7 @@ def detect(
     except Exception:
         # A previous process already mutated this property onto the resident
         # projection. Drop and re-run rather than trusting a run this process
-        # never saw — Louvain/Leiden are not deterministic across runs.
+        # never saw — an unseeded community run is not reproducible.
         client.graph.nodeProperties.drop(graph, [prop])
         stats = _algo(config).mutate(graph, mutateProperty=prop, **_algo_params(config))
 
