@@ -1,0 +1,286 @@
+/* ==========================================================================
+   Graph Algorithms for RAG — KCDC 2026
+   Theme matched to last year's deck (rag_relationship_problem.pptx) so this
+   talk reads as a sequel. Palette is recorded in the project notes.
+
+   Nothing here loads from a network. Fonts are a local stack (see --font-*),
+   because the deck presents from file:// with conference wifi assumed dead.
+   ========================================================================== */
+
+:root {
+  /* Palette — from last year's deck */
+  --bg:            #0D1B2A;   /* dark navy */
+  --panel:         #152235;   /* card / panel fill */
+  --accent:        #018BFF;   /* Neo4j blue */
+  --highlight:     #00CC76;   /* green — for wins, receipts, "after" */
+  --text:          #E8EDF2;
+  --muted:         #7A8FA6;
+
+  /* Derived, used sparingly */
+  --warn:          #FFB454;   /* honesty beats, caveats, "the awkward part" */
+  --bad:           #FF6B6B;   /* failures, the cold open, struck-through edges */
+  --rule:          #24354d;   /* hairlines, table borders */
+
+  /* Calibri first so the deck matches last year's metrics wherever Office is
+     installed. Carlito is the metric-compatible open clone — drop
+     Carlito-Regular/Bold woff2 into deck/assets/fonts and uncomment the
+     @font-face blocks below to make this machine-independent. Avenir Next is
+     the closest macOS-native humanist fallback. */
+  --font-body: Calibri, Carlito, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+/*
+@font-face {
+  font-family: "Carlito";
+  src: url("../assets/fonts/Carlito-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: block;
+}
+@font-face {
+  font-family: "Carlito";
+  src: url("../assets/fonts/Carlito-Bold.woff2") format("woff2");
+  font-weight: 700; font-style: normal; font-display: block;
+}
+*/
+
+/* --------------------------------------------------------------- base ---- */
+
+.reveal-viewport { background: var(--bg); }
+
+.reveal {
+  font-family: var(--font-body);
+  font-size: 38px;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.reveal .slides { text-align: left; }
+
+/* Slides are vertically centred (reveal's `center: true`). Deliberately not
+   forcing height:100% here — that would top-align everything and leave the
+   sparse statement slides stranded against the ceiling. */
+
+/* -------------------------------------------------------------- type ----- */
+
+.reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+  font-family: var(--font-body);
+  font-weight: 700;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  margin: 0 0 0.5em 0;
+  text-shadow: none;
+}
+
+.reveal h1 { font-size: 2.1em; }
+.reveal h2 { font-size: 1.5em; }
+.reveal h3 { font-size: 1.1em; font-weight: 400; color: var(--muted); }
+.reveal h4 { font-size: 0.9em; }
+
+.reveal p { line-height: 1.35; margin: 0 0 0.6em 0; }
+
+.reveal strong, .reveal b { color: #fff; font-weight: 700; }
+.reveal em { color: var(--text); font-style: italic; }
+.reveal a { color: var(--accent); text-decoration: none; }
+
+/* The talk leans on a few recurring emphases. Keep them semantic. */
+.accent    { color: var(--accent); }
+.win       { color: var(--highlight); }
+.warn      { color: var(--warn); }
+.bad       { color: var(--bad); }
+.muted     { color: var(--muted); }
+.mono      { font-family: var(--font-mono); }
+
+/* ------------------------------------------------------- big-number slide */
+/* §0.2's "2 of 8", §4.2's "8", §8.3's token count. One number, huge. */
+
+.reveal .bignum {
+  font-size: 5.5em;
+  font-weight: 700;
+  line-height: 0.95;
+  color: #fff;
+  margin: 0 0 0.15em 0;
+}
+.reveal .bignum-sub {
+  font-size: 1.05em;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+/* --------------------------------------------------------- quote slides -- */
+/* Journal passages and receipts. These carry the talk's credibility, so they
+   get a real panel rather than a blockquote bar. */
+
+.reveal .passage {
+  background: var(--panel);
+  border-left: 4px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.7em 0.9em;
+  font-size: 0.8em;
+  line-height: 1.45;
+  box-shadow: none;
+}
+.reveal .passage .cite {
+  display: block;
+  margin-top: 0.5em;
+  font-size: 0.82em;
+  color: var(--muted);
+}
+.reveal .passage.receipt { border-left-color: var(--highlight); }
+.reveal .passage.wrong   { border-left-color: var(--bad); }
+
+/* ------------------------------------------------------------- tables ---- */
+/* §3.1's roadmap, §5.14's routing table, §8.2's benchmark. */
+
+.reveal table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.72em;
+  margin: 0.3em 0;
+}
+.reveal table th {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.88em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 2px solid var(--rule);
+  padding: 0.35em 0.6em;
+  text-align: left;
+}
+.reveal table td {
+  border-bottom: 1px solid var(--rule);
+  padding: 0.4em 0.6em;
+  vertical-align: top;
+}
+.reveal table tr.is-highlighted td { background: rgba(1, 139, 255, 0.14); }
+.reveal table tr.is-win td         { background: rgba(0, 204, 118, 0.12); }
+.reveal table td.num               { font-family: var(--font-mono); text-align: right; }
+
+/* The roadmap re-shows in §4–§7 with one row lit. Build it once, add a class. */
+.reveal table.roadmap tr.dim td { opacity: 0.34; }
+
+/* --------------------------------------------------------------- code ---- */
+
+.reveal pre {
+  width: 100%;
+  box-shadow: none;
+  font-size: 0.5em;
+  margin: 0.4em 0;
+}
+.reveal pre code {
+  background: var(--panel);
+  border-radius: 4px;
+  padding: 0.8em 1em;
+  max-height: none;
+  font-family: var(--font-mono);
+  line-height: 1.4;
+  tab-size: 2;
+}
+/* Terminal output — §0.1's screenshot stand-in, §6.3's themes table. */
+.reveal pre.term code {
+  color: var(--text);
+  font-size: 1.05em;
+}
+
+/* -------------------------------------------------------------- lists ---- */
+
+.reveal ul, .reveal ol { display: block; margin-left: 1.1em; }
+.reveal li { line-height: 1.35; margin-bottom: 0.35em; }
+.reveal ul.bare { list-style: none; margin-left: 0; }
+.reveal ul.bare li { margin-bottom: 0.5em; }
+
+/* -------------------------------------------------- section divider ------ */
+/* One per talk section, so the deck's structure is visible while presenting. */
+
+.reveal section.divider h2 { font-size: 1.9em; margin-bottom: 0.25em; }
+.reveal section.divider .kicker {
+  font-family: var(--font-mono);
+  font-size: 0.6em;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.6em;
+}
+.reveal section.divider .algo {
+  font-size: 0.78em;
+  color: var(--muted);
+}
+
+/* ---------------------------------------------------- the line, on black - */
+/* §0.3 and the photograph slides. Nothing but words. */
+
+.reveal section.statement { text-align: center; }
+.reveal section.statement h2 { font-size: 1.55em; line-height: 1.25; }
+.reveal section.statement .sub { color: var(--muted); font-size: 0.85em; }
+
+/* ------------------------------------------------------------ diagrams --- */
+/* arrows.app exports. They ship without a viewBox, which breaks scaling —
+   add one on export (see the draft's Appendix A). */
+
+.reveal .diagram { width: 100%; margin: 0.2em 0; }
+.reveal .diagram svg { width: 100%; height: auto; display: block; }
+
+/* A placeholder for assets that don't exist yet, loud enough to be obvious in
+   rehearsal and impossible to leave in by accident. */
+.reveal .todo {
+  border: 2px dashed var(--warn);
+  border-radius: 6px;
+  padding: 0.8em 1em;
+  color: var(--warn);
+  font-size: 0.62em;
+  line-height: 1.4;
+  background: rgba(255, 180, 84, 0.07);
+}
+.reveal .todo::before {
+  content: "ASSET NEEDED — ";
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+/* ------------------------------------------------------------- layout ---- */
+
+.reveal .two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1em;
+  align-items: start;
+}
+.reveal .two-col.wide-left  { grid-template-columns: 1.6fr 1fr; }
+.reveal .two-col.wide-right { grid-template-columns: 1fr 1.6fr; }
+
+.reveal .stack-tight p { margin-bottom: 0.25em; }
+
+/* Slide-level footnote — the "say this precisely" lines. */
+.reveal .footnote {
+  font-size: 0.55em;
+  color: var(--muted);
+  line-height: 1.35;
+  margin-top: 0.7em;
+}
+
+/* --------------------------------------------------------------- chrome -- */
+
+.reveal .progress { color: var(--accent); height: 3px; }
+.reveal .controls { color: var(--accent); }
+
+/* Section + timing marker, bottom-left. Off by default; toggle in rehearsal
+   by adding class "show-markers" to .reveal. */
+.reveal .marker {
+  position: absolute;
+  bottom: -0.2em;
+  left: 0;
+  font-family: var(--font-mono);
+  font-size: 0.42em;
+  letter-spacing: 0.1em;
+  color: var(--rule);
+  display: none;
+}
+.reveal.show-markers .marker { display: block; }
+
+/* Print/PDF: keep the dark ground rather than inverting to white. */
+@media print {
+  .reveal .todo { border-color: #b07a20; }
+}

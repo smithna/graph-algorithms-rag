@@ -1,0 +1,2427 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Graph Algorithms for RAG — KCDC 2026</title>
+
+  <link rel="stylesheet" href="vendor/reveal/dist/reset.css">
+  <link rel="stylesheet" href="vendor/reveal/dist/reveal.css">
+  <link rel="stylesheet" href="vendor/reveal/plugin/highlight/monokai.css">
+  <link rel="stylesheet" href="css/theme-kcdc.css">
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ==========================================================================
+     SCAFFOLD STATUS
+
+     Structure is complete: every beat in docs/talk-full-draft.md has a slide
+     here, in order, with its speaker notes and its minute budget.
+
+     Text slides are FINAL — they are copy from the draft and need no assets.
+     Slides waiting on an asset carry a .todo block naming exactly what is
+     missing; they are deliberately loud. Search this file for "ASSET" to find
+     them all, or "todo" for the markup.
+
+     Speaker notes are condensed from the draft to what is usable while
+     presenting. The draft is the full text; this is the stage copy.
+     Timings in the notes are per-beat, from the draft's timing tables.
+     Press S for speaker view (notes + timer). Press M to toggle the
+     section/time markers in the bottom-left.
+     ========================================================================== -->
+
+
+<!-- ============================ SECTION 0 ================================ -->
+<!-- Cold open: the failure · 3:30 · starts 0:00
+     No title slide, no hello. The failure lands first. -->
+
+<section data-menu-title="0.1 The question">
+  <h3 class="accent">Live, minute zero</h3>
+  <h2>"What was Toussaint Charbonneau's<br>role on the expedition?"</h2>
+  <div class="todo">
+    §0.1 screenshot — a real <span class="mono">NEO4J_DATABASE=lewisclark
+    demo_baseline.py</span> run, top-8 with text previews, terminal styled for
+    the projector. Rank 1's <em>"for his Services as an enterpreter"</em> must
+    read from the back row. <strong>Code gate:</strong> needs
+    <span class="mono">--vector-only</span> or a small
+    <span class="mono">demo_baseline.py</span>, or it spoils §5.
+  </div>
+  <div class="marker">§0.1 · 1:15</div>
+  <aside class="notes">
+    <p><strong>1:15. No hello, no title slide.</strong> Put the question up and
+    read the results with them for a moment.</p>
+    <p>Read rank 1 aloud — it is genuinely him, paid off "for his Services as an
+    enterpreter." Skim two more: interpreters, negotiations with the Sioux,
+    logistics. Every passage is on-topic, fluent, plausibly what you'd hand an
+    LLM. <strong>If this were your pipeline you would ship it.</strong></p>
+    <p><em>Screenshot, not live (R11) — reads identically from row 20 and
+    retires the riskiest demo in the deck.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="0.2 The reveal">
+  <p class="bignum">2 of 8</p>
+  <p class="bignum-sub">passages in that window are about<br>the man you asked about</p>
+  <div class="fragment" style="margin-top:1.2em">
+    <h3 style="color:var(--text)"><strong>69</strong> passages in this corpus mention Charbonneau.</h3>
+    <h3><strong class="bad">67</strong> of them are outside the window.</h3>
+  </div>
+  <div class="marker">§0.2 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00.</strong> The rest of the window went to <em>other</em>
+    interpreters — Dorion, Gravelines — and to diplomatic scenes with no
+    interpreter in them at all.</p>
+    <p>The context is confident, fluent, and <strong>incomplete</strong>. An LLM
+    reading it will give you a well-written answer about the wrong Frenchman,
+    and nothing anywhere throws an error.</p>
+    <p>And the passages that were needed are not hiding. They are in the
+    database, tagged to the man, <strong>one hop</strong> from where retrieval
+    was standing. They just never scored high enough.</p>
+  </aside>
+</section>
+
+<section class="statement" data-menu-title="0.3 The line">
+  <h2>"Nothing here is a bad embedding.<br>
+      The retrieval did exactly what it was designed to do.<br>
+      <span class="accent">That's the problem.</span>"</h2>
+  <div class="marker">§0.3 · 0:45</div>
+  <aside class="notes">
+    <p><strong>0:45 for this and the title.</strong> Cosine similarity is doing
+    its job perfectly. The job is the wrong job — and no amount of
+    embedding-model upgrades changes what the job <em>is</em>.</p>
+  </aside>
+</section>
+
+<section class="statement" data-menu-title="0.3 Title">
+  <h1>Graph Algorithms<br>for RAG</h1>
+  <p class="sub">Nathan Smith · Neo4j · KCDC 2026</p>
+  <p class="footnote">Last year: why a knowledge graph.<br>
+     This year: what the algorithms do with it.</p>
+  <div class="marker">§0.3 · title</div>
+  <aside class="notes">
+    <p>This hour: four failures like that one, four graph algorithms, and the
+    measured receipts for when each helps — <strong>and when it doesn't.</strong></p>
+    <p><strong>You might recognise this Lewis &amp; Clark dataset if you came to
+    my talk at Community Days.</strong> That session put GraphRAG side by side
+    with vanilla vector retrieval and showed what the graph adds. Today is the
+    next question: what the graph <em>algorithms</em> add on top of it. Same
+    corpus, a year further in.</p>
+    <p>And we come back to this exact question, with a fix, in section 5.</p>
+    <p><em>House-keeping in one breath: repo link is on the last slide,
+    questions at the end.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="0.3b Bio">
+  <h3 class="accent">Whoami, as a graph</h3>
+  <div class="todo">
+    §0.3b bio-as-graph — port slide 2 of
+    <span class="mono">rag_relationship_problem.pptx</span>, redrawn in
+    arrows.app and exported as SVG.
+    <strong>Two fixes on port:</strong> Neo4j tenure 5 → <strong>6</strong>
+    years; the original has a typo, one edge reads
+    <span class="mono">PREIVIOUS_JOB</span>.
+    Shape: <span class="mono">(Person)-[:WORKS_AT]-&gt;(Position)-[:AT_COMPANY]-&gt;(Neo4j)</span>,
+    <span class="mono">PREVIOUS_JOB</span> chain to Lovevery (1y) and PRA Health
+    Sciences (5y), <span class="mono">PLAYS</span> piano/organ,
+    <span class="mono">SPEAKS</span> French/Swedish,
+    <span class="mono">ORGANIZES</span> Data Science KC.
+  </div>
+  <div class="marker">§0.3b · 0:10</div>
+  <aside class="notes">
+    <p><strong>Ten seconds, and don't read it out</strong> — the room reads a
+    graph faster than you can narrate one.</p>
+    <p>The only line worth saying: <em>"that's my bio, and it's also the last
+    slide tonight where I get to draw the graph by hand."</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="0.3b Sponsors"
+         data-background-image="assets/KCDC_2026_Sponsors_Slide.jpg"
+         data-background-size="contain"
+         data-background-color="#0D1B2A">
+  <div class="marker">§0.3b · 0:05</div>
+  <aside class="notes">
+    <p><strong>Five seconds, one sentence</strong> — "KCDC runs on these folks,
+    thank you" — and move.</p>
+    <p>It goes here because it's the only place in the talk where a
+    house-keeping slide doesn't interrupt an argument.</p>
+  </aside>
+</section>
+
+<section data-menu-title="0.3b Contents">
+  <h3 class="accent">Where we're going</h3>
+  <table>
+    <tr><td><strong>0</strong> the failure</td>
+        <td class="accent"><strong>4</strong> entities are a mess</td>
+        <td><strong>8</strong> does it help?</td></tr>
+    <tr><td><strong>1</strong> what's a graph</td>
+        <td class="accent"><strong>5</strong> ranking can't tell people apart</td>
+        <td><strong>9</strong> how to implement</td></tr>
+    <tr><td><strong>2</strong> what's Graph RAG</td>
+        <td class="accent"><strong>6</strong> context is redundant</td>
+        <td><strong>10</strong> take-homes</td></tr>
+    <tr><td><strong>3</strong> the roadmap</td>
+        <td class="accent"><strong>7</strong> can't explain the answer</td>
+        <td></td></tr>
+  </table>
+  <div class="marker">§0.3b · 0:15</div>
+  <aside class="notes">
+    <p><strong>Fifteen seconds.</strong> Put a hand on the middle column —
+    sections 4 through 7 — <em>"those four are the talk; the rest is
+    scaffolding"</em> — and go.</p>
+    <p>Deliberately <strong>not</strong> §3's roadmap: this is eleven signposts,
+    §3 is the argument. <strong>If rehearsal wants 0:20 back, drop this slide</strong>
+    — §3 does the load-bearing version.</p>
+  </aside>
+</section>
+
+
+<!-- ============================ SECTION 1 ================================ -->
+<!-- What is a graph? · 3:00 · starts 0:03:30 · deliberately fast -->
+
+<section class="divider" data-menu-title="§1 divider">
+  <p class="kicker">Section 1 · 3 minutes</p>
+  <h2>What is a graph?</h2>
+  <p class="algo">Three minutes of foundations, then we never do theory again.</p>
+  <aside class="notes">
+    <p>Audience skews new, but the algorithms are what was sold. Foundations get
+    three minutes and a pointer to last year's repo.</p>
+  </aside>
+</section>
+
+<section data-menu-title="1.1 Nodes and rels">
+  <h3>Nodes, relationships — and this corpus</h3>
+  <div class="todo">
+    §1.1 corpus diagram — <strong>arrows.app export.</strong> Real labels, real
+    relationship types, drawn from the live graph:
+    <span class="mono">(SACAGAWEA:Person)-[:MEMBER_OF]-&gt;(SHOSHONE:NativeNation)</span>,
+    <span class="mono">(SACAGAWEA)-[:MENTIONED_IN]-&gt;(Chunk 1805-08-17 Lewis)-[:NEXT_CHUNK]-&gt;(Chunk 1805-08-17 Clark)</span>.
+    <strong>This export sets the visual language reused in §4–§7</strong>, so do
+    it first. Export checklist: add a <span class="mono">viewBox</span>, widen
+    nodes so captions don't wrap mid-word, check
+    <span class="mono">#959aa1</span> edge labels against this background.
+  </div>
+  <div class="marker">§1.1 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00.</strong> Nodes are things: a person, a nation, a passage of
+    journal text. Labels say what kind. Properties hang key-value data off them
+    — a name, a date, and later, an embedding.</p>
+    <p>Relationships connect two nodes, have a type and a direction, and — the
+    part that matters — <strong>they are data</strong>.
+    <span class="mono">SACAGAWEA MEMBER_OF SHOSHONE</span> is a fact sitting in
+    the database, written once at build time.</p>
+    <p>This is the actual shape of tonight's graph. Same corpus as last year's
+    talk — that talk was about <em>building</em> this; tonight is what the
+    algorithms do with it.</p>
+  </aside>
+</section>
+
+<section data-menu-title="1.2 Stored not computed">
+  <h3>The one distinction that matters</h3>
+  <table>
+    <tr><th>relational</th><th>graph</th></tr>
+    <tr>
+      <td>the connection is <strong>computed</strong> at query time — match IDs across tables</td>
+      <td>the connection is <strong class="accent">stored</strong> — follow the pointer</td>
+    </tr>
+    <tr>
+      <td>cost grows with the tables you join</td>
+      <td>cost grows with the edges you touch</td>
+    </tr>
+  </table>
+  <div class="marker">§1.2 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00.</strong> One takeaway from these three minutes: a JOIN
+    <em>derives</em> the relationship every time you ask, by matching keys. A
+    graph wrote it down. Traversing a million-node graph two hops out touches a
+    few hundred edges and never looks at the rest.</p>
+    <p>That's the property every algorithm here leans on. PageRank, community
+    detection, path finding — all "follow edges, many times, fast," and only
+    practical because following an edge is a pointer lookup, not a join.</p>
+    <p><strong>One honest footnote, because the mental picture misleads people
+    later:</strong> for several of these, nobody is actually walking. A graph is
+    an adjacency matrix, and "spread mass to my neighbours, repeatedly" is a
+    <strong>matrix-vector multiply iterated to convergence</strong> — decades of
+    linear algebra optimisation apply. We are <em>not</em> simulating random
+    walks when we compute PageRank; the walk is the proof, not the
+    implementation. Say it once, here, and §5's mass-distribution picture stays
+    a picture instead of becoming a performance claim.</p>
+  </aside>
+</section>
+
+<section data-menu-title="1.3 Glossary">
+  <h3>The four words you need</h3>
+  <ul class="bare">
+    <li><strong>Label</strong> — what kind of node. <span class="mono muted">Person, Chunk, NativeNation</span></li>
+    <li><strong>Relationship type</strong> — what kind of edge. <span class="mono muted">MENTIONED_IN, MEMBER_OF</span></li>
+    <li><strong>Property</strong> — data on either. <span class="mono muted">canonicalName, date, embedding</span></li>
+    <li style="margin-top:0.8em"><strong class="accent">Degree</strong> — how many edges a node has. <strong>Remember this one.</strong></li>
+  </ul>
+  <div class="marker">§1.3 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00.</strong> Four definitions and we're done with theory.</p>
+    <p><strong>Degree gets a beat of its own:</strong> just a count of a node's
+    edges, costs one query, and by the end of the hour a single degree count
+    will be deciding which retrieval strategy your pipeline runs. Cheap number,
+    does a lot of work.</p>
+    <p>Everything deeper — chunking, extraction, embeddings — is last year's
+    talk, repo on the final slide.</p>
+  </aside>
+</section>
+
+
+<!-- ============================ SECTION 2 ================================ -->
+<!-- What is Graph RAG, and does it actually work? · 7:15 · starts 0:06:30
+     Designated compression victim if rehearsal runs long. -->
+
+<section class="divider" data-menu-title="§2 divider">
+  <p class="kicker">Section 2 · 7 minutes</p>
+  <h2>What is Graph RAG,<br>and does it actually work?</h2>
+  <p class="algo">The architecture, the evidence, and the gift.</p>
+  <aside class="notes">
+    <p><strong>This section is the compression victim</strong> if rehearsal runs
+    long: the NICD table can drop to precision + truthfulness only (−0:30).
+    Though the table got <em>more</em> worth showing whole once verified — spend
+    §4.7's cut first.</p>
+  </aside>
+</section>
+
+<section data-menu-title="2.1 Architecture">
+  <h3>One database. One retrieval step.</h3>
+  <div class="todo">
+    §2.1 architecture diagram — one database boundary drawn as <em>one box</em>,
+    containing the vector index (chunk embeddings) and the knowledge graph
+    (entities, edges), both feeding one retrieval step → context window → LLM.
+    <strong>"One retrieval step" is the caption that matters.</strong>
+  </div>
+  <div class="marker">§2.1 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00.</strong> Graph RAG is not "replace your vector search."
+    Same chunks, same embeddings, same top-k entry point. The difference is that
+    the chunks sit inside a knowledge graph, and both are available to the
+    <strong>same retrieval step</strong> — same query language, same
+    transaction.</p>
+    <p>Not a vector call and then a graph service and then a reranker service.
+    That locality is what makes everything in §4–§7 one query instead of an
+    architecture diagram.</p>
+  </aside>
+</section>
+
+<section data-menu-title="2.2 Structure to navigate">
+  <h2>"give the agent a structure it can navigate,<br>not just a box it can search"</h2>
+  <p class="muted">— Zach Blumenfeld, <em>Scaling Karpathy's LLM wiki</em></p>
+  <div class="fragment" style="margin-top:1em">
+    <p>A vector store answers one question: <em>what's near this?</em></p>
+    <p>A graph adds verbs: <strong class="accent">traverse · path · rank · cluster</strong></p>
+  </div>
+  <div class="fragment footnote">
+    On a natively-linked corpus, the community structure costs <strong>zero tokens</strong>.<br>
+    On an extracted corpus like ours: zero <strong>additional</strong> tokens —
+    the algorithms are token-free, the mention edges were paid for at extraction.
+  </div>
+  <div class="marker">§2.2 · 1:30</div>
+  <aside class="notes">
+    <p><strong>1:30.</strong> Similarity search gives you one verb. The graph
+    gives you traversal — and that's where the algorithms live.</p>
+    <p><strong>The token beat, said precisely because §6 collects on it:</strong>
+    graph <em>algorithms</em> don't call a model. On a corpus with native links —
+    a wiki, a codebase, a citation network — the whole structural layer is free.
+    On ours the links came from an LLM extraction pass, so the honest claim is
+    zero <em>additional</em> tokens: once you've paid for extraction, every
+    algorithm in this talk reruns on it free, forever.</p>
+    <p>That's §3's thesis: pay at build time, retrieve cheap at query time.</p>
+  </aside>
+</section>
+
+<section data-menu-title="2.3 The evidence">
+  <h3>NICD, <em>Reducing hallucinations with GraphRAG</em></h3>
+  <p class="footnote" style="margin-top:0">510 multi-source questions (MoNaCo) · 28,000 Wikipedia articles · three pipelines</p>
+  <table>
+    <tr><th></th><th>Vector RAG</th><th>Vector+graph</th><th>Zero-shot</th></tr>
+    <tr><td>Factual correctness (precision)</td><td class="num">0.15</td><td class="num win"><strong>0.36</strong></td><td class="num">0.43</td></tr>
+    <tr><td>Factual correctness (recall)</td><td class="num">0.13</td><td class="num win"><strong>0.33</strong></td><td class="num">0.39</td></tr>
+    <tr><td>Fine-grained truthfulness</td><td class="num">35</td><td class="num win"><strong>63</strong></td><td class="num">40.5</td></tr>
+    <tr><td>Coarse truthfulness</td><td class="num">−31</td><td class="num">−49</td><td class="num bad"><strong>−127</strong></td></tr>
+    <tr><td>Total tokens (median)</td><td class="num">41,694</td><td class="num">45,695</td><td class="num">1,108</td></tr>
+  </table>
+  <div class="marker">§2.3 · 2:45</div>
+  <aside class="notes">
+    <p><strong>2:45 for this and the awkward parts.</strong> Headline: adding
+    the graph to vector RAG roughly <strong>doubles</strong> factual precision
+    and recall, and wins fine-grained truthfulness outright, for about nine
+    percent more tokens. Strongest published number I can hand you — 510
+    questions, not a weekend demo.</p>
+    <p><em>All numbers verified against the paper (in the repo). Compression
+    cut: keep precision + truthfulness rows only.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="2.3 Awkward parts">
+  <h3>The awkward parts — same font size</h3>
+  <ul>
+    <li><strong>Zero-shot beats both</strong> on correctness — MoNaCo is public
+        Wikipedia; the model has memorized the corpus. <em>The authors say so
+        themselves.</em></li>
+    <li class="fragment"><strong>Coarse truthfulness favors plain vector RAG</strong>
+        (−31 vs −49) — because it <em>refuses to answer</em> far more often.
+        <strong>Refusing isn't winning.</strong></li>
+    <li class="fragment"><strong>The study was funded by Neo4j.</strong>
+        Disclosed in the paper. Now disclosed here.</li>
+  </ul>
+  <div class="marker">§2.3 · honesty</div>
+  <aside class="notes">
+    <p>Say all three before anyone asks.</p>
+    <p><strong>Zero-shot:</strong> that column is why "just use a bigger model"
+    works on Wikipedia and not on your incident reports — your corpus isn't in
+    the training set. That column vanishes on private data; the other two
+    don't.</p>
+    <p><strong>The refusal point, with the paper's own numbers:</strong> the
+    coarse metric gives 0 for a refusal and −1 for a hallucination, so a system
+    that answers almost nothing can't lose much. Vector RAG answered about
+    <strong>27%</strong> of the 510 questions. Vector+graph answered
+    <strong>65%</strong> — the authors' line is that the graph "more than halved
+    the proportion of complex questions the agent refused to answer." So vector
+    RAG's better-looking −31 is <strong>bought with silence.</strong> Same
+    failure the cold open showed.</p>
+    <p><strong>And the row that ends the argument: zero-shot's coarse
+    truthfulness is −127.</strong> It answers nearly everything and hallucinates
+    in 59% of cases. So the honest reading isn't "zero-shot wins" — it's
+    <em>zero-shot is confident, vector RAG is quiet, and the graph is the only
+    one of the three doing both jobs at once.</em></p>
+    <p><strong>Funding:</strong> one sentence, costs nothing, buys the section
+    its credibility.</p>
+    <p><em>Q&amp;A pocket — is the −31/−49 gap real? CIs don't overlap:
+    [−31, −18] against [−61, −44].</em></p>
+  </aside>
+</section>
+
+<section class="statement" data-menu-title="2.4 The gift">
+  <h2>The agent in that study<br>had a shortest-path tool.</h2>
+  <h2 class="fragment"><span class="accent" style="font-size:1.5em">It was called zero times.</span></h2>
+  <p class="fragment sub">Not once, in 510 questions.</p>
+  <div class="marker">§2.4 · 1:30</div>
+  <aside class="notes">
+    <p><strong>1:30 for this and the hinge.</strong> My favorite finding in the
+    paper and it's in nobody's abstract. The agent had graph tools
+    <em>available</em>. The system prompt encouraged them. It never touched the
+    path tool — it fell back to vector search, every time.</p>
+    <p><strong>And that last clause is the authors', not mine.</strong> Their
+    explanation: graph tools for complex QA are "likely under-represented in LLM
+    training," and "LLMs are conservative in their tool selection, and are
+    biased towards tools that align with their training." So this isn't a quirk
+    of one agent — <strong>it's a prediction about yours.</strong></p>
+    <p><em>Q&amp;A pocket: two more tools went unused, backlinks and a
+    calculator. Name shortest-path from the stage because it's the one this talk
+    spends five minutes on in §7.</em></p>
+    <p><em>(Beat.)</em></p>
+  </aside>
+</section>
+
+<section class="statement" data-menu-title="2.4 The hinge">
+  <h3>The lesson isn't "give your agent graph tools."</h3>
+  <h2><span class="accent">Put the graph algorithms in the retrieval path,
+      deterministically — where the model doesn't get a vote.</span></h2>
+  <div class="marker">§2.4 · the hinge</div>
+  <aside class="notes">
+    <p><strong>This is the spine of the rest of the hour.</strong> Land it
+    slowly. Every section from here is about what belongs <em>in that path</em>:
+    resolution before indexing, PageRank inside retrieval, community caps on the
+    window, paths in the answer. Code that runs whether or not the model feels
+    like it.</p>
+    <p><em>One of the talk's four photograph slides. Set it like one.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="2.5 Hand-off">
+  <h3 class="muted">Which leaves exactly one question —</h3>
+  <h2>What specifically do you put in the path?</h2>
+  <p class="sub accent">Four failures. Four algorithms.</p>
+  <div class="marker">§2.5 · 0:30</div>
+  <aside class="notes">
+    <p><strong>0:30.</strong> The graph gives retrieval verbs it doesn't have,
+    the best available evidence says the combination roughly doubles factual
+    quality on multi-source questions, and the model won't drive the graph by
+    itself.</p>
+  </aside>
+</section>
+
+
+<!-- ============================ SECTION 3 ================================ -->
+<!-- Roadmap · 1:00 · starts 0:13:45 · One slide, one minute, stays up. -->
+
+<section data-menu-title="3.1 The map">
+  <h3>Two stages. Four failures.</h3>
+  <table class="roadmap">
+    <tr><th>stage</th><th>the failure you've felt</th><th>the algorithm</th></tr>
+    <tr><td><strong>Build</strong></td><td>Your entities are a mess</td><td>node similarity + WCC</td></tr>
+    <tr><td><strong>Query</strong></td><td>Your ranking can't tell people apart</td><td>personalized PageRank</td></tr>
+    <tr><td><strong>Query</strong></td><td>Your context is redundant</td><td>Leiden</td></tr>
+    <tr><td><strong>Query</strong></td><td>You can't explain the answer</td><td>Yen's k-shortest paths</td></tr>
+  </table>
+  <p class="footnote"><em>Build time makes the graph worth retrieving from.
+    Query time decides what comes back. Skip the first and the second returns
+    garbage.</em></p>
+  <div class="marker">§3.1 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00. Leave this up for the full minute.</strong></p>
+    <p>Graph algorithms serve RAG at <strong>two stages</strong>. One section on
+    build time — unglamorous, and it gates everything. Three on query time —
+    where your retrieval actually improves.</p>
+    <p>Each section opens with a failure you have already hit, whether or not
+    you knew its name. <strong>If a row is a failure you genuinely don't have —
+    some corpora don't — that section will tell you so.</strong> Part of the
+    pitch is knowing when <em>not</em> to reach for the algorithm.</p>
+    <p><strong>⏱ TIMEKEEPING ANCHOR #1 of 2: this slide is minute 13-to-14.
+    §4 starts on schedule or the cuts list comes out.</strong> Anchor #2 is
+    §6.1 at 0:35.</p>
+    <p><em>Build this table once, parameterized — §4–§7 each re-show it with
+    their row lit (add class "dim" to the others).</em></p>
+  </aside>
+</section>
+
+
+<!-- ============================ SECTION 4 ================================ -->
+<!-- "Your entities are a mess" · 10:00 (budget 9:00) · starts 0:14:45
+     node similarity + WCC. Demo is a recording, on rawluna.
+     Constraints: no precision/recall percentages — the gold set is a
+     hand-built reference, not ground truth. Sacagawea is the spine. -->
+
+<section class="divider" data-menu-title="§4 divider">
+  <p class="kicker">Section 4 · Build time</p>
+  <h2>"Your entities are a mess"</h2>
+  <p class="algo">node similarity + weakly connected components</p>
+  <aside class="notes">
+    <p><strong>10:00 against a 9:00 budget.</strong> Cut candidate if needed:
+    4.7 down to its two-line recall/precision slide (−0:30). Do not cut 4.2,
+    4.5's diagram, 4.6 or 4.8 — those are the section.</p>
+  </aside>
+</section>
+
+<section data-menu-title="4.1 The failure">
+  <h3>The same man, five ways</h3>
+  <p class="mono" style="font-size:0.85em">CLARK · CAPT. CLARK · WILLIAM CLARK · Capt Clark · Wm. Clark</p>
+  <h2 class="fragment">Every one of those is a separate node.</h2>
+  <div class="marker">§4.1 · 0:45</div>
+  <aside class="notes">
+    <p><strong>0:45.</strong> Where these came from, in one sentence, because it
+    changes who thinks this slide is about them: <strong>an LLM extracted these
+    entities out of unstructured journal text</strong>, one chunk at a time, and
+    it faithfully reported the name each passage actually used. Nothing
+    malfunctioned. Five spellings in the source become five nodes.</p>
+    <p><strong>And if you're thinking "my data is structured, this isn't my
+    problem" — you have these too.</strong> Every CRM has ACME Corp, Acme
+    Corporation, and acme-corp-1. Extraction makes duplicates
+    <em>plentiful</em>; it doesn't make them exotic.</p>
+    <p>Retrieval for Clark silently misses most of Clark. No error, no warning —
+    just quietly incomplete context, the worst failure mode RAG has. A wrong
+    answer you can catch. <strong>A thin answer looks exactly like a good
+    one.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="4.2 Make it personal">
+  <p class="bignum">8</p>
+  <p class="bignum-sub">chunks in which Sacagawea is named</p>
+  <div class="marker">§4.2 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00 across this and the forms build.</strong> She is present for
+    the entire expedition and named eight times. Ask this graph for Sacagawea
+    and you get eight chunks' worth of someone who is everywhere.</p>
+    <p><strong>This is the section in one slide. Hold on it.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="4.2 The forms">
+  <h3>…and the forms she is <em>actually</em> referred to by</h3>
+  <pre class="term"><code data-trim data-noescape>
+SACAGAWEA          INDIAN WOMAN        THE INDIAN WOMAN
+OUR INDIAN WOMAN   THE INDIAN WOMAN WITH US
+SQUAR              THE SQUAR           THE SQUAW
+HIS SQUAR          SQUARWIFE           SQUAR INTERPRETRESS
+SQUAR WIFE TO SHABONO                  JANEY
+THE WIFE OF SHABONO    WIFE OF SHABONO    SNAKE INDIAN WIFE
+INTERPRETERS WIFE      OUR INTERPRETER THE SNAKE WOMAN
+  </code></pre>
+  <h2 class="fragment">Nineteen nodes. One woman.</h2>
+  <div class="marker">§4.2 · the forms</div>
+  <aside class="notes">
+    <p><strong>Handle the language once, here, plainly, then never again:</strong>
+    <em>"'Squaw' was ordinary usage in the captains' 1805 English. It is
+    offensive now. These are the journals' words, not mine, and they are on the
+    slide because they are the data the pipeline has to cope with."</em></p>
+    <p>One sentence, no apology tour — and because it lands here, on first
+    appearance, 4.3's slide doesn't have to stop for it.</p>
+  </aside>
+</section>
+
+<section data-menu-title="4.3 String ladder">
+  <h3>The naive fix — and it's good engineering</h3>
+  <table>
+    <tr><th>signal</th><th>catches</th></tr>
+    <tr><td>Jaro-Winkler</td><td class="mono">BRATTEN / BRATTON</td></tr>
+    <tr><td>token containment</td><td class="mono">JOHN SHIELDS / SHIELDS</td></tr>
+    <tr><td>double metaphone</td><td class="mono">Chabonah / Charbonneau — XPN vs XRPN</td></tr>
+  </table>
+  <div class="marker">§4.3 · 1:15</div>
+  <aside class="notes">
+    <p><strong>1:15 for this and the wall.</strong> The journals spell
+    Charbonneau at least six ways. Metaphone catches it: the letters diverge,
+    the <em>sounds</em> do not. This ladder is good engineering and it gets you a
+    long way.</p>
+    <p><strong>Optional 5-second aside if the room is technical:</strong>
+    <span class="mono">apoc.text.jaroWinklerDistance('SHIELDS','SHIELDS') = 0.0</span>
+    — it returns a <em>distance</em>. The pipeline I ported this from compares it
+    as a similarity (<span class="mono">jw &gt;= 0.92</span>), so its string
+    signal only ever fired on strings that were maximally <em>un</em>alike.
+    Invisible bug, the name of the function is the trap, fix is
+    <span class="mono">1 - x</span>. Worth five seconds because everyone here has
+    shipped one of these.</p>
+  </aside>
+</section>
+
+<section class="statement" data-menu-title="4.3 The wall">
+  <h1 style="font-size:1.7em">SACAGAWEA <span class="muted">→</span> THE INDIAN WOMAN</h1>
+  <p class="sub">no string algorithm will ever connect these</p>
+  <div class="marker">§4.3 · the wall</div>
+  <aside class="notes">
+    <p>There is nothing to connect. Not a shared prefix, not a shared token, not
+    a shared phoneme. <strong>The letters have run out.</strong></p>
+    <p>And this is not an edge case — it is <em>most</em> of the nineteen.</p>
+  </aside>
+</section>
+
+<section data-menu-title="4.4 The scraped website">
+  <h3>How the original solved it</h3>
+  <pre><code class="language-python" data-trim>
+SOURCE_URL = "https://lewis-clark.org/people/sacagawea/sacagawea-in-the-journals/"
+  </code></pre>
+  <p><strong>It scrapes a curated list of her surface forms off a website.</strong></p>
+  <h2 class="fragment bad" style="margin-top:0.8em">There is no lewis-clark.org for your corpus.</h2>
+  <div class="marker">§4.4 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00.</strong> And it works! Thirteen forms, hand-curated by
+    historians, and the problem is solved for Sacagawea.</p>
+    <p>It is also a third-party website hard-coded into a build pipeline. It
+    exists because someone already did this by hand, for this specific
+    expedition.</p>
+    <p><em>(Beat. This is the turn — from "here is a fix" to "here is why we
+    need an algorithm.")</em></p>
+    <p><em>ASSET: screenshot of enrich_sacagawea.py with SOURCE_URL
+    highlighted, if the code block isn't enough.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="4.5 The idea">
+  <h2>Two names that keep appearing alongside<br>
+      the same people, places and dates<br>
+      <span class="accent">are probably the same entity</span></h2>
+  <div class="marker">§4.5 · 1:15</div>
+  <aside class="notes">
+    <p><strong>1:15 across this, the diagram and OVERLAP.</strong> You have more
+    information than you think.</p>
+  </aside>
+</section>
+
+<section data-menu-title="4.5 The signal, drawn">
+  <h3>The signal, drawn</h3>
+  <div class="diagram">
+    <div class="todo">
+      §4.5 — <strong>Nathan's export exists:</strong>
+      <span class="mono">docs/sacagawea appears with indian woman.svg</span>.
+      Three fixes before it ships: (a) add
+      <span class="mono">viewBox="0 0 1776.88 1045.58"</span> and drop the fixed
+      width/height, or it won't scale here; (b) captions wrap mid-word
+      (<span class="mono">Sacagawe|a</span>, <span class="mono">Cameahw|ait</span>)
+      — widen nodes and re-export; (c) <span class="mono">#959aa1</span> edge
+      labels want a projector contrast check. Then inline it here and delete
+      this block.
+    </div>
+  </div>
+  <p class="footnote">Two names. The same eight passages. The same brother, the same husband.</p>
+  <div class="marker">§4.5 · the diagram</div>
+  <aside class="notes">
+    <p><strong>This is the slide the section turns on, and it needs no
+    numbers.</strong> Two nodes the string ladder cannot touch, standing in the
+    same eight journal entries, beside the same two people. <em>That</em> is the
+    signal — and a human reader would have called it in a second.</p>
+    <p><em>Provenance, if asked: this is the <strong>unresolved</strong> graph
+    (rawluna/budgetluna), the only place both nodes still exist. On the merged
+    graph the query returns nothing, because there is no INDIAN WOMAN any more.
+    The algorithm's own success deletes its evidence — worth five seconds if the
+    question comes. Query is in the draft; keep it off the slide.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="4.5 Where the signal is">
+  <h3>Where the signal already is</h3>
+  <ul>
+    <li>entity ↔ entity co-occurrence, weighted by shared chunk count</li>
+    <li>a <strong>filtered node-similarity</strong> call, restricted to same-label pairs</li>
+    <li>union it with the string and alias signals</li>
+    <li><strong class="win">costs zero LLM tokens</strong> — it reads structure extraction already built</li>
+  </ul>
+  <div class="marker">§4.5 · the how</div>
+  <aside class="notes">
+    <p>Vendor-neutral on purpose — §9.2 argues these are algorithms, not
+    products. The GDS call name is in the draft if anyone asks.</p>
+  </aside>
+</section>
+
+<section data-menu-title="4.5 OVERLAP">
+  <h3>Why OVERLAP, not Jaccard</h3>
+  <div class="todo">
+    §4.5 OVERLAP two-circle diagram — <strong>arrows.app export</strong>, real
+    numbers: SACAGAWEA appears alongside <strong>51</strong> entities, INDIAN
+    WOMAN alongside <strong>174</strong>, <strong>18 shared</strong>
+    (CAMEAHWAIT · HIDATSA · DREWYER · HORSES · CANOES). Small circle mostly
+    inside the large one.
+    <span class="mono">OVERLAP = 18/51 = 0.35</span> (divide by the SMALLER) vs
+    <span class="mono">JACCARD = 18/207 = 0.09</span> (divide by EVERYTHING).
+  </div>
+  <div class="marker">§4.5 · OVERLAP</div>
+  <aside class="notes">
+    <p>A rare name and a common name for the same person have
+    <strong>lopsided</strong> neighbourhoods. Jaccard divides by the union and
+    punishes her for being rare. Overlap divides by the smaller set and asks the
+    question we actually mean: <em>is the rare name's world contained in the
+    common name's?</em></p>
+    <p><strong>Throwaway line, then move on:</strong> "Overlap fits this corpus
+    because the duplicates are lopsided. If yours aren't, try the others — you
+    get cosine and Jaccard on the same call." <em>No comparison table. No
+    benchmark. Next slide.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="4.6 The payoff">
+  <h3>The closed component <span class="muted">— <span class="mono">demo_resolution.py</span>, recording</span></h3>
+  <pre class="term"><code data-trim>
+INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
++  SQUAR WIFE TO SHABONO  +  THE INDIAN WOMAN  +  THE INDIAN WOMAN WITH US
++  THE SQUAR  +  THE SQUAW  +  THE WIFE OF SHABONO
+  </code></pre>
+  <h2 class="fragment">Ten surface forms. One entity. <span class="accent">No website.</span></h2>
+  <div class="marker">§4.6 · 1:30</div>
+  <aside class="notes">
+    <p><strong>1:30. Recording, not live</strong> — on
+    <span class="mono">rawluna</span> (pre-disambiguation), so the closed cluster
+    comes from <span class="mono">demo_resolution.py --adjudicate</span> rather
+    than merged nodes. The audience watches it happen.</p>
+    <p>Point at <span class="mono">SQUAR INTERPRETRESS</span>. That node appears
+    in <strong>one chunk</strong>. One passage puts it in company nothing else
+    shares, and that is enough — it ends up the hub tying eight of the others
+    together.</p>
+    <p><strong>The line:</strong> the graph found her the way a reader does — not
+    by how the name is spelled, but by <strong>who she is always standing next
+    to.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="4.6 8 to 47">
+  <h3>And now the number, because this is what it bought</h3>
+  <table>
+    <tr><th></th><th>passages you get for "Sacagawea"</th></tr>
+    <tr><td>unresolved — the node <em>named</em> <span class="mono">SACAGAWEA</span></td><td class="num"><strong>8</strong></td></tr>
+    <tr><td>her other 13 names, standing separately</td><td class="num muted">40 more, over 13 nodes</td></tr>
+    <tr class="is-win"><td><strong>after resolution — one node</strong></td><td class="num"><strong>47</strong></td></tr>
+  </table>
+  <div class="marker">§4.6 · the receipt</div>
+  <aside class="notes">
+    <p><strong>Eight to forty-seven.</strong> That is the section, quantified.</p>
+    <p>One detail worth five seconds because it's the mechanism in miniature:
+    those 48 passages <strong>do not overlap at all.</strong> Every journal entry
+    names her exactly one way. So this isn't a merge that consolidated redundant
+    coverage — <strong>the duplicates were each other's only coverage.</strong></p>
+    <p><em>To be exact about a number that returns in §5: she has 85 passages on
+    the live graph. 47 came from the journals, which is what resolution earned.
+    The other 38 came from the scraped reference page. Resolution gets credit for
+    8→47, not 8→85 — and I'd rather hand you the smaller honest number.</em></p>
+    <p><strong>Honest caveat, say it:</strong> nine of the nineteen are still
+    missed. The scraped list still beats the algorithm on raw coverage. What the
+    algorithm gives you is coverage that is <em>derived</em> — reproducible, and
+    it works on a corpus nobody has written a website about.</p>
+  </aside>
+</section>
+
+<section data-menu-title="4.7 What it costs">
+  <h2>On its own, the graph signal is <span class="bad">bad</span>.</h2>
+  <p class="sub">Hundreds of wrong pairs for every right one.</p>
+  <div class="marker">§4.7 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00.</strong> Anyone who ships this unfiltered gets nonsense. I
+    want to be straight about that, because the next slide is why it doesn't
+    matter.</p>
+  </aside>
+</section>
+
+<section data-menu-title="4.7 Division of labour">
+  <h2>Recall is what the <span class="accent">algorithm</span> is for.<br>
+      Precision is what the <span class="accent">adjudicator</span> is for.</h2>
+  <table style="margin-top:0.8em">
+    <tr><td>people in the graph</td><td class="num">811</td></tr>
+    <tr><td>every possible pair</td><td class="num"><strong>328,455</strong></td></tr>
+    <tr><td>what the signals propose</td><td class="num"><strong>~1,100</strong></td></tr>
+    <tr><td>what that costs to adjudicate</td><td class="num"><em>fractions of a cent</em></td></tr>
+  </table>
+  <div class="marker">§4.7 · the table</div>
+  <aside class="notes">
+    <p>The algorithm's job is not to decide. It is to turn an O(n²) problem into
+    a list short enough that something slower and better can read all of it.</p>
+    <p><strong>A signal with 1% precision is not a broken signal when something
+    downstream can afford to filter it.</strong></p>
+    <p><em>Cut candidate: drop this table, keep the two-line slide (−0:30).
+    First thing to go if §4 runs long.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="4.8 What WCC is">
+  <h3>Weakly Connected Components</h3>
+  <h2>Follow the edges, ignoring direction.<br>
+      Everything you can reach is one component.</h2>
+  <p class="sub">That's the entire algorithm.</p>
+  <div class="marker">§4.8 · 1:45</div>
+  <aside class="notes">
+    <p><strong>1:45 for all of 4.8.</strong> Say what it <em>is</em> first,
+    because "component" sounds like jargon and isn't: start anywhere, follow
+    every edge you can, ignore which way the arrows point, stop when you can't
+    reach anything new. That set is a component. One pass, linear in the edges,
+    <strong>no parameters</strong> — nothing to tune, nothing to seed.</p>
+  </aside>
+</section>
+
+<section data-menu-title="4.8 The problem it solves">
+  <h3>The problem it solves</h3>
+  <div class="todo">
+    §4.8 — <strong>arrows.app export:</strong> three separate pairwise
+    judgements (SACAGAWEA ≈ THE SQUAR, THE SQUAR ≈ INDIAN WOMAN, INDIAN WOMAN ≈
+    JANEY), none of which sees the whole identity, resolving through WCC into
+    one entity with four names.
+  </div>
+  <div class="marker">§4.8 · closure</div>
+  <aside class="notes">
+    <p>The problem it solves is the one I actually have: <strong>my matcher only
+    ever produces pairs.</strong> It said Sacagawea ≈ the squar, and separately
+    the squar ≈ Indian woman. Nothing in the pipeline ever looked at an
+    <em>identity</em>. WCC turns a bag of pairs into "these ten names are one
+    person" — <strong>transitive closure, computed for free.</strong></p>
+    <p>The Sacagawea cluster is built from ten pairwise judgements.
+    <strong>No single one of them sees the whole identity.</strong></p>
+    <p><em>§6 comes back to this contrast with a receipt: on the retrieval graph
+    WCC returns ONE component containing all 8,139 nodes; Leiden returns 47
+    communities inside it. Same family, different question.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="4.8 The correction">
+  <h2>WCC answers "are these connected at all"<br>
+      <span class="muted">not "are these a topic"</span></h2>
+  <div class="marker">§4.8 · the correction</div>
+  <aside class="notes">
+    <p>It gets taught as clustering and that is misleading. Run it on a raw
+    corpus graph and you get one giant component and some dust. Here it does the
+    one thing it is exactly right for: <strong>transitive closure.</strong>
+    A≈B, B≈C, therefore one entity.</p>
+  </aside>
+</section>
+
+<section data-menu-title="4.8 The bridge">
+  <h3 class="bad">And the danger, in the same breath</h3>
+  <div class="todo">
+    §4.8 bridge-node chain — <strong>arrows.app export:</strong>
+    <span class="mono">SACAGAWEA ──[HIS WIFE]── TOUSSAINT CHARBONNEAU ──[THE
+    INTERPRETER]── GEORGE DROUILLARD</span>. Each link defensible; closure makes
+    them one wrong entity.
+  </div>
+  <div class="marker">§4.8 · the bridge</div>
+  <aside class="notes">
+    <p><strong>Strongest content in the section.</strong> I did this to my own
+    graph. <strong>Sacagawea absorbed Drouillard.</strong></p>
+    <p>Ask the model directly and it gets the hard ones right: <em>is Sacagawea
+    the same entity as George Drouillard?</em> No. <em>As Windsor?</em> No.</p>
+    <p>But "his wife", beside Charbonneau, <strong>is</strong> Sacagawea. "The
+    interpreter" <strong>is</strong> Charbonneau. And Drouillard
+    <strong>was</strong> the sign-language interpreter. Each link defensible on
+    its own — <strong>and closure turns them into one wrong entity.</strong></p>
+    <p><strong>Then the sparse nodes, which is worse:</strong> SQUAR
+    INTERPRETRESS was confirmed the same as TIN NACH-E-MOO-TOOLT (Nez Perce),
+    MAN-NES-SUR REE (Hidatsa) and CONIA COMAWOOL (Clatsop) — three different
+    Native leaders from three different nations, all confirmed as Sacagawea.
+    Each appears in exactly <strong>one chunk</strong>, and so does "squar
+    interpretress." The model has nothing to tell them apart, so it reaches for
+    the identity it recognises.</p>
+    <p>So it isn't that the model was perfect and the algorithm ruined it.
+    <strong>Sparse entities get bad answers from both halves</strong> — and
+    closure turns individual mistakes into one merged identity.</p>
+  </aside>
+</section>
+
+<section class="statement" data-menu-title="4.8 The rule">
+  <h2>Fix what enters the candidate set,<br>not what comes out of it.</h2>
+  <div class="marker">§4.8 · the rule</div>
+  <aside class="notes">
+    <p>No amount of per-pair accuracy saves you here, because
+    <strong>the pairs that fail are the ones nobody can judge.</strong></p>
+    <p>This pipeline has a <span class="mono">flag_generic_locations</span> step
+    because "the river" is useless as a place. It has nothing equivalent for
+    people — so "the interpreter", "his wife" and "squar interpretress" sit in
+    the graph as first-class Person nodes, attracting bad matches and bridging
+    identities.</p>
+    <p><strong>And adjudicate <em>before</em> you close, never after.</strong></p>
+  </aside>
+</section>
+
+<section class="statement" data-menu-title="4.9 Take home">
+  <h2>Fix entity resolution<br>before you tune retrieval.</h2>
+  <div class="marker">§4.9 · 0:30</div>
+  <aside class="notes">
+    <p><strong>0:30. Hands directly to §5.</strong></p>
+    <p>Personalized PageRank over a graph where Sacagawea is nineteen nodes will
+    confidently rank the wrong passages — <strong>and it will look like it is
+    working.</strong></p>
+    <p>You just watched it be worth <strong>8 passages against 47</strong>. That
+    is not a hygiene argument, it's a retrieval argument: everything in the next
+    three sections walks on these edges, and a walk from the wrong node is
+    confidently wrong.</p>
+    <p><strong>Build time gates query time.</strong> That is the whole reason
+    this section comes before the next one.</p>
+    <p><em>Old 4.9 ("same algorithm, query time") is cut — it promised a payoff
+    §8 refutes at 82.1%, −4.2. Cutting it retired review finding R13.</em></p>
+  </aside>
+</section>
+
+
+<!-- ============================ SECTION 5 ================================ -->
+<!-- "Your ranking can't tell people apart" · 10:25 (budget 10:00) · 0:24:45
+     entity-seeded personalized PageRank. LIVE DEMO at 5.9.
+     All eleven cuts applied. Nothing runs on `neo4j`. No retraction story.
+     Numbers are all `lewisclark`; demo uses --seeder decomposed. -->
+
+<section class="divider" data-menu-title="§5 divider">
+  <p class="kicker">Section 5 · Query time</p>
+  <h2>"Your ranking can't<br>tell people apart"</h2>
+  <p class="algo">entity-seeded personalized PageRank</p>
+  <aside class="notes">
+    <p><strong>10:25 against 10:00.</strong> Eleven cuts already applied. To
+    close the last 0:25: move 5.12 to open §6 (a section-budget trade), or drop
+    §0.3's contents slide.</p>
+    <p>Do not cut 5.1, 5.2's forty engineers, 5.3's animation, 5.4's Nov-4
+    passage, 5.9, 5.10's three limits, or any of 5.12–5.14.</p>
+  </aside>
+</section>
+
+<section data-menu-title="5.1 The failure">
+  <h3>"What was Toussaint Charbonneau's role on the expedition?"</h3>
+  <pre class="term"><code data-trim data-noescape>
+1.  Chabono              &lt;- him: paid off "for his Services as an enterpreter"
+2.  Duriaur              &lt;- a Sioux go-between
+3.  (nobody)             &lt;- the return to St. Charles
+4.  Dourion              &lt;- the Sioux interpreter
+5.  Durion, Gravelin     &lt;- Sioux and Ricara interpreters
+6.  Drewyer, Charbono    &lt;- him, in the departure roster
+7.  (nobody)             &lt;- a Minetarree chief pays a visit
+8.  Gravline             &lt;- the barge pilot
+  </code></pre>
+  <h2 class="fragment">Two of eight are about the man you asked about.</h2>
+  <div class="marker">§5.1 · 1:15</div>
+  <aside class="notes">
+    <p><strong>1:15.</strong> Four slots went to <em>other</em> French-speaking
+    go-betweens on the same expedition. Two went to diplomatic scenes with no
+    interpreter in them at all.</p>
+    <p>And this is not a near miss. <strong>Sixty-nine passages mention
+    Charbonneau. Sixty-seven are outside this window.</strong></p>
+    <p>Median rank of his passages: <strong>300</strong>. Interpreter vocabulary
+    that isn't him: 101 passages, median 576, also 2 in the top-8.</p>
+    <p>Nothing here is a bad embedding. Every passage is about interpreting on
+    the Lewis and Clark expedition. It answered the question I asked.
+    <strong>It just answered it about the wrong person.</strong></p>
+    <p><em>ASSET: set the names column large — the names are the punchline.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.2 Name it">
+  <h2>Co-typed entity substitution</h2>
+  <h3>You asked what <strong>this man</strong> did.<br>
+      It told you what <strong>an interpreter</strong> does.</h3>
+  <div class="marker">§5.2 · 0:45</div>
+  <aside class="notes">
+    <p><strong>0:45.</strong> Note what the question did <em>not</em> say: it
+    never used the word "interpreter." It named a man and asked for his role.
+    Retrieval worked out that his role was interpreting — genuinely impressive —
+    and then handed back <strong>the job description instead of the man.</strong></p>
+    <p><strong>The mechanism, tightened (cut 10):</strong> a passage embedding is
+    an average over ~330 words. In a passage about Dorion negotiating with the
+    Sioux, <em>interpreter, chief, speech, presents, nation</em> recur throughout
+    and dominate that average; a surname appearing <strong>once</strong>, between
+    a weather note and a hunting tally, contributes a sliver.</p>
+    <p>So the passage actually about Charbonneau sits <em>further</em> from the
+    question than a passage about a different interpreter doing interpreter
+    things. Cosine cannot make identity a <strong>hard</strong> constraint.</p>
+  </aside>
+</section>
+
+<section class="statement" data-menu-title="5.2 Forty engineers">
+  <h2>Your corpus has forty engineers.<br>
+      You ask what <span class="accent">Chen</span> owns.<br>
+      You get three passages about <span class="bad">Rodriguez</span><br>
+      owning a similar service.</h2>
+  <div class="marker">§5.2 · the slide they photograph</div>
+  <aside class="notes">
+    <p><strong>This is the slide people will remember.</strong> Text only, big,
+    no diagram.</p>
+    <p>Because <em>"engineer owns service"</em> is most of the sentence, and
+    <em>"Chen"</em> is one word of it.</p>
+    <p><em>(Beat.)</em> <strong>Hold onto the forty engineers. We come back to
+    them at the end.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.3 PPR the two questions">
+  <h3>How personalized PageRank actually works</h3>
+  <p><strong>PageRank:</strong> what is important in this graph?</p>
+  <p><strong class="accent">Personalized PageRank:</strong> what is important
+     <em>relative to these nodes?</em></p>
+  <div class="marker">§5.3 · 1:30</div>
+  <aside class="notes">
+    <p><strong>1:30 for all of 5.3.</strong> Reworked because every later beat in
+    this section is an argument about where mass goes, and the room can't follow
+    those arguments from "PageRank in 60 seconds."</p>
+  </aside>
+</section>
+
+<section data-menu-title="5.3 The animation">
+  <h3>Put mass on the node you care about. Let it spread.</h3>
+  <div class="todo">
+    §5.3 <strong>mass-distribution animation — the one build in the talk that
+    has to move.</strong> Five reveal.js fragments over one arrows.app export
+    (same diagram, opacity/colour per fragment — cheaper and more reliable than
+    video, and it stays legible if the projector eats the animation):
+    <br>step 0 — <span class="mono">●1.00</span> on the seed, everything else 0
+    <br>step 1 — split along the seed's mention edges
+    (<span class="mono">●.125 ×8</span>, schematic)
+    <br>step 2 — each passage splits its mass over the entities it names
+    <br>step 3 — <strong>and back out to THEIR passages: passages that never
+    mention the seed now hold mass</strong>
+    <br>step 4 — iterate until the numbers stop moving
+  </div>
+  <div class="marker">§5.3 · the animation</div>
+  <aside class="notes">
+    <p><strong>Say it as one sentence and let the animation carry it:</strong>
+    put a unit of mass on the node you care about, let every node hand its mass
+    to its neighbours, repeat until the numbers stop changing. Whatever ends up
+    holding a lot of mass is well connected <em>to your seed</em> — not well
+    connected in general.</p>
+    <p>That's the whole algorithm. The "walk" language is how the proof goes, not
+    how the code runs — as §1 said, a matrix multiply iterated to convergence.</p>
+    <p><strong>The one thing to watch: step 3 is where it stops being a
+    lookup.</strong> Mass reaches passages that never mention your seed at all,
+    because they mention people your seed is mentioned <em>with</em>. Steps 0 and
+    1 are just a tag filter with extra arithmetic; <strong>step 3 is the part a
+    filter cannot do.</strong> That's the entire value proposition of this
+    section, and it happens on step three.</p>
+    <p><em>Eight edges because eight is drawable. The real SACAGAWEA has 85
+    mention edges, so her first step hands each passage about 1.2% — worth
+    saying, because it's exactly the arithmetic behind 5.6's hub trap and 5.13's
+    "2 of 85" bridge.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.3 Damping">
+  <h3>Damping <span class="mono">d</span> is a <strong>horizon</strong>, not a tuning knob</h3>
+  <p class="mono">share of mass within <em>k</em> steps = 1 − d<sup>(k+1)</sup></p>
+  <table style="max-width:60%">
+    <tr><th>damping</th><th>mass within 3 steps</th></tr>
+    <tr class="is-win"><td class="mono"><strong>0.45</strong></td><td class="num"><strong>96%</strong></td></tr>
+    <tr><td class="mono">0.85</td><td class="num">48%</td></tr>
+  </table>
+  <div class="marker">§5.3 · damping</div>
+  <aside class="notes">
+    <p>At every step, a fraction of the mass <strong>teleports back to the
+    seed</strong> instead of spreading onward. That fraction is what stops the
+    mass diffusing into the whole graph until it's just a popularity contest —
+    <strong>it is exactly what makes this personalized.</strong> Set it to 1.0
+    and there's no teleport: you get plain PageRank, and your seed stops
+    mattering.</p>
+    <p>So read <span class="mono">d</span> as "how far from the seed am I willing
+    to look." Three steps is what you want on a bipartite graph like this one —
+    step 1 is her passages, step 3 is her co-mentioned entities' passages. That's
+    the neighbourhood.</p>
+    <p><strong>0.85 is the number in every tutorial, including tutorials I have
+    written, and it puts less than half the mass inside that horizon.</strong>
+    Measured on this corpus, shorter was better at every value we tried.</p>
+    <p><em>5.7 folded in here (cut 2) — damping explained once, properly, instead
+    of half-explained twice.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.4 Discrete edge">
+  <h3><span class="mono">MENTIONED_IN</span> is a <strong>discrete</strong> edge</h3>
+  <h2>Either extraction attached the entity, or it didn't.</h2>
+  <div class="marker">§5.4 · 1:15</div>
+  <aside class="notes">
+    <p><strong>1:15 for all of 5.4.</strong> No averaging. Identity is binary.
+    That's the hard constraint cosine can only express softly — and it's the
+    whole trick.</p>
+    <p>Median 40 words per entity in a 333-word passage. <strong>The entity is a
+    pointer. The embedding is an average.</strong></p>
+    <p><em>One sentence of housekeeping, then move: everything in this section
+    walks on the mention edges only — entity-in-passage, nothing else. The
+    extracted entity-to-entity edges are out, and so is the chunk-to-chunk
+    chain. Why is a good question and it's §6's, where the projection changes and
+    it matters. (5.5 cut — cut 1.)</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.4 Don't pick one">
+  <h3>Your entity resolution will never be perfect.</h3>
+  <h2><span class="accent">So stop building retrieval that needs it to be.</span></h2>
+  <p class="footnote">Question mentions a tree. Your graph has four
+     <span class="mono">POPULUS</span> species — and you genuinely do not know
+     which one is "real."</p>
+  <div class="marker">§5.4 · the reframe</div>
+  <aside class="notes">
+    <p><strong>This is the slide that earns §4 its place and forgives it.</strong>
+    You just watched resolution take Sacagawea from 8 passages to 47 — and leave
+    nine forms behind, and leave DREWYER and GEORGE DROUILLARD as two nodes.
+    That is the permanent state of every corpus. <strong>Nobody ships a resolved
+    graph; they ship a less-broken one.</strong></p>
+    <p>So the design question isn't "how do I get resolution right." It's
+    <strong>"what does retrieval do when resolution is wrong"</strong> — and the
+    answer is: seed every candidate, weight them, let the arithmetic sort it
+    out.</p>
+  </aside>
+</section>
+
+<section data-menu-title="5.4 Live receipt">
+  <h3>Seeds chosen for the Pacific question, from the question alone</h3>
+  <pre class="term"><code data-trim data-noescape>
+PACIFIC OCEAN   (WaterBody · 19 passages)   weight 0.605
+PACIFIC OCIAN   (WaterBody ·  5 passages)   weight 0.395   &lt;- Clark's spelling, unmerged
+  </code></pre>
+  <div class="marker">§5.4 · the receipt</div>
+  <aside class="notes">
+    <p>It seeds <strong>both</strong> Pacific nodes. It does not know which is
+    "real" and does not need to. <strong>Take an argmax over entity candidates
+    and you've built a single point of failure into retrieval that fails
+    <em>silently</em> when it picks wrong.</strong></p>
+    <p>And the weights aren't a heuristic — they split by <strong>passage
+    count</strong>, which makes seeding the two shards <em>arithmetically
+    identical</em> to seeding the one node a resolution pass would have made, to
+    first hop. <strong>You do not have to fix your entities before this works.
+    You just do better when you have.</strong></p>
+    <p><strong>§4's callback, twice over:</strong> the duplicate that used to sit
+    on this slide — a mislabelled second SACAGAWEA — is gone, because §4's
+    machinery merged it. The pipeline left PACIFIC OCIAN behind instead.
+    <strong>There is always another duplicate.</strong></p>
+    <p><em>Honesty line, five seconds: this insurance only covers duplicates that
+    share a token. DREWYER and GEORGE DROUILLARD — one man, no shared token — do
+    NOT get hedged. A spelling shard is build-time work. (Q&amp;A pocket: outline
+    finding 5k — 297 and 84 on this graph.)</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.4 Nov 4 passage">
+  <h3>The passage that proves the mechanism</h3>
+  <p class="footnote" style="margin-top:0">Cosine rank <strong>20</strong> · 305 characters · and it <strong>never says her name</strong></p>
+  <div class="passage receipt">
+    "a french man by Name Chabonah, who Speaks the Big Belley language visit us,
+    he wished to hire &amp; informed us his 2 Squars were Snake Indians, we engau
+    him to go on with us and <strong>take one of his wives to interpet the Snake
+    language</strong>"
+    <span class="cite">1804-11-04</span>
+  </div>
+  <div class="marker">§5.4 · protected</div>
+  <aside class="notes">
+    <p><strong>Protected from cutting.</strong> That's the hiring <em>and</em> the
+    arrangement — he speaks Hidatsa, she interprets Shoshone. Best single passage
+    in the corpus for "which nations did Sacagawea interpret for, and how did
+    that work."</p>
+    <p>Cosine buried it because it's short and never names her. <strong>The graph
+    reaches it because extraction resolved "one of his wives" → SACAGAWEA and
+    "Snake Indians" → SHOSHONE.</strong></p>
+    <p>The entity layer is carrying <strong>a coreference the text never
+    states.</strong> Build-time work paying off at query time, on one passage you
+    can read from the back of the room.</p>
+  </aside>
+</section>
+
+<section data-menu-title="5.6 The hub trap">
+  <h3>Top entities by how many passages mention them</h3>
+  <pre class="term"><code data-trim data-noescape>
+825  MERIWETHER LEWIS         &lt;- 28% of the corpus
+587  CERVUS CANADENSIS        (elk)
+506  WILLIAM CLARK
+458  ODOCOILEUS HEMIONUS      (mule deer)
+396  BISON BISON
+348  MISSOURI RIVER
+297  DREWYER
+  </code></pre>
+  <div class="marker">§5.6 · 0:45</div>
+  <aside class="notes">
+    <p><strong>0:45.</strong> <strong>Lewis is in 28% of the corpus — and the elk
+    outranks Captain Clark.</strong> A daily record of what the party shot and
+    ate.</p>
+    <p>Whatever you assumed your hub was — check: on the previous extraction of
+    this same corpus, the <em>white-tailed deer</em> outranked both captains. A
+    better extractor moved the hub. <strong>It did not remove it.</strong></p>
+    <p><strong>And row seven: DREWYER, 297 passages. GEORGE DROUILLARD is a
+    separate node.</strong> §4's unresolved entities, on screen, for free.</p>
+  </aside>
+</section>
+
+<section data-menu-title="5.6 Three choices">
+  <h3>What hubs do to a naive walk — and what three choices do about it</h3>
+  <table>
+    <tr><th>graph</th><th>walk</th><th>weights</th><th>same top-8 entities across questions</th></tr>
+    <tr><td>all three types</td><td>long (d=0.85)</td><td>none</td><td><strong class="bad">2.84 / 8</strong> · Lewis ranks <strong>3.2</strong></td></tr>
+    <tr class="is-win"><td><strong>mentions only</strong></td><td><strong>short</strong></td><td><strong>IDF</strong></td><td><strong>0.47 / 8</strong> · Lewis ranks <strong>18.1</strong></td></tr>
+  </table>
+  <pre><code data-trim>
+weight  =  log( 1 + total_chunks / chunks_mentioning_this_entity )
+  </code></pre>
+  <div class="marker">§5.6 · the ladder</div>
+  <aside class="notes">
+    <p>Top row is the configuration everyone writes first: all your edges,
+    damping 0.85 because that's the number in every tutorial, no weighting
+    because why would you weight. Fourteen different questions and the walk
+    returns <strong>nearly three of the same eight entities every time</strong> —
+    and Lewis is in the top handful for <em>every</em> question, whatever you
+    ask.</p>
+    <p><strong>Three choices, each helps on its own — it takes all three to
+    finish the job.</strong> Drop the edges whose direction is meaningless.
+    Shorten the walk. IDF-weight the mentions.</p>
+    <p><em>Middle rows, if you want them out loud (cut 6 moved them here): IDF
+    alone gets 2.84 → 2.04; the short walk alone gets to 1.27. Together with the
+    projection: 0.47.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.6 The mechanism">
+  <h2>Hubs <span class="accent">concentrate</span> at the entity level<br>
+      and <span class="accent">dissipate</span> at the passage level.</h2>
+  <div class="todo">
+    §5.6 — <strong>arrows.app export:</strong> one hub, many arrows in, the same
+    many arrows out, thin.
+  </div>
+  <div class="marker">§5.6 · transfers</div>
+  <aside class="notes">
+    <p><strong>This is the part that transfers.</strong> A hub receives mass from
+    all 825 passages that mention it — then sprays it back across all 825, so
+    each gets almost nothing.</p>
+    <p>Which is why my passage ranking never looked broken while the entity
+    ranking was garbage. <strong>If you consume the entity set</strong> — graph
+    expansion, subgraph extraction, community seeding — <strong>this bites
+    hard.</strong> If you only read passages off the end, you may never notice it
+    happening.</p>
+  </aside>
+</section>
+
+<section data-menu-title="5.8 The blend">
+  <p class="bignum" style="font-size:3.4em">alpha = 1.0</p>
+  <p class="bignum-sub">reproduces the vector baseline byte for byte<br>
+     <span class="win">14 questions, 14 identical orderings</span></p>
+  <div class="marker">§5.8 · 0:20</div>
+  <aside class="notes">
+    <p><strong>0:20 (cut 5 — this slide alone).</strong> Before I show you a
+    knob, I want you to trust it's a real knob and that I haven't quietly
+    swapped the baseline underneath it. Turn the blend all the way to cosine and
+    you get cosine back, exactly, on all fourteen questions.</p>
+    <p><em>Q&amp;A pocket: blend in the seed weights, not the final score, so
+    structure operates on a semantically-informed prior instead of two signals
+    fighting after the fact. And the mixing weight is forgiving over a wide range
+    here — not a delicate parameter.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.9 LIVE DEMO">
+  <h3 class="accent">LIVE DEMO</h3>
+  <pre><code class="language-bash" data-trim>
+NEO4J_DATABASE=lewisclark python scripts/demo_pagerank.py \
+  "What was Toussaint Charbonneau's role on the expedition?" \
+  --seeder decomposed
+  </code></pre>
+  <pre class="term"><code data-trim data-noescape>
+named in the question:  'Toussaint Charbonneau'  (Person, via fulltext)
+
+TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
+  </code></pre>
+  <div class="marker">§5.9 · 0:55 · LIVE</div>
+  <aside class="notes">
+    <p><strong>0:55. One of two live demos.</strong> Warm the DB before you walk
+    on.</p>
+    <p>One seed — because the question names one entity, and the seeder now
+    <em>names</em> entities instead of embedding the whole question. The old
+    semantic seeder added two degree-1 relatives that each spiked one arbitrary
+    passage; they are simply gone.</p>
+    <p><em>Backup recording exists. Runs in ~215 ms.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.9 The payoff">
+  <h3>Cosine top-8: <span class="bad">2 of 8</span> passages carry him.</h3>
+  <h2>Blended top-8: <span class="win">6 of 8.</span></h2>
+  <div class="fragment" style="margin-top:1em">
+    <div class="passage receipt">
+      "Mr. Tousent Chabono, Enlisted as an Interpreter this evening"
+      <span class="cite">1805-03-18 · the hiring itself · cosine rank 22</span>
+    </div>
+  </div>
+  <div class="marker">§5.9 · the promotion</div>
+  <aside class="notes">
+    <p>Cosine's own #1 was the <em>end</em> of the story — the 1806 settlement,
+    "Settled with Touisant Chabono for his Services as an enterpreter … 500$ 33⅓
+    cents." <strong>The graph adds how the job began.</strong> Cosine had the
+    payoff; it did not have the hiring.</p>
+    <p><strong>Say this plainly, in one sentence — it is the section's
+    integrity:</strong> I judged these by reading them. Eleven promoted passages
+    across three questions, read in full: <em>does this contain something a
+    correct answer needs that no cosine passage has?</em>
+    <strong>Three of eleven cleared that bar.</strong> Not a rout, and I'd rather
+    hand you three read passages than a percentage.</p>
+    <p><em>Open decision #3, settled: DON'T tell the retraction story. The
+    disclosure above stays; the twenty-second narrative about the metric is a
+    Q&amp;A pocket — it answers better than it confesses.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.10 Limit 1">
+  <h3>Three things it cannot do</h3>
+  <h2>1 · It combines evidence — but you don't choose the weights.</h2>
+  <div class="marker">§5.10 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00 for all three limits. Do not cut these — they're what makes
+    the multi-tool argument structural rather than a hedge.</strong></p>
+    <p><strong>Good news first:</strong> additivity <em>is</em> a conjunction
+    bonus. Seed SACAGAWEA and CHARBONNEAU — comparable degree, 85 and 69
+    passages — and every one of the seventeen passages mentioning
+    <strong>both</strong> lands in the top-20, median rank <strong>9</strong>,
+    against 104 and 44 for passages mentioning either alone.</p>
+    <p><strong>Now seed MERIWETHER LEWIS (825) with CYNOMYS LUDOVICIANUS
+    (42).</strong> A passage mentioning only the prairie dog scores 0.00633. One
+    mentioning both scores 0.00672. <strong>A 6% bonus for also being about
+    Lewis.</strong></p>
+    <p>Because each seed's contribution is roughly <span class="mono">1 / its
+    degree</span>. <strong>Pair a rare entity with a hub and the hub is nearly
+    free to ignore</strong> — and you did not pick that weighting, your graph
+    did.</p>
+    <p><em>Cut 8 applied — normalisation parenthetical is a Q&amp;A pocket.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.10 Limit 2">
+  <h2>2 · It cannot enumerate or order.</h2>
+  <p><em>"What was happening in the days before Sergeant Floyd died?"</em></p>
+  <p>18 passages exist in that week. Cosine's top-8 contains <strong>3</strong>.
+     So does every graph variant I tried — including one with the journal's own
+     <span class="mono">NEXT_CHUNK</span> sequence and a long walk:
+     <strong class="bad">3 of 18</strong>.</p>
+  <div class="marker">§5.10 · limit 2</div>
+  <aside class="notes">
+    <p><strong>A date filter returns all eighteen in one hop.</strong> Nothing in
+    those passages' vocabulary <em>or</em> entity structure says "the days before
+    Floyd died." Only the date does.</p>
+  </aside>
+</section>
+
+<section data-menu-title="5.10 Limit 3">
+  <h2>3 · It is bounded by extraction.</h2>
+  <p><em>"When was the keelboat sent back down the Missouri?"</em> — the boat the
+     entire first year happened on. Here is every keelboat entity in the graph:</p>
+  <pre class="term"><code data-trim data-noescape>
+'keelboat'  -&gt;  (nothing)
+  </code></pre>
+  <h2 class="fragment bad">There is no keelboat.</h2>
+  <div class="marker">§5.10 · limit 3</div>
+  <aside class="notes">
+    <p>The journals call it "the barge" or "the boat," the extractor never
+    promoted it to an entity, and the seeder honestly reports the miss. The
+    April 7th 1805 passage that answers the question <em>exists</em> — and
+    <strong>nothing can seed a node that was never built.</strong></p>
+    <p><strong>No ranking algorithm fixes that.</strong></p>
+    <p><strong>And say the coda — it's the honest version of hope:</strong> on the
+    previous extraction, the receipt on this slide was a horse missing from a
+    horse-trading passage. The better extractor fixed that one — that passage now
+    carries a HORSES tag and the walk ranks it #1. It still built no keelboat,
+    and 129 passages — 4.4% of the corpus — carry zero entities and are invisible
+    to any walk. <strong>Better extraction moves the boundary. It does not remove
+    it.</strong></p>
+    <p><em>ASSET: the keelboat receipt set large — possibly a ghosted,
+    struck-through KEELBOAT node beside the April-7 passage.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.10 Three modes">
+  <h3>Three retrieval modes. Three different things they can't do.</h3>
+  <table>
+    <tr><th></th><th>good at</th><th>blind to</th></tr>
+    <tr><td>cosine</td><td>topical resemblance</td><td>telling same-type entities apart</td></tr>
+    <tr><td>entity-seeded PPR</td><td>identity, corroboration</td><td>ordering, completeness, choosing its own weights</td></tr>
+    <tr><td>Cypher / filters</td><td>exact enumeration and constraints</td><td>anything you can't write down</td></tr>
+  </table>
+  <h2 class="fragment">This is why the answer is not one retriever.<br>
+      <span class="accent">It's knowing which question you have.</span></h2>
+  <div class="marker">§5.10 · the landing</div>
+  <aside class="notes"><p>Sets up 5.14's routing rule and §9's router.</p></aside>
+</section>
+
+<section data-menu-title="5.11 What it costs">
+  <table style="max-width:70%">
+    <tr><td>project the graph</td><td class="num"><strong>67 ms</strong>, once</td></tr>
+    <tr><td>plain cosine top-8</td><td class="num"><strong>6 ms</strong></td></tr>
+    <tr><td>this, on a fresh question</td><td class="num"><strong>~215 ms</strong></td></tr>
+  </table>
+  <h2 class="fragment" style="margin-top:1em">~35× plain vector —<br>
+      <span class="muted">and it doesn't matter.</span></h2>
+  <p class="fragment sub">The generation call you're about to make dwarfs 200 ms.</p>
+  <div class="marker">§5.11 · 0:25</div>
+  <aside class="notes">
+    <p><strong>0:25 (cut 4 — table only).</strong></p>
+    <p><em>Q&amp;A pocket: the API takes the whole weighted seed set in one call;
+    I built it one call per seed because I assumed weighted seeds required it,
+    and paid 494 ms instead of 66. "Read the signature before you design around
+    it."</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.12 Names nothing">
+  <h3>"What goods did the expedition trade with Native nations along the route?"</h3>
+  <h2>Entities named: <span class="bad">none.</span></h2>
+  <div class="marker">§5.12 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00.</strong> The section so far said: name the entity, make
+    identity the hard constraint. Fine. <strong>Now take that away.</strong></p>
+    <p>The decomposer parses this and comes back empty — correctly. There is no
+    tag to filter on. Every trick in this section is off the table, and cosine is
+    the only baseline that even runs.</p>
+    <p><strong>⚠️ This is the beat to MOVE TO §6 if you need §5's last
+    0:25</strong> — the illness collapse is §6's motivating failure and this sets
+    it up.</p>
+  </aside>
+</section>
+
+<section data-menu-title="5.12 The buttons">
+  <h3>The promotion — cosine rank <strong>77</strong></h3>
+  <p class="footnote" style="margin-top:0">Carried by <span class="mono">BUTTONS</span> — a <span class="mono">Supply</span> node in <strong>5</strong> passages</p>
+  <div class="passage receipt">
+    "having exhausted all our merchandize we are obliged to have recourse to
+    every subterfuge… our traders McNeal and York were furnished with
+    <strong>the buttons which Capt. C. and myself cut off our coats</strong>,
+    some eye water and Basilicon which we made for that purpose… in the evening
+    they returned with about 3 bushels of roots and some bread"
+    <span class="cite">1806-06-02</span>
+  </div>
+  <div class="marker">§5.12 · the receipt</div>
+  <aside class="notes">
+    <p><strong>The captains cutting the buttons off their coats to buy
+    food.</strong> The best trade-goods passage in the corpus, and cosine had it
+    at 77 — because it doesn't <em>describe</em> trade goods, <strong>it spends
+    them.</strong></p>
+    <p>Blend in a short walk from cosine's own top passages and it crosses to the
+    goods themselves — BUTTONS, COATS, ELKSKINS, five-passage Supply nodes — from
+    the inventories to the transactions. The gun paid to Twisted Hair for
+    horse-keeping comes in from rank <strong>112</strong> the same way. Window
+    coverage goes from 3 months of the journey to 7.</p>
+    <p><strong>Cosine retrieves the description of the theme. The walk retrieves
+    its instances.</strong> When the question names nothing, that walk is the only
+    identity signal you have.</p>
+    <p><em>⚠️ §8 scores this question 0-of-4 on answer entities. That
+    disagreement is deliberate and §8.4 names it out loud.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.13 The brother">
+  <h3>"What do we know about Sacagawea's brother?"</h3>
+  <table>
+    <tr><th>mode</th><th>its top-8 contains</th></tr>
+    <tr><td>cosine</td><td>tomahawk recovery, horse butchering — <strong class="bad">0 of 16</strong></td></tr>
+    <tr><td>filter on SACAGAWEA</td><td>can only ever see <strong>2 of 16</strong> — he's mostly in passages she isn't</td></tr>
+    <tr><td>blend with the walk</td><td>her biography — <strong class="bad">0 of 16</strong></td></tr>
+  </table>
+  <div class="marker">§5.13 · 0:45</div>
+  <aside class="notes">
+    <p><strong>0:45.</strong> Sixteen passages are about her brother. Here is
+    everything failing to find them, and I want to show you the failure because
+    <strong>the reason is one number.</strong></p>
+    <p>The filter isn't blind by accident — <strong>you can't filter on a name you
+    don't know; not knowing it is the question.</strong> And the walk from
+    SACAGAWEA genuinely reaches him: exactly <strong>2</strong> of her
+    <strong>85</strong> passages also mention her brother. Two edges of
+    eighty-five. About 2% of the walk's mass crosses that bridge, and no damping
+    value turns 2% into a top-8.</p>
+    <p><strong>Delete-test proves the bridge is real:</strong> remove those 2
+    passages from the projection and his passages' median rank goes
+    <strong>338 → 601. All fourteen fall.</strong> The mass crosses exactly where
+    the mechanism says. <strong>There just isn't enough of it — the anchor is too
+    famous.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.13 The name">
+  <h3>What the walk actually did</h3>
+  <div class="passage receipt">
+    "Charbono, the Indian Woman, <strong class="win">Cameahwait</strong> and
+    about 50 men… arrived"
+    <span class="cite">pure walk, rank 4 · cosine had this passage at 1187</span>
+  </div>
+  <h2 class="fragment" style="margin-top:0.8em">The walk's top-8 hands you<br>
+      the thing you were missing — <span class="accent">the name.</span></h2>
+  <div class="marker">§5.13 · two-step</div>
+  <aside class="notes">
+    <p>One-shot retrieval can't answer this question. But query CAMEAHWAIT and
+    all sixteen passages are simply his tag set. On a famous anchor this is a
+    <strong>two-step retrieval</strong>: the walk performs the name-discovery
+    step.</p>
+    <p><strong>And when the anchor is obscure, one shot works.</strong> Same
+    question shape, the Walla Walla chief who hosted them — anchor in
+    <strong>3</strong> passages, not 85 — and the blend puts his chunks at median
+    rank <strong>10</strong>. One line, and move. (Cut 11.)</p>
+    <p><em>Q&amp;A pocket: four of those passages no filter can reach, because no
+    spelling of the nation is tagged on them. And note for §9.1 — that pair
+    appears in the 38k-pair decay sweep at rank 16; two different measurements of
+    the same pair.</em></p>
+    <p><em>ASSET: the rank-4 passage with Cameahwait highlighted — the name
+    appearing IS the slide.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="5.14 Take home">
+  <h3>Cosine retrieves the topic. The <strong>entity layer</strong> retrieves the entity.<br>
+      And the seed's <strong class="accent">degree</strong> tells you which tool to spend.</h3>
+  <table>
+    <tr><th>the question…</th><th>do this</th></tr>
+    <tr><td>names a well-tagged entity in <strong>many</strong> passages</td><td><strong>filter on the tag and stop</strong> — the walk just dilutes</td></tr>
+    <tr><td>names an entity in <strong>few</strong> passages</td><td><strong>walk</strong> — the filter can't fill a window, and the bridges are strong</td></tr>
+    <tr><td>names someone <em>related to</em> the answer</td><td>walk for the <strong>name</strong>, then query the name</td></tr>
+    <tr><td>names <strong>nothing</strong></td><td>walk from cosine's top passages — nothing else runs</td></tr>
+  </table>
+  <div class="marker">§5.14 · 0:30 · photograph slide</div>
+  <aside class="notes">
+    <p><strong>0:30. This is the slide people photograph.</strong> Peer of 5.2's
+    forty engineers.</p>
+    <p>That count is one query, before you retrieve anything. <strong>Forty
+    engineers and you asked what Chen owns? Chen is tagged everywhere he matters
+    — filter and go home early.</strong> Asked about Chen's <em>predecessor</em>,
+    whoever that was? That's the walk finding you a name. Asked "who owns
+    something like this" with no name at all? That's the walk or nothing.</p>
+    <p>§9 shows this as the routing rule your agent actually executes, with the
+    measured curve behind it.</p>
+    <p><em>Hand-off to §6, and this is a measured fact, not a segue: the same walk
+    that won trade-goods collapsed the illness question into one week at Long
+    Camp, 7 of 8 passages about the same sick child. "And now every passage in
+    that window is about the same afternoon." §6 is the fix.</em></p>
+  </aside>
+</section>
+
+
+<!-- ============================ SECTION 6 ================================ -->
+<!-- "Your context is redundant" · 6:00 · starts 0:35:10
+     Leiden only — Louvain is gone from the code too. No vendor procedure
+     signatures on slides. demo_communities.py ships as captured output. -->
+
+<section class="divider" data-menu-title="§6 divider">
+  <p class="kicker">Section 6 · Query time</p>
+  <h2>"Your context is redundant"</h2>
+  <p class="algo">Leiden community detection, and conductance</p>
+  <aside class="notes">
+    <p><strong>⏱ TIMEKEEPING ANCHOR #2 of 2 — see 6.1.</strong></p>
+    <p>6:00, on budget. If 5.12 moved here, this becomes 7:00.</p>
+  </aside>
+</section>
+
+<section data-menu-title="6.1 The failure">
+  <h3>"What illnesses and injuries did the corps deal with?"</h3>
+  <pre class="term"><code data-trim data-noescape>
+1806-05-24 · 1806-05-27 · 1806-05-22 · 1806-05-24
+1806-05-22 · 1806-05-26 · 1806-05-24 · 1806-05-28
+  </code></pre>
+  <h2 class="fragment">One week. Twenty-eight months of journals,<br>
+      and every slot is the same medical drama at Long Camp.</h2>
+  <div class="fragment" style="margin-top:0.8em">
+    <pre class="term"><code data-trim>c23 · c23 · c23 · c23 · c23 · c23 · c23 · c23</code></pre>
+  </div>
+  <div class="marker">§6.1 · 1:00</div>
+  <aside class="notes">
+    <p><strong>⏱ TIMEKEEPING ANCHOR #2 of 2: this slide should be up by 0:35.</strong>
+    §4 and §5 are the only sections that have ever run long and they're both
+    behind you now — if the clock is fine here it's fine for the rest of the
+    hour. If it isn't: <strong>6.5 and 7.3 are the drop-ins, in that order.</strong>
+    Do <em>not</em> buy time out of 6.4 — it's the fix this section exists to
+    show.</p>
+    <p><strong>§5's walk earned its place:</strong> it won trade-goods and
+    food-sources by reading. And on this question it produced the worst window in
+    the talk — because the rare entities that make a theme retrievable all
+    co-occur in one episode, so <strong>conjunction-seeking is
+    episode-seeking</strong>. Recall metrics would never show you this; every one
+    of these passages is genuinely about illness.</p>
+    <p><strong>The second build is the whole section:</strong> the failure is
+    <em>structural</em>, and the structure that names it — "these are all one
+    cluster" — is computable from the graph we already have. No LLM, no labels,
+    no gold set.</p>
+  </aside>
+</section>
+
+<section data-menu-title="6.2 WCC vs Leiden">
+  <h3>Same family as §4's WCC. Opposite question.</h3>
+  <p><strong>WCC</strong> (§4): <em>connected at all</em> — one path suffices.</p>
+  <p><strong class="accent">Leiden</strong>: <em>densely connected relative to
+     chance</em> — neighborhoods, not reachability.</p>
+  <div class="marker">§6.2 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00 for all of 6.2.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="6.2 One WCC, 47 communities">
+  <h3>The same graph, both algorithms, measured</h3>
+  <div class="todo">
+    §6.2 — <strong>arrows.app export, Nathan's ask.</strong> One outlined
+    boundary labelled "one WCC component: all 8,139 nodes", containing 47
+    coloured Leiden clusters; the five largest labelled with chunk counts
+    (c5/691, c23/286, c8/275, c44/212, c24/160), the rest as unlabelled dots.
+    <br><strong>The caption is the slide:</strong>
+    WCC says <strong>1</strong>. Leiden says <strong>47</strong>.
+    <em>(Numbers verified 2026-09-08.)</em>
+  </div>
+  <div class="marker">§6.2 · the diagram</div>
+  <aside class="notes">
+    <p>Run both on the same projection and this is what you get: <strong>WCC
+    returns one component containing every node in the graph. Leiden returns
+    forty-seven communities inside it.</strong></p>
+    <p>That's not a disagreement — <strong>they answered different
+    questions.</strong> WCC was asked "is any of this reachable from any of the
+    rest," and on a real corpus the answer is always yes, because everything is
+    two hops from Lewis. Leiden was asked "which of these neighborhoods are
+    denser than chance," and there the answer has structure in it.</p>
+    <p>Which is exactly why §4 used WCC for identity and this section does not:
+    <strong>transitive closure wants "connected at all." Themes need "denser than
+    chance."</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="6.2 One call">
+  <h2>47 communities · all 2,913 chunks covered · ~100 ms</h2>
+  <h3><strong class="accent">weighted · seeded · single-threaded</strong></h3>
+  <div class="marker">§6.2 · the call</div>
+  <aside class="notes">
+    <p>One call — and deliberately <strong>not</strong> shown as one vendor's
+    procedure signature; §9.2 argues these are algorithms rather than products
+    and I'd rather not undercut that here. Every library spells this differently
+    and they all take the same three things that matter:</p>
+    <p><strong>weighted</strong>, on the same IDF mention weight §5 used;
+    <strong>a random seed</strong>, which is why this partition is the same one
+    every time; <strong>single-threaded</strong> — because on most
+    implementations the seed only bites at concurrency 1, which is a footgun
+    worth naming out loud.</p>
+    <p><strong>That third one is the practical tip:</strong> people set the seed,
+    leave concurrency at default, and conclude the algorithm is
+    nondeterministic.</p>
+    <p><em>If someone names Louvain: predecessor, can emit internally
+    disconnected communities, no seed parameter — deals a fresh partition every
+    run. That last property was silently in this talk's own benchmark until
+    2026-09-08. One sentence, then move on.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="6.2 Honesty beat">
+  <h3 class="warn">Leiden <em>guarantees</em> internally connected communities.</h3>
+  <h2>Ours had one 24-node community split <strong>13 / 11</strong>.</h2>
+  <p class="sub">Verify — it's one WCC call per community, and you already know
+     WCC from §4.</p>
+  <div class="marker">§6.2 · the asterisk</div>
+  <aside class="notes">
+    <p><strong>The asterisk is the section in miniature:</strong> the algorithm's
+    <em>paper</em> guarantees connectivity; the implementation on your graph is a
+    claim to check, and the check costs one query.
+    <strong>Verify; don't trust the name.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="6.3 The projection">
+  <h3>First — what it ran on</h3>
+  <table>
+    <tr><th></th><th>§5's walk</th><th>§6's Leiden</th></tr>
+    <tr><td>entity → passage</td><td class="win">✓ weighted by IDF</td><td class="win">✓ weighted by IDF</td></tr>
+    <tr><td>passage → next passage</td><td class="bad">✗</td><td class="win">✓</td></tr>
+    <tr><td>entity → entity</td><td class="bad">✗</td><td class="win">✓</td></tr>
+    <tr><td></td><td class="muted">7,354 nodes · 44,900 edges</td><td class="muted">8,139 nodes · 63,836 edges</td></tr>
+  </table>
+  <div class="marker">§6.3 · 0:45</div>
+  <aside class="notes">
+    <p><strong>0:45 for all of 6.3. Ten seconds on this, and it pays for
+    itself.</strong></p>
+    <p>§5 threw away two thirds of the graph on purpose — a walk needs every
+    outbound edge to mean one consistent thing, and MEMBER_OF and SHOT do not.
+    <strong>Community detection wants them back.</strong></p>
+    <p>Because look at what a theme actually <em>is</em> in a journal: a stretch
+    of consecutive entries, plus the people and places they share. The
+    passage-to-passage chain is the "consecutive" half. §5 dropped it because
+    adjacency in time is not evidence of relevance; <strong>§6 needs it because
+    adjacency in time is most of what an episode means.</strong></p>
+    <p><strong>Same graph, two projections, opposite decisions — and both are
+    right.</strong> That's the content of the beat §5 cut for time.</p>
+    <p><em>Drop-in if 6.3 runs long: this table. §5.4 says the one-line
+    version.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="6.3 Table of contents">
+  <h3>The table of contents nobody wrote</h3>
+  <pre class="term"><code data-trim data-noescape>
+ id  chunks  span                 cond.  defining entities
+ 5      691  1804-05 → 1806-09    0.37   MERIWETHER LEWIS, CERVUS CANADENSIS, WILLIAM CLARK, DREWYER
+ 23     286  1804-05 → 1806-09    0.39   PRYOR, SHIELDS, SHANNON, GASS, SACAGAWEA, GEORGE DROUILLARD
+ 8      275  1804-05 → 1806-09    0.25   MANDAN, HIDATSA, SIOUX, ARIKARA, CORN, FORT MANDAN
+ 44     212  1804-07 → 1806-08    0.34   CLATSOP, SAGITTARIA LATIFOLIA, NETUL, SALT
+ 24     160  1804-10 → 1806-08    0.38   SHOSHONE, HORSES, NEZ PERCE
+  …
+  </code></pre>
+  <div class="marker">§6.3 · the themes</div>
+  <aside class="notes">
+    <p>The corpus's own structure, summarized: the daily hunting economy, the
+    corps roster, the Mandan winter, the Clatsop salt camp, the Shoshone horse
+    negotiations. Nobody wrote this index, and deriving it cost <strong>zero
+    additional tokens</strong> — Leiden reads the mention edges earlier sections
+    already built; no LLM in the loop. <em>(Say "additional" precisely: on a
+    natively-linked corpus like a wiki it's zero, full stop — §2's beat.)</em></p>
+    <p><strong>And read the two Drouillards out loud — the best unplanned receipt
+    in the section.</strong> GEORGE DROUILLARD is in c23 with the corps roster.
+    DREWYER — the same man, 297 passages — is in <strong>c5</strong>, with the
+    hunting economy. §4 told you an unresolved entity costs you recall.
+    <strong>Here it costs you something else: the man is filed under two
+    different themes</strong>, and no amount of community detection can merge
+    them, because as far as this graph is concerned they are two people who did
+    two different jobs. <strong>Build time gates query time, and this is what it
+    looks like three sections later.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="6.3 Conductance">
+  <h3>Conductance — the share of a community's edge weight that leaves it</h3>
+  <p class="footnote" style="margin-top:0">Rule of thumb (Blumenfeld's Karpathy-wiki post):
+     <strong>≤0.35</strong> is a tight theme you can build on, <strong>≥0.60</strong> is a loose one you shouldn't.</p>
+  <table style="max-width:75%">
+    <tr><th>all 47 communities</th><th>median <strong>0.27</strong> · 35 of 47 tight · none loose</th></tr>
+    <tr class="is-highlighted"><td>the five largest (on the last slide)</td><td>median <strong>0.37</strong></td></tr>
+    <tr><td>the other 42</td><td>median <strong class="win">0.25</strong></td></tr>
+  </table>
+  <h2 class="fragment" style="margin-top:0.7em">The big ones are the loose ones.</h2>
+  <div class="marker">§6.3 · conductance</div>
+  <aside class="notes">
+    <p><strong>Say the awkward thing out loud, because the room is already doing
+    the arithmetic:</strong> three of the five numbers on the last slide fail the
+    threshold I just handed you. That is not a problem with the partition — it's
+    <strong>what that slide is a sample of.</strong> Those are the five
+    <em>largest</em> communities, and size and looseness go together.</p>
+    <p>Across all 47: median <strong>0.27</strong>, 35 of 47 tight, none loose.
+    The five on screen: median <strong>0.37</strong>. The other 42:
+    <strong>0.25</strong>.</p>
+    <p>So the honest version is <em>"the big ones are the loose ones, and that's
+    the normal shape of a partition"</em> — more useful than a clean slide,
+    because it's what they'll find on their own corpus in ten minutes.</p>
+    <p>One stream call, and you know whether "community" means anything on your
+    graph before you bet retrieval on it.</p>
+  </aside>
+</section>
+
+<section data-menu-title="6.4 The fix">
+  <h3>The whole fix</h3>
+  <pre><code class="language-python" data-trim>
+wide   = expand(question, k=50)                  # section 5's walk, deeper slate
+window = diversify(wide, max_per_community=2)    # <= 2 chunks per community
+  </code></pre>
+  <table style="margin-top:0.8em">
+    <tr><th></th><th>months</th><th>communities</th><th>near-dup pairs</th></tr>
+    <tr><td>walk top-8</td><td class="num bad">1</td><td class="num bad">1</td><td class="num">2</td></tr>
+    <tr class="is-win"><td><strong>walk, capped</strong></td><td class="num"><strong>4</strong></td><td class="num"><strong>5</strong></td><td class="num"><strong>0</strong></td></tr>
+  </table>
+  <div class="marker">§6.4 · 1:45</div>
+  <aside class="notes">
+    <p><strong>1:45. Do NOT cut this beat — it's the fix the section exists to
+    show.</strong></p>
+    <p><strong>The cap applies to the walk's own ranking</strong> — that matters.
+    Capping cosine is the textbook demo; our collapse came from the walk, so the
+    cap has to ride its slate. Keep the two best Long Camp passages, then keep
+    walking down the ranking, skipping any community that already gave two.</p>
+  </aside>
+</section>
+
+<section data-menu-title="6.4 What filled the slots">
+  <h3>What the freed slots filled with <span class="muted">(hand-read)</span></h3>
+  <pre class="term"><code data-trim data-noescape>
+1806-08-12  Lewis shot through the thigh by Cruzatte              (cosine rank 21)
+1806-02-22  Fort Clatsop sick-list: "…something of the influenza"  (rank 44)
+1806-06-08  Bratton "no longer an invalid" — the recovery          (rank 104)
+  </code></pre>
+  <div class="fragment" style="margin-top:1em">
+    <h3>And on the two questions the walk already won:</h3>
+    <h2>The capped window is <span class="accent">byte-identical</span> to the uncapped one.</h2>
+  </div>
+  <div class="marker">§6.4 · the receipts</div>
+  <aside class="notes">
+    <p>What came back — judged by reading, like everything in this talk: the most
+    famous injury of the whole expedition, <strong>Lewis shot by his own
+    hunter</strong>, which <em>no</em> strategy's window had. The Fort Clatsop
+    influenza sick-list §5 explicitly listed as a casualty of the collapse. And
+    the closure of Bratton's story.</p>
+    <p><strong>And where the window was already diverse, the cap did nothing at
+    all — it only bites where the failure is.</strong> That's why it's on by
+    default: <strong>it is a guard rail, not a trade-off knob.</strong></p>
+    <p>(trade-goods and food-sources already spanned 6 communities.)</p>
+  </aside>
+</section>
+
+<section data-menu-title="6.5 The bound">
+  <h3>What the cap cannot do</h3>
+  <p>Community <strong>23</strong>: 286 chunks, 1804-05 → 1806-09 — "the corps members."</p>
+  <p>It contains Long Camp <em>and</em> the Sept-1805 starvation sickness.</p>
+  <p>Two slots for c23 → Long Camp takes both → <strong class="bad">Sept-1805 stays locked out</strong>
+     <span class="muted">(it sits at cosine rank 2 — plain vector search has it)</span>.</p>
+  <h2 class="fragment" style="margin-top:0.8em">A cap <strong>diversifies a ranking</strong>.<br>
+      It cannot make the ranking deeper.</h2>
+  <div class="marker">§6.5 · 1:00 · drop-in candidate</div>
+  <aside class="notes">
+    <p><strong>1:00. First drop-in if the clock is tight.</strong></p>
+    <p><strong>Two honest limits. First:</strong> communities are coarser than
+    episodes. The passages this window still misses aren't missing because the
+    cap failed — they live in the <em>same</em> community as Long Camp, and the
+    cap's budget for that community went to higher-ranked chunks.
+    <strong>Second:</strong> a cap only reorders the slate it is given — cap a
+    shallow or noisy ranking and you diversify into noise; the vector-side cap
+    pulled in one flatly irrelevant passage.</p>
+    <p>So §5's routing rule gets its final row: <em>questions that name nothing →
+    passage-seeded expansion, capped per community</em> — with the cap understood
+    as <strong>insurance against episode collapse, not a relevance signal.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="6.6 Hand-off">
+  <h3>The decision table, one row longer</h3>
+  <table>
+    <tr><th>resolution outcome</th><th>route</th></tr>
+    <tr class="is-highlighted"><td>zero mentions (thematic)</td><td>passage-seeded expansion <strong>+ community cap</strong></td></tr>
+    <tr><td>seeds df ≲ 15</td><td>expand</td></tr>
+    <tr><td>seeds df ≳ 40</td><td>filter + cosine, stop</td></tr>
+  </table>
+  <div class="marker">§6.6 · 0:30</div>
+  <aside class="notes">
+    <p><strong>0:30.</strong> The window now covers the question instead of
+    restating one afternoon.</p>
+    <p><strong>The next failure is different in kind:</strong> the system can
+    hand you eight diverse, relevant passages and still not tell you <em>how</em>
+    two things are connected — and "how" is usually the actual question.
+    <strong>That's path finding.</strong></p>
+  </aside>
+</section>
+
+
+<!-- ============================ SECTION 7 ================================ -->
+<!-- "You can't explain the answer" · 5:00 · starts 0:41:10
+     LIVE: one terminal session, two queries (7.2 and 7.4).
+     ⚠️ WARM THE PROJECTION — first path query ~212 ms, then ~23 ms.
+     Anchors must be pinned: lewisclark has no Person vector index. -->
+
+<section class="divider" data-menu-title="§7 divider">
+  <p class="kicker">Section 7 · Query time</p>
+  <h2>"You can't explain the answer"</h2>
+  <p class="algo">Yen's k-shortest paths, with receipts</p>
+  <aside class="notes">
+    <p><strong>⚠️ PRE-FLIGHT: run one throwaway path query before you walk on.</strong>
+    First call in a fresh process is ~212 ms; every one after is ~23 ms. Warm it
+    or 7.2 pays the cold start in front of the room.</p>
+    <p><strong>⚠️ Anchors must be pinned</strong> — lewisclark has no Person
+    vector index by design, so anchor inference raises. Both demos pass
+    --from/--to. Do not improvise an un-anchored path query.</p>
+    <p>7.3 is the drop-in if §6 overran.</p>
+  </aside>
+</section>
+
+<section data-menu-title="7.1 The failure">
+  <h3>"What do we know about Sacagawea's brother?"</h3>
+  <p>§5: every one-shot retriever missed. The walk's rank-4 passage gave us one
+     thing — <strong class="accent">a name: Cameahwait.</strong></p>
+  <h2 class="fragment" style="margin-top:0.8em">Eight diverse, relevant passages<br>
+      still can't tell you <strong>how</strong> two things are connected.</h2>
+  <div class="marker">§7.1 · 0:45</div>
+  <aside class="notes">
+    <p><strong>0:45.</strong> §5 measured this question failing every retrieval
+    mode, and the walk quietly handing back the missing name.</p>
+    <p><strong>Ranking is out of moves:</strong> the answer isn't a pile of
+    passages about either person, <strong>it's the connection between
+    them.</strong> Different question shape, different tool — and now that we hold
+    both names, we can ask it directly.</p>
+  </aside>
+</section>
+
+<section data-menu-title="7.2 LIVE Ask HOW">
+  <h3 class="accent">LIVE DEMO</h3>
+  <pre><code class="language-bash" data-trim>
+demo_paths.py --from Sacagawea --to Cameahwait
+  </code></pre>
+  <pre class="term"><code data-trim data-noescape>
+1  SACAGAWEA -[GUIDED]-&gt;           MERIWETHER LEWIS -[MET_WITH]-&gt;  CAMEAHWAIT
+2  SACAGAWEA -[MEMBER_OF]-&gt;        SHOSHONE  &lt;-[MEMBER_OF]-        CAMEAHWAIT
+3  SACAGAWEA -[PARTICIPATED_IN]-&gt;  MEETING OF THOSE PEOPLE
+                                   &lt;-[PARTICIPATED_IN]-            CAMEAHWAIT
+  </code></pre>
+  <div class="marker">§7.2 · 1:30 · LIVE</div>
+  <aside class="notes">
+    <p><strong>1:30. Live — first of two queries in one terminal session.</strong></p>
+    <p>Route 1: they both knew Lewis — <strong>true and useless.</strong>
+    Route 2: same nation — warmer. Route 3: both participated in one event, and
+    both hops cite the <strong>same journal entry</strong>.</p>
+  </aside>
+</section>
+
+<section data-menu-title="7.2 Route 3 receipt">
+  <h3>Route 3's receipt — both hops, the same passage</h3>
+  <div class="passage receipt">
+    "Capt. Clark arrived with the Interpreter Charbono, and the Indian woman,
+    <strong class="win">who proved to be a sister of the Chif Cameahwait</strong>.
+    the meeting of those people was really affecting…"
+    <span class="cite">Lewis, August 17, 1805</span>
+  </div>
+  <div class="marker">§7.2 · the receipt</div>
+  <aside class="notes">
+    <p><strong>The recognition scene — the one passage in 2,913 that states the
+    sibling relationship.</strong> One passage is the entire explanation, and it
+    arrived as a <strong>citation</strong>, not a similarity score. <strong>About
+    20 milliseconds</strong> — this is the second query of the session, and the
+    first one warmed the projection.</p>
+    <p><strong>That's the two-step landing:</strong> the walk discovered the name,
+    the path query explained the connection. <strong>Neither can do the other's
+    job.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="7.3 Why k matters">
+  <h3>The graph has <strong>no sibling edge</strong>. Not for them — not for anyone.</h3>
+  <p>The extractor made an <em>event node</em> instead. The mechanism lives at
+     <strong>k=3</strong> only because k=1 and k=2 route through what the graph
+     <em>does</em> have.</p>
+  <ul class="fragment">
+    <li>Edge exists → <strong>k=1 is the answer</strong></li>
+    <li>Edge missing → the mechanism hides <strong>somewhere in the k-set</strong></li>
+    <li>Higher k drifts into "both acquired a shirt" — co-occurrence lives at <em>high</em> k here</li>
+    <li><strong>Yen's enumerates. It cannot rank explanations. k buys the set; the reader picks.</strong></li>
+  </ul>
+  <div class="marker">§7.3 · 1:00 · drop-in candidate</div>
+  <aside class="notes">
+    <p><strong>1:00. Drop-in if §6 overran</strong> — most interesting beat to
+    lose, and the only purely methodological one.</p>
+    <p><strong>I'll retract our own outline from the stage:</strong> we wrote "the
+    shortest path is usually trivial co-occurrence, the 2nd/3rd carry the
+    mechanism." Hand-reading every hop of every route says <strong>that's
+    backwards</strong> on a graph of <em>typed extracted relationships</em> — a
+    1-hop MEMBER_OF is a strong claim.</p>
+    <p>What k really insures against is <strong>the extraction bound</strong>:
+    when the edge you need was never extracted, the explanation survives only in
+    structure, and you need several routes to find which structure.
+    <strong>Ask for five, read five.</strong></p>
+    <p><em>The three 2-hop routes are exact cost ties.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="7.4 Receipts catch lies">
+  <h3>Receipts catch the graph lying</h3>
+  <pre class="term"><code data-trim data-noescape>
+1  CAMEAHWAIT -[MEMBER_OF]-&gt; HIDATSA        1805-08-13 · d067c3d2…
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  </code></pre>
+  <div class="passage wrong">
+    "these people <strong class="bad">had been attacked by</strong> the Minetares
+    of Fort de prarie this spring and about 20 of them killed and taken
+    prisoners"
+    <span class="cite">Lewis, Aug 13, 1805 — the edge's own citation</span>
+  </div>
+  <h2 class="fragment" style="margin-top:0.6em">The edge says Cameahwait is Hidatsa.<br>
+      <span class="bad">Its own citation says the Hidatsa attacked his people.</span></h2>
+  <div class="marker">§7.4 · 1:00 · LIVE (same session)</div>
+  <aside class="notes">
+    <p><strong>1:00. Second query, same terminal session</strong> — which is why
+    the talk's live-demo count is two, not three. The 1-hop route is in the
+    stable cost class; safe live.</p>
+    <p>Every relationship stores the chunk it was extracted from, so every hop is
+    auditable — <strong>and audited, this graph confesses:</strong> an edge filing
+    Cameahwait under the nation that raided his camp, a GUIDED edge naming the
+    wrong captain.</p>
+    <p><strong>The receipt is what catches all of it.</strong> And the model you
+    hand the context to reads the <em>passage</em>, not the edge label — so
+    <strong>a wrong edge with a right receipt is survivable. A wrong edge without
+    one is just a confident lie.</strong></p>
+    <p>If you keep one thing from this section: <strong>paths give you
+    explanations you can check, and checking them is not optional.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="7.5 In the pipeline">
+  <h3>The agent in that study had this exact tool.</h3>
+  <h2><span class="accent">Zero calls.</span></h2>
+  <p class="fragment sub" style="margin-top:1em">Path retrieval here is deterministic:
+     resolve two anchors → Yen's → receipts → context. ~20 ms warm.<br>
+     <strong>The model doesn't get a vote.</strong></p>
+  <div class="marker">§7.5 · 0:45</div>
+  <aside class="notes">
+    <p><strong>0:45. Third telling of "called zero times" — compressed to a
+    clause on purpose. Do not re-inflate it</strong>; the room already knows the
+    number, and the callback works better as a nod than a retelling.</p>
+    <p>Same lesson as §5's routing table: <strong>if an algorithm materially
+    improves retrieval, wire it into the retrieval path.</strong> Ours triggers
+    off the question shape — two resolved anchors and a "how" — not off a model's
+    whim.</p>
+    <p><strong>Next question:</strong> all these wins are anecdotes I hand-read to
+    you. <em>Does any of it survive a benchmark?</em> That's §8.</p>
+  </aside>
+</section>
+
+
+<!-- ============================ SECTION 8 ================================ -->
+<!-- "Does this actually help?" · 4:00 · starts 0:46:10
+     Audience: developers who want practical guidelines — not statisticians.
+     No macro/micro, variance, or confidence vocabulary on screen.
+     All numbers re-measured 2026-09-08 on the Leiden default. -->
+
+<section class="divider" data-menu-title="§8 divider">
+  <p class="kicker">Section 8 · The receipts</p>
+  <h2>"Does this actually help?"</h2>
+  <p class="algo">answer-entity recall over 14 questions</p>
+  <aside class="notes">
+    <p><strong>The boring result IS the result.</strong> This section's job is to
+    earn trust by reporting +1 gold entity as +1 gold entity, right before §9
+    tells them when that one entity is the one they need.</p>
+    <p>Slides carry things they can <em>do</em>; methodology lives in these
+    notes.</p>
+  </aside>
+</section>
+
+<section data-menu-title="8.1 Measure it yourself">
+  <h3>How do you know if any of this helped <em>your</em> corpus?</h3>
+  <h2>Did the retrieved context contain the entities<br>a correct answer needs?</h2>
+  <ul class="fragment">
+    <li>string + edge matching against your own graph — deterministic, free</li>
+    <li>aliases come along free: "Janey" counts for Sacagawea, "quawmash" for camas</li>
+    <li>the harness is in the repo — point <span class="mono">benchmark.py</span> at your graph</li>
+  </ul>
+  <div class="fragment" style="margin-top:0.8em">
+    <h3 class="warn">And write control questions — ones plain vector search <em>should</em> win.</h3>
+    <p class="sub">A strategy that wins hard questions by losing easy ones is not an improvement.</p>
+  </div>
+  <div class="marker">§8.1 · 0:45</div>
+  <aside class="notes">
+    <p><strong>0:45. This is the part I most want you to steal.</strong> You don't
+    need an eval framework or a judge model — your graph already knows every
+    entity's aliases, so "are the answer's entities in the window" is a lookup.
+    Fourteen questions, five kinds, two of them controls.</p>
+    <p><strong>One confession, same lesson as §4:</strong> my benchmark's own gold
+    set pointed at decoy nodes — "a node named ELK exists" is not "the elk" — and
+    fixing that was half the work of this section. <strong>Verify your gold
+    labels against the graph before you trust a number</strong>; that script's in
+    the repo too.</p>
+  </aside>
+</section>
+
+<section data-menu-title="8.2 The table">
+  <h3>Fourteen questions, seven strategies, k=8</h3>
+  <table>
+    <tr><th>strategy</th><th>what you watched</th><th>recall</th><th>Δ vs vector</th><th>p50</th></tr>
+    <tr><td><strong>vector</strong></td><td class="muted">the cold open's baseline</td><td class="num"><strong>86.3%</strong></td><td class="num">—</td><td class="num">7 ms</td></tr>
+    <tr><td>ppr <em>(rerank)</em></td><td class="muted">§5's contrast variant — top-50 only</td><td class="num">86.3%</td><td class="num">+0.0</td><td class="num">87 ms</td></tr>
+    <tr class="is-win"><td><strong>expand</strong></td><td><strong>§5.9's live demo</strong></td><td class="num"><strong>88.1%</strong></td><td class="num"><strong>+1.8</strong></td><td class="num">202 ms</td></tr>
+    <tr><td>community</td><td class="muted">§6's capped window</td><td class="num">88.1%</td><td class="num">+1.8</td><td class="num">8 ms</td></tr>
+    <tr><td>cooccurrence</td><td class="muted">the §4 beat that got cut</td><td class="num bad">82.1%</td><td class="num bad">−4.2</td><td class="num">16 ms</td></tr>
+    <tr><td>paths</td><td class="muted">§7 — only 3 questions have anchors</td><td class="num">76.1% *</td><td class="num">—</td><td class="num">23 ms</td></tr>
+    <tr class="is-win"><td><strong>hybrid</strong></td><td><strong>§5 + §6 together — the production one</strong></td><td class="num"><strong>88.1%</strong></td><td class="num"><strong>+1.8</strong></td><td class="num">90 ms</td></tr>
+  </table>
+  <p class="footnote">* <span class="mono">paths</span> is a mean over 10 runs
+     (range 69.4–88.9). <strong>It is the only row here that moves.</strong>
+     Everything else is identical run to run.</p>
+  <div class="fragment" style="margin-top:0.5em">
+    <h3 class="win">✓ Controls: every strategy scored 100%, every run.</h3>
+    <p class="sub">Nothing paid for the hard questions with the easy ones.</p>
+  </div>
+  <div class="marker">§8.2 · 1:15</div>
+  <aside class="notes">
+    <p><strong>1:15. Read it top to bottom.</strong> Plain vector, on a graph
+    where §4 already did its job, gets 86%. The best graph strategy adds 1.8
+    points — in raw counts, <strong>one more answer entity in the
+    window.</strong> The controls are the row I care most about.</p>
+    <p><strong>Three practical footnotes:</strong></p>
+    <p><strong>One — community and hybrid used to show a range here, and don't
+    any more.</strong> The old benchmark ran Louvain, which redraws its partition
+    every run; §6 teaches Leiden with a pinned seed. Those disagreed until two
+    days before this talk, <strong>and the range in this table was the
+    smell.</strong> Pin the seed and the row goes still — three runs, same
+    digits.</p>
+    <p><strong>Two — paths still moves, and I'm leaving it visible.</strong>
+    Yen's enumerates tied routes and there are more three-hop ties than the query
+    asks for, so the tail is effectively sampled. Ten runs spread 69 to 89. The
+    mean is the honest number and the range is the honest error bar.</p>
+    <p><strong>Three — the whole right-hand column is milliseconds.</strong> The
+    graph is not your latency problem.</p>
+  </aside>
+</section>
+
+<section data-menu-title="8.2 expand vs ppr">
+  <h2><span class="mono">expand</span> is the demo you watched at minute 25.<br>
+      It is the <strong class="win">+1.8</strong> row.</h2>
+  <h2><span class="mono">ppr</span> is the variant I showed for contrast.<br>
+      It is the <strong class="muted">+0.0</strong> row.</h2>
+  <div class="marker">§8.2 · say this out loud</div>
+  <aside class="notes">
+    <p><strong>Say this out loud, because the audience cannot read it off the
+    table.</strong> The demo at minute 25 is <span class="mono">expand</span> — it
+    scores <em>every chunk in the corpus</em>, which is the only way a passage at
+    cosine rank 413 can be retrieved at all. <span class="mono">ppr</span>
+    reranks the vector top-50, so its ceiling is "whatever is already in
+    positions 9 through 50," and unsurprisingly it moves nothing.</p>
+    <p><strong>Same algorithm, and the one that reranks a shortlist is the one
+    that scores zero.</strong> That's a genuinely useful result and it would have
+    been invisible if I'd shown one row.</p>
+  </aside>
+</section>
+
+<section data-menu-title="8.3 Maybe you don't">
+  <h2>Maybe you don't need this.</h2>
+  <ul>
+    <li>one net answer entity, for ~200 ms of graph work</li>
+    <li>this corpus is <strong>~942k tokens</strong> — it fits in one context window.
+        <strong class="warn">If your corpus fits, stuff it in and skip retrieval.</strong></li>
+    <li>the whole-corpus baseline beat every retrieval setup in Ghoshal's
+        experiment; the NICD zero-shot numbers rhyme</li>
+  </ul>
+  <div class="marker">§8.3 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00. Nobody selling you a graph database will say this from a
+    stage, so I will:</strong> on this corpus, at this window size, with the
+    entities resolved, <strong>the boring baseline is very good</strong> — and
+    this corpus literally fits in a context window, so the strongest baseline
+    isn't even retrieval. <strong>Retrieval architecture is a response to a
+    corpus that doesn't fit.</strong></p>
+    <p>And when the benchmark fails, it fails for <strong>every</strong> strategy
+    the same way: the expedition's only death sits at cosine rank 64 for the
+    illness question, and no walk, no community, no path pulls it into the
+    window. <strong>The right chunk never came back — no reranker fixes
+    that.</strong> That's a chunking-and-embeddings problem, and you fix it
+    there.</p>
+  </aside>
+</section>
+
+<section data-menu-title="8.4 The Ghoshal split">
+  <h2>Graph algorithms fix <strong class="accent">reasoning</strong> problems.<br>
+      They do very little for <strong class="warn">coverage</strong> problems.</h2>
+  <p class="sub">If retrieval fails because the right chunk never came back —
+     fix your chunking and your embeddings first.</p>
+  <div class="marker">§8.4 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00. Vocabulary borrowed from Ghoshal, with attribution.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="8.4 Three signals">
+  <h3>Reach for the graph when:</h3>
+  <ol>
+    <li>the answer requires <strong>traversal</strong>, not lookup —
+        <em>"what was Charbonneau's role?"</em>, answered from the hiring entry
+        cosine had at rank 22</li>
+    <li>the same entity is <strong>named differently</strong> across documents —
+        Drewyer / Drouillard / "the Indian woman"</li>
+    <li>the question is about <strong>how things connect</strong>, not what they
+        say — <em>"what about her brother?"</em></li>
+  </ol>
+  <div class="marker">§8.4 · the shapes</div>
+  <aside class="notes">
+    <p><strong>All three of these you watched happen.</strong></p>
+    <p><strong>Traversal</strong> is the cold open, closed. Charbonneau's role: 2
+    of 8 became 6 of 8, and the passage that made it work was the enlistment
+    entry at cosine rank 22. <strong>Naming</strong> is Drewyer and Drouillard —
+    and note it cost you <em>twice</em>: §4 showed the recall loss, §6 showed the
+    same man filed under two different themes, c5 and c23.
+    <strong>Connection</strong> is the brother question: the walk hands back a
+    name at rank 4, then one passage out of 2,913 states the relationship, with a
+    citation.</p>
+  </aside>
+</section>
+
+<section data-menu-title="8.4 The disagreement">
+  <h3 class="warn">Now the uncomfortable part.</h3>
+  <p>Two questions in this benchmark score badly: <strong>trade goods</strong> and
+     <strong>illness</strong>.</p>
+  <p>Those are the same two questions I stood here and called <strong>wins</strong>
+     in sections 5 and 6.</p>
+  <h2 class="fragment" style="margin-top:0.8em">Both things are true,<br>
+      <span class="accent">and the disagreement is the finding.</span></h2>
+  <div class="marker">§8.4 · the honesty beat</div>
+  <aside class="notes">
+    <p><strong>Do not cut the first two sentences of this beat.</strong> The
+    audience heard trade-goods and illness called wins twenty minutes ago and
+    this section calls them failures. Leaving that unsaid is the one thing here
+    that would cost real credibility. (If 8.4 runs over, cut the
+    <em>elaboration</em>, never the naming.)</p>
+    <p><strong>I judged those two by reading the passages. The benchmark judges
+    them by counting answer entities in the window.</strong> On these two
+    questions those two methods reach opposite conclusions — and
+    <strong>the metric is not obviously the one that's right</strong>: its
+    complaint about the illness window is partly that the window
+    <em>stopped being eight copies of the same afternoon.</em></p>
+    <p><strong>What I can say without hedging is what both methods agree
+    on:</strong> these two are <strong>coverage</strong> problems, not reasoning
+    problems. The right chunks are thin on the ground and no amount of ranking
+    manufactures them. <strong>If your retrieval fails that way, the graph is not
+    your fix — your chunking is.</strong></p>
+    <p>So the practical question isn't "is graph RAG better." It's <strong>"which
+    of these shapes is my question"</strong> — and your pipeline can answer that
+    automatically, with one COUNT query, before spending anything. That's §9.</p>
+  </aside>
+</section>
+
+
+<!-- ============================ SECTION 9 ================================ -->
+<!-- How to implement this · 3:00 · starts 0:50:10
+     Deliberately brief and vendor-plural. NetworkX named, never benchmarked. -->
+
+<section class="divider" data-menu-title="§9 divider">
+  <p class="kicker">Section 9 · 3 minutes</p>
+  <h2>How to implement this</h2>
+  <p class="algo">the router, the tools, and what not to tune</p>
+  <aside class="notes">
+    <p>The honest axis is not "who has a better PageRank" — it's
+    <em>where does your graph live, and how often does it change.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="9.1 The curve">
+  <h3>One number decides — and here's the curve underneath it</h3>
+  <p class="footnote" style="margin-top:0">38,098 anchor–satellite pairs · median walk-rank of the satellite's unshared passages, by anchor degree</p>
+  <table>
+    <tr><th>seed's passage count</th><th>median rank of the neighbor's passages</th><th>reaches top-50</th></tr>
+    <tr class="is-win"><td>2–5</td><td class="num"><strong>39</strong></td><td class="num">59% of pairs</td></tr>
+    <tr><td>6–15</td><td class="num">112</td><td class="num">23%</td></tr>
+    <tr><td>16–40</td><td class="num">223</td><td class="num">5%</td></tr>
+    <tr><td>41–100</td><td class="num">388</td><td class="num">0%</td></tr>
+    <tr><td>300+</td><td class="num bad">1,058</td><td class="num">0%</td></tr>
+  </table>
+  <div class="todo">
+    §9.1 — render this as a <strong>chart</strong>, not only a table: five bars or
+    one falling line, anchor-degree buckets on the x-axis, from
+    <span class="mono">results/bridge-decay-lewisclark.csv</span>. The table
+    stays in the appendix/PDF.
+  </div>
+  <div class="marker">§9.1 · 1:15</div>
+  <aside class="notes">
+    <p><strong>1:15.</strong> §5 ended with a decision table; here is the curve
+    underneath it. <strong>Monotonic, no exceptions</strong>, and the two cases
+    you watched sit right on it — <strong>in this sweep</strong>, the Walla Walla
+    pair lands at rank <strong>16</strong> and the Sacagawea–brother pair at
+    <strong>338</strong>.</p>
+    <p><strong>Say "in this sweep" and mean it.</strong> §5.13 quoted the Walla
+    Walla chief at median rank <strong>10</strong> — that was the blend's median
+    for that question. This 16 is the same pair's position in the 38,098-pair
+    decay sweep, which measures the pure walk and averages differently. Two
+    measurements, two numbers, and the audience heard the first one nine minutes
+    ago — <strong>so name the measurement, or it reads as a number that
+    drifted.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="9.1 The router">
+  <h3>The router is one query</h3>
+  <pre><code class="language-cypher" data-trim>
+MATCH (e {canonicalName: $seed})-[:MENTIONED_IN]->(c)
+RETURN count(c)
+// <= 15 -> walk  ·  >= 40 -> filter + cosine  ·  0 -> passage-expand
+  </code></pre>
+  <div class="marker">§9.1 · the router</div>
+  <aside class="notes">
+    <p>The mechanism is the bridge fraction — how much of the seed's edge mass
+    points toward the answer — but <strong>you can't observe that before
+    retrieving. Degree you can.</strong> It's one COUNT query, it runs before you
+    spend anything, and it routes the question: sparse seed → walk; hub seed →
+    filter on the tag and stop; no seed at all → expand from cosine's top
+    passages, capped per community (§6).</p>
+    <p><strong>Note what this router is: retrieval-path code.</strong> It is not
+    the agent choosing a graph tool — §2 showed how that ends. The
+    <em>pipeline</em> counts, the pipeline routes, <strong>the model never gets a
+    vote.</strong></p>
+    <p><em>Kept as Cypher deliberately: the no-vendor-syntax line is drawn at
+    procedure signatures, and this is standard pattern-matching that GQL
+    implementers share. Worth one clause out loud —
+    <strong>the query is as portable as the algorithm is.</strong></em></p>
+    <p><strong>The thresholds are this corpus's. The shape is what
+    transfers</strong> — measure your own; the harness is in the repo
+    (<span class="mono">measure_bridge_decay.py</span>, no relevance judgements
+    required).</p>
+    <p><em>ASSET: annotate the three routes on the Cypher itself, not a second
+    slide.</em></p>
+  </aside>
+</section>
+
+<section data-menu-title="9.2 Where to run it">
+  <h3>The question isn't <em>whose PageRank</em> —</h3>
+  <h2>it's <strong class="accent">where does your graph live,<br>
+      and how often does it change?</strong></h2>
+  <table style="margin-top:0.8em">
+    <tr><td><strong>Neo4j GDS</strong></td><td>what tonight ran on — the algorithms live where the data lives</td></tr>
+    <tr><td><strong>NetworkX</strong></td><td>the standard Python entry point; in-memory, single-machine</td></tr>
+    <tr><td><strong>others</strong></td><td>igraph, cuGraph, Spark GraphX — and most graph databases ship an algorithm library</td></tr>
+  </table>
+  <div class="marker">§9.2 · 1:00</div>
+  <aside class="notes">
+    <p><strong>1:00.</strong> Everything you watched ran on Neo4j GDS, because
+    that's where this graph lives and I wasn't moving 22,000 mention edges into
+    pandas between demos. If your corpus fits in memory and rebuilds nightly,
+    NetworkX is a <span class="mono">pip install</span> and every algorithm in
+    this talk is in it. <strong>I don't use it enough to demo it fairly, so I
+    won't — but that's a statement about me, not about it.</strong></p>
+    <p><strong>The point to land: these are algorithms, not products.</strong>
+    PageRank is PageRank; Leiden is Leiden; the papers are public and the
+    implementations are everywhere. <strong>If your corpus is small enough to fit
+    in memory you may not need a graph database at all</strong> — and knowing
+    that is exactly what makes the case for one honest when you do.</p>
+  </aside>
+</section>
+
+<section data-menu-title="9.3 Tune vs decide">
+  <h2>Operating points don't transfer.</h2>
+  <h3>Some knobs aren't knobs:<br>
+      <strong>resolution (γ) is a corpus decision, not a tunable.</strong></h3>
+  <div class="marker">§9.3 · 0:45</div>
+  <aside class="notes">
+    <p><strong>0:45.</strong> Twice in building this talk, a setting measured as
+    <em>best</em> on one machine was ported to another and did damage —
+    candidate-generation thresholds that were right for read-only analysis
+    <strong>welded identities together</strong> the moment a merge step ran
+    downstream. The setting wasn't wrong; <strong>the transfer was.</strong></p>
+    <p><strong>And some parameters shouldn't be swept at all.</strong> Leiden's
+    resolution — gamma, the knob that decides how big a "community" is — looks
+    like a hyperparameter and isn't one: <strong>it encodes what a theme means at
+    your corpus's granularity.</strong> Sweep it against a retrieval metric and
+    the metric can't see what you traded away; look at the partition it produces
+    — do these clusters match what an episode, a service, a ticket <em>is</em> in
+    your domain? — and decide it once.</p>
+    <p>Then hold it still, because the discipline that kept this talk honest is
+    <strong>re-run and diff</strong>: seed the randomness, rerun the pipeline, and
+    treat any change you didn't make as a bug.</p>
+    <p><em>⚠️ Open decision: the γ line's backing example needs confirming.
+    Drafted number-free deliberately.</em></p>
+  </aside>
+</section>
+
+
+<!-- ============================ SECTION 10 =============================== -->
+<!-- Three things to take home · 2:00 · starts 0:53:10 · Q&A from 0:55:10 -->
+
+<section data-menu-title="10.1 Three things">
+  <h3>Three things to take home</h3>
+  <div class="stack-tight">
+    <p><strong class="accent">1 · Build time gates query time.</strong><br>
+       Sacagawea was <strong>8 passages</strong> in the raw graph and
+       <strong>47</strong> after resolution. Every algorithm tonight walked on
+       those edges. Fix entity resolution first.</p>
+    <p style="margin-top:0.7em"><strong class="accent">2 · Put the algorithms in the retrieval path,
+       not the agent's toolbox.</strong><br>
+       The model won't reach for them. The study in §2 gave an agent a path
+       tool; it was called zero times. The router in §9 is code.</p>
+    <p style="margin-top:0.7em"><strong class="accent">3 · Measure on your own corpus.</strong><br>
+       The harness is in the repo. Include control questions plain vector should
+       win — and check that it still does.</p>
+  </div>
+  <div class="marker">§10.1 · 1:30</div>
+  <aside class="notes">
+    <p><strong>1:30. One each, ten seconds apiece, all callbacks.</strong></p>
+    <p><strong>Number one is §4</strong> — and you watched it bite every section
+    after it: the walk in §5 seeds on those edges, §6 filed the same man under
+    two different themes because he is still two nodes, and §8 measured what it
+    was all worth.</p>
+    <p><strong>Number two is the hinge from §2</strong>, and it's the difference
+    between "my agent has graph tools" and "my retrieval uses graph algorithms."
+    One is a hope; the other is a code path.</p>
+    <p><strong>Number three is how this talk was built.</strong> Half the findings
+    in the repo are measurements that <em>refused</em> to say what I wanted — the
+    control questions are what kept the other half honest. <strong>Your corpus
+    will disagree with mine somewhere. Find where.</strong></p>
+  </aside>
+</section>
+
+<section data-menu-title="10.2 Repo + thanks">
+  <h3>Thank you. Questions?</h3>
+  <div class="two-col" style="margin-top:0.5em">
+    <div>
+      <div class="todo">QR — the repo. <strong>⚠️ Open decision #9: the repo has
+        no git remote yet.</strong> Create it under
+        <span class="mono">smithna</span>, push, <em>then</em> generate this
+        code.</div>
+      <p class="footnote"><strong>github.com/smithna/graph-algorithms-rag</strong><br>
+        tonight's code, the measurement harness, and every number in this deck
+        with the script that produced it</p>
+    </div>
+    <div>
+      <p><strong>Rate this session</strong></p>
+      <img src="assets/SessionFeedbackQrCode.png" alt="KCDC session feedback QR code"
+           style="width:210px;background:#fff;padding:8px;border-radius:6px">
+      <p class="footnote">Equal weight with the repo code. This slide is up for
+        all of Q&amp;A, which is exactly when people fill the form in.</p>
+    </div>
+  </div>
+  <ul class="bare footnote" style="margin-top:0.8em">
+    <li>NICD, <em>Reducing hallucinations with GraphRAG</em> — the 510-question study
+        (paper in this repo; their code: <span class="mono">github.com/NICD-UK/graph-based-rag-qa</span>)</li>
+    <li>Blumenfeld (Neo4j), <em>Scaling Karpathy's LLM wiki</em> — seeded Leiden and the conductance thresholds §6 used</li>
+    <li>Ghoshal, <em>When Does Graph RAG Actually Add Value?</em> — small experiment, useful reasoning-vs-coverage framing</li>
+    <li>Last year: <em>RAG Has a Relationship Problem</em> —
+        <span class="mono">github.com/smithna/corps-of-discovery-graph-rag</span> — the pipeline that built this graph</li>
+  </ul>
+  <div class="marker">§10.2 · 0:30</div>
+  <aside class="notes">
+    <p><strong>0:30. Leave this up through Q&amp;A</strong> — it's the one people
+    photograph on the way out. Nothing on it needs narration: "thank you," the
+    repo name said once, and open for questions.</p>
+    <p><strong>Say one sentence for the QR pair</strong> — <em>"left is the code,
+    right is the feedback form, and I'd genuinely like to know what
+    missed"</em> — then stop talking.</p>
+    <p><em>Q&amp;A pockets, one hidden slide of pointers: filter parity (5g), the
+    budget-graph replication (5j), the §5.9 metric retraction, the paths
+    run-to-run spread, Ghoshal caveats. No Louvain pocket.</em></p>
+  </aside>
+</section>
+
+</div>
+</div>
+
+<script src="vendor/reveal/dist/reveal.js"></script>
+<script src="vendor/reveal/plugin/notes/notes.js"></script>
+<script src="vendor/reveal/plugin/highlight/highlight.js"></script>
+<script>
+  Reveal.initialize({
+    // 16:9, matching last year's 10 x 5.625in deck.
+    width: 1600,
+    height: 900,
+    margin: 0.07,
+    minScale: 0.2,
+    maxScale: 1.5,
+
+    hash: true,
+    slideNumber: 'c/t',
+    // The talk is linear; horizontal-only navigation avoids getting lost in a
+    // vertical stack mid-demo.
+    navigationMode: 'linear',
+    // Speaker view carries notes AND a running timer — the reason for reveal.js
+    // over PowerPoint, given the per-section minute budgets.
+    showNotes: false,
+    transition: 'fade',
+    transitionSpeed: 'fast',
+    backgroundTransition: 'none',
+    // Fragments are used for builds; don't let them eat the arrow keys in a way
+    // that surprises during a demo.
+    fragmentInURL: true,
+    plugins: [RevealNotes, RevealHighlight]
+  });
+
+  // M toggles the section/timing markers — on for rehearsal, off for the room.
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'm' || e.key === 'M') {
+      document.querySelector('.reveal').classList.toggle('show-markers');
+    }
+  });
+</script>
+</body>
+</html>
