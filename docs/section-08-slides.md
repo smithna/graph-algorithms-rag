@@ -6,14 +6,19 @@
 >
 > **Editorial constraints for this section:**
 >
+> - **Audience calibration (Nathan, 2026-09-07): developers who want practical
+>   guidelines and how-to — not statisticians.** Slides carry things they can
+>   *do*; measurement methodology lives in speaker notes and Q&A. No
+>   macro/micro, variance, or confidence vocabulary on screen. Every slide
+>   should answer "what would I do with this on Monday."
 > - **Every number ran on `lewisclark`, four full runs compared** (finding
 >   8a–8g; read-pack `results/section-08-readpack.md`, local only).
->   `vector`/`ppr`/`expand`/`cooccurrence` are byte-stable across runs — quote
+>   `vector`/`ppr`/`expand`/`cooccurrence` are identical across runs — quote
 >   them exactly. `community`/`hybrid` (Louvain redraw) and `paths` (Yen's tie
->   order, n=3) move by one entity between runs — quote ranges or leave them
->   in the table without headline claims.
+>   order, n=3) move by one entity between runs — the table shows them as
+>   ranges and the notes say why in one plain sentence.
 > - **Recall means "the context contains the facts." It never means the answer
->   is right** — and the hand-read showed even a legitimate credit can be the
+>   is right** — the hand-read showed even a legitimate credit can be the
 >   right entity in the wrong episode (8d). Do not let a slide imply more.
 > - **The boring result IS the result.** The section's job is to earn trust by
 >   reporting +1 gold entity as +1 gold entity, right before §9 tells them
@@ -27,29 +32,36 @@
 
 ---
 
-## 8.1 — The metric, and why it's deliberately boring (0:45)
+## 8.1 — Measure it yourself, in an afternoon (0:45)
 
 **Slide:**
 
-> ### Answer-entity recall
+> ### How do you know if any of this helped *your* corpus?
 >
-> Did the retrieved context actually contain the entities a correct answer
-> needs?
+> One metric you can build in an afternoon — no LLM judge, no eval bill:
 >
-> - alias-aware — "Janey" counts for Sacagawea, "quawmash" for camas
-> - deterministic — no LLM judge, no variance in the measurement
-> - honest about its limit: it says the facts are **in the window**, not that
->   the answer is right
+> **Did the retrieved context contain the entities a correct answer needs?**
+>
+> - string + edge matching against your own graph — deterministic, free
+> - aliases come along for free: "Janey" counts for Sacagawea,
+>   "quawmash" counts for camas
+> - the harness is in the repo — point `benchmark.py` at your graph
 
-> Fourteen questions, five kinds — connection, authority, thematic, sequence,
-> and two **controls**: questions plain vector search should win. If a graph
-> strategy loses the easy questions while winning the hard ones, that's not an
-> improvement, that's a trade someone should have to defend. The measurement's
-> job is to be boring: every number tonight is reproducible on this laptop.
-> One line of confession — the benchmark's own gold set had the section-4
-> disease: half its labels pointed at decoy nodes ("a node named ELK exists"
-> is not "the elk"). Fixing the gold set was half the work of this section,
-> and the tooling that fixes it is the same prominence prior from section 4.
+**Slide (build):**
+
+> **And write control questions** — ones plain vector search *should* win.
+> A strategy that wins hard questions by losing easy ones is not an
+> improvement.
+
+> This is the part I most want you to steal. You don't need an eval framework
+> or a judge model to know whether graph retrieval is earning its keep — your
+> graph already knows every entity's aliases, so "are the answer's entities in
+> the window" is a lookup. Fourteen questions, five kinds, and two of them are
+> controls. One confession, because it's the same lesson as section 4: my
+> benchmark's own gold set pointed at decoy nodes — "a node named ELK exists"
+> is not "the elk" — and fixing that was half the work of this section. Verify
+> your gold labels against the graph before you trust a number; that script's
+> in the repo too.
 
 ---
 
@@ -73,15 +85,16 @@
 > Nothing paid for the hard questions with the easy ones.
 
 > Read it top to bottom. Plain vector, on a graph where section 4 already did
-> its job, gets 86%. The best graph strategy adds 1.8 points. In raw counts
-> that is **one gold entity** — 32 of 38 instead of 31. The controls are the
-> row I care most about: vector should win them, and it does — so should
-> everyone, and everyone does. Two honest footnotes: community and hybrid
-> wobble by one entity between runs because Louvain redraws its partition —
-> section 6 told you that would happen. And paths only runs on three
-> questions, because path retrieval isn't a general retriever — it triggers
-> off question shape, which is exactly how section 7 said to deploy it.
-> Latency: the graph costs milliseconds, not seconds.
+> its job, gets 86%. The best graph strategy adds 1.8 points — in raw counts,
+> **one more answer entity in the window**. The controls are the row I care
+> most about: vector should win them, and everything held. Three practical
+> footnotes, all things you'd hit in production: community and hybrid show a
+> range because Louvain deals a fresh partition every run — pin your seeds if
+> you need repeatable output, section 6 showed how. Paths only ran on three
+> questions, because path retrieval isn't a general retriever — it fires when
+> the question names two things, which is exactly how section 7 said to wire
+> it. And the whole right-hand side of this table is milliseconds: the graph
+> is not your latency problem.
 
 ---
 
@@ -91,24 +104,26 @@
 
 > ### Maybe you don't need this.
 >
-> - one net gold entity, for ~200 ms of graph work
-> - this corpus is **~942k tokens** — it fits in one context window
-> - Ghoshal's whole-corpus frontier baseline beat every retrieval setup he
->   tested; the NICD zero-shot column says the same thing
+> - one net answer entity, for ~200 ms of graph work
+> - this corpus is **~942k tokens** — it fits in one context window.
+>   **If your corpus fits, stuff it in and skip retrieval.**
+> - the whole-corpus baseline beat every retrieval setup in Ghoshal's
+>   experiment; the NICD zero-shot numbers rhyme
 
-> I want to say this from the stage because nobody selling you a graph
-> database will: on this corpus, at this window size, with the entities
-> resolved, the boring baseline is very good — and this corpus *fits in a
-> context window*, so the strongest baseline isn't even retrieval. Retrieval
-> architecture is a response to a corpus that doesn't fit — not a virtue.
-> And where the benchmark fails, it fails for **every** strategy identically:
-> the expedition's only death sits at cosine rank 64 for the illness question,
-> and no walk, no community, no path promotes it into the window. The right
-> chunks never came back — no reranker fixes that.
+> Nobody selling you a graph database will say this from a stage, so I will:
+> on this corpus, at this window size, with the entities resolved, the boring
+> baseline is very good — and this corpus literally fits in a context window,
+> so the strongest baseline isn't even retrieval. Retrieval architecture is a
+> response to a corpus that doesn't fit. And when the benchmark fails, it
+> fails for **every** strategy the same way: the expedition's only death sits
+> at cosine rank 64 for the illness question, and no walk, no community, no
+> path pulls it into the window. The right chunk never came back — no
+> reranker fixes that. That's a chunking-and-embeddings problem, and you fix
+> it there.
 
 ---
 
-## 8.4 — The signals that say you do (1:00)
+## 8.4 — The three signals that say you do (1:00)
 
 **Slide (the Ghoshal split):**
 
@@ -118,25 +133,24 @@
 > If retrieval fails because the right chunk never came back — fix your
 > chunking and your embeddings first.
 
-**Slide (build):**
+**Slide (build) — reach for the graph when:**
 
-> You want this when:
->
-> - the answer requires **traversal**, not lookup — *"how did she get the
->   horses?"*
-> - the same entity is **named differently** across documents — Drewyer /
->   Drouillard / "the squaw"
-> - the question is about **how things connect**, not what they say
+> 1. the answer requires **traversal**, not lookup — *"how did she get the
+>    horses?"*
+> 2. the same entity is **named differently** across documents — Drewyer /
+>    Drouillard / "the squaw"
+> 3. the question is about **how things connect**, not what they say
 
-> Look back at where the graph earned its keep tonight: Ordway's duty orders
-> that cosine ranked at 95. The brother's name at rank 4 when every retriever
-> whiffed. The recognition scene no ranker could surface but a two-anchor path
-> query returned in 220 milliseconds. Every one of those is a *reasoning*
-> shape — traversal, aliasing, connection. And our two benchmark failures —
-> trade goods, illness — are *coverage* shapes: the right passages exist and
-> never came back in eight. So the honest question isn't "is graph RAG
-> better." It's "which problem do you have" — and it turns out you can route
-> that question with one COUNT query. That's section 9.
+> Look back at where the graph earned its keep tonight — every win was one of
+> these three shapes. Ordway's duty orders that cosine ranked at 95:
+> traversal. Drewyer and Drouillard: naming. The brother question — the name
+> at rank 4, then the one passage in 2,913 that states the relationship:
+> connection. And our two benchmark failures, trade goods and illness, are
+> neither — they're coverage, and the graph rightly did nothing for them. So
+> the practical question isn't "is graph RAG better." It's "which of these
+> shapes is my question" — and it turns out your pipeline can answer that
+> automatically, with one COUNT query, before spending anything. That's
+> section 9.
 
 ---
 
@@ -144,7 +158,7 @@
 
 | slide | time | cumulative |
 |---|---|---|
-| 8.1 the metric | 0:45 | 0:45 |
+| 8.1 measure it yourself | 0:45 | 0:45 |
 | 8.2 the table + controls | 1:15 | 2:00 |
 | 8.3 maybe you don't need this | 1:00 | 3:00 |
-| 8.4 the Ghoshal split → §9 | 1:00 | 4:00 |
+| 8.4 the three signals → §9 | 1:00 | 4:00 |

@@ -4219,6 +4219,13 @@ Problem*), so foundational material gets a fast pass with a pointer to the
 [community days repo](https://github.com/smithna/corps-of-discovery-graph-rag)
 rather than a rebuild.
 
+**Audience calibration (Nathan, 2026-09-07): developers who want practical
+guidelines and how-to — not statisticians or data scientists.** Slides carry
+things attendees can *do*; measurement methodology (sample-size caveats, run
+variance, macro/micro distinctions) lives in speaker notes and Q&A. The
+measurement discipline itself is unchanged — it governs what gets claimed,
+not what gets projected.
+
 Framing principle Nathan set: **lead with a problem, solve it with an
 algorithm.** Attendees don't know they want graph algorithms, and some of them
 genuinely don't need them. Every section opens with a failure they've felt.
