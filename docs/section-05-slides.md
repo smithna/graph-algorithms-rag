@@ -659,11 +659,12 @@ in that window is about the same afternoon." Section 6 is the fix.)*
 
 ## PARKED FOR §9 — the routing rule as the implementation beat
 
-> **Not §5 stage time.** Drafted here because the numbers are §5's; moves to
-> `section-09-slides.md` when section 9 is built. This is §9's strongest
-> candidate content: "when does your agent reach for the graph tool" with a
-> measured answer, and it coexists with §10's take-home #2 ("in the retrieval
-> path, not the agent's toolbox") — the router IS retrieval-path code.
+> **Not §5 stage time — and now transcribed: the canonical copy is slide 9.1
+> in [`section-09-slides.md`](section-09-slides.md) (moved 2026-09-07).** Kept
+> here as the block's origin since the numbers are §5's (finding 5n); edits
+> belong in the §9 file. It coexists with §10's take-home #2 ("in the
+> retrieval path, not the agent's toolbox") — the router IS retrieval-path
+> code.
 
 **Slide:** the curve. 38,098 anchor–satellite pairs, median walk-rank of the
 satellite's unshared passages, by anchor degree:
