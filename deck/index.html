@@ -14,29 +14,6 @@
 <div class="reveal">
 <div class="slides">
 
-<!-- ==========================================================================
-     SCAFFOLD STATUS
-
-     Structure is complete: every beat in docs/talk-full-draft.md has a slide
-     here, in order, with its speaker notes and its minute budget.
-
-     Text slides are FINAL — they are copy from the draft and need no assets.
-     Slides waiting on an asset carry a .todo block naming exactly what is
-     missing; they are deliberately loud. Search this file for "ASSET" to find
-     them all, or "todo" for the markup.
-
-     Speaker notes are condensed from the draft to what is usable while
-     presenting. The draft is the full text; this is the stage copy.
-     Timings in the notes are per-beat, from the draft's timing tables.
-     Press S for speaker view (notes + timer). Press M to toggle the
-     section/time markers in the bottom-left.
-     ========================================================================== -->
-
-
-<!-- ============================ SECTION 0 ================================ -->
-<!-- Cold open: the failure · 3:30 · starts 0:00
-     No title slide, no hello. The failure lands first. -->
-
 <section data-menu-title="0.1 The question">
   <h3 class="accent">Live, minute zero</h3>
   <h2>"What was Toussaint Charbonneau's<br>role on the expedition?"</h2>
@@ -178,20 +155,6 @@
   </aside>
 </section>
 
-
-<!-- ============================ SECTION 1 ================================ -->
-<!-- What is a graph? · 3:00 · starts 0:03:30 · deliberately fast -->
-
-<section class="divider" data-menu-title="§1 divider">
-  <p class="kicker">Section 1 · 3 minutes</p>
-  <h2>What is a graph?</h2>
-  <p class="algo">Three minutes of foundations, then we never do theory again.</p>
-  <aside class="notes">
-    <p>Audience skews new, but the algorithms are what was sold. Foundations get
-    three minutes and a pointer to last year's repo.</p>
-  </aside>
-</section>
-
 <section data-menu-title="1.1 Nodes and rels">
   <h3>Nodes, relationships — and this corpus</h3>
   <div class="todo">
@@ -216,6 +179,10 @@
     <p>This is the actual shape of tonight's graph. Same corpus as last year's
     talk — that talk was about <em>building</em> this; tonight is what the
     algorithms do with it.</p>
+    <hr>
+    <p class="muted"><em>§1 divider (no slide — folded here)</em></p>
+    <p>Audience skews new, but the algorithms are what was sold. Foundations get
+    three minutes and a pointer to last year's repo.</p>
   </aside>
 </section>
 
@@ -272,23 +239,6 @@
   </aside>
 </section>
 
-
-<!-- ============================ SECTION 2 ================================ -->
-<!-- What is Graph RAG, and does it actually work? · 7:15 · starts 0:06:30
-     Designated compression victim if rehearsal runs long. -->
-
-<section class="divider" data-menu-title="§2 divider">
-  <p class="kicker">Section 2 · 7 minutes</p>
-  <h2>What is Graph RAG,<br>and does it actually work?</h2>
-  <p class="algo">The architecture, the evidence, and the gift.</p>
-  <aside class="notes">
-    <p><strong>This section is the compression victim</strong> if rehearsal runs
-    long: the NICD table can drop to precision + truthfulness only (−0:30).
-    Though the table got <em>more</em> worth showing whole once verified — spend
-    §4.7's cut first.</p>
-  </aside>
-</section>
-
 <section data-menu-title="2.1 Architecture">
   <h3>One database. One retrieval step.</h3>
   <div class="todo">
@@ -307,6 +257,12 @@
     <p>Not a vector call and then a graph service and then a reranker service.
     That locality is what makes everything in §4–§7 one query instead of an
     architecture diagram.</p>
+    <hr>
+    <p class="muted"><em>§2 divider (no slide — folded here)</em></p>
+    <p><strong>This section is the compression victim</strong> if rehearsal runs
+    long: the NICD table can drop to precision + truthfulness only (−0:30).
+    Though the table got <em>more</em> worth showing whole once verified — spend
+    §4.7's cut first.</p>
   </aside>
 </section>
 
@@ -336,7 +292,7 @@
   </aside>
 </section>
 
-<section data-menu-title="2.3 The evidence">
+<section data-menu-title="2.3 The evidence + 2.3 Awkward parts">
   <h3>NICD, <em>Reducing hallucinations with GraphRAG</em></h3>
   <p class="footnote" style="margin-top:0">510 multi-source questions (MoNaCo) · 28,000 Wikipedia articles · three pipelines</p>
   <table>
@@ -347,19 +303,8 @@
     <tr><td>Coarse truthfulness</td><td class="num">−31</td><td class="num">−49</td><td class="num bad"><strong>−127</strong></td></tr>
     <tr><td>Total tokens (median)</td><td class="num">41,694</td><td class="num">45,695</td><td class="num">1,108</td></tr>
   </table>
-  <div class="marker">§2.3 · 2:45</div>
-  <aside class="notes">
-    <p><strong>2:45 for this and the awkward parts.</strong> Headline: adding
-    the graph to vector RAG roughly <strong>doubles</strong> factual precision
-    and recall, and wins fine-grained truthfulness outright, for about nine
-    percent more tokens. Strongest published number I can hand you — 510
-    questions, not a weekend demo.</p>
-    <p><em>All numbers verified against the paper (in the repo). Compression
-    cut: keep precision + truthfulness rows only.</em></p>
-  </aside>
-</section>
 
-<section data-menu-title="2.3 Awkward parts">
+  <div class="fragment">
   <h3>The awkward parts — same font size</h3>
   <ul>
     <li><strong>Zero-shot beats both</strong> on correctness — MoNaCo is public
@@ -371,8 +316,19 @@
     <li class="fragment"><strong>The study was funded by Neo4j.</strong>
         Disclosed in the paper. Now disclosed here.</li>
   </ul>
-  <div class="marker">§2.3 · honesty</div>
+  </div>
+  <div class="marker">§2.3 · 2:45 → §2.3 · honesty</div>
   <aside class="notes">
+    <p class="muted"><em>2.3 The evidence</em></p>
+    <p><strong>2:45 for this and the awkward parts.</strong> Headline: adding
+    the graph to vector RAG roughly <strong>doubles</strong> factual precision
+    and recall, and wins fine-grained truthfulness outright, for about nine
+    percent more tokens. Strongest published number I can hand you — 510
+    questions, not a weekend demo.</p>
+    <p><em>All numbers verified against the paper (in the repo). Compression
+    cut: keep precision + truthfulness rows only.</em></p>
+    <hr>
+    <p class="muted"><em>2.3 Awkward parts</em></p>
     <p>Say all three before anyone asks.</p>
     <p><strong>Zero-shot:</strong> that column is why "just use a bigger model"
     works on Wikipedia and not on your incident reports — your corpus isn't in
@@ -398,12 +354,19 @@
   </aside>
 </section>
 
-<section class="statement" data-menu-title="2.4 The gift">
+<section class="statement" data-menu-title="2.4 The gift + 2.4 The hinge">
   <h2>The agent in that study<br>had a shortest-path tool.</h2>
   <h2 class="fragment"><span class="accent" style="font-size:1.5em">It was called zero times.</span></h2>
   <p class="fragment sub">Not once, in 510 questions.</p>
-  <div class="marker">§2.4 · 1:30</div>
+
+  <div class="fragment">
+  <h3>The lesson isn't "give your agent graph tools."</h3>
+  <h2><span class="accent">Put the graph algorithms in the retrieval path,
+      deterministically — where the model doesn't get a vote.</span></h2>
+  </div>
+  <div class="marker">§2.4 · 1:30 → §2.4 · the hinge</div>
   <aside class="notes">
+    <p class="muted"><em>2.4 The gift</em></p>
     <p><strong>1:30 for this and the hinge.</strong> My favorite finding in the
     paper and it's in nobody's abstract. The agent had graph tools
     <em>available</em>. The system prompt encouraged them. It never touched the
@@ -417,15 +380,8 @@
     calculator. Name shortest-path from the stage because it's the one this talk
     spends five minutes on in §7.</em></p>
     <p><em>(Beat.)</em></p>
-  </aside>
-</section>
-
-<section class="statement" data-menu-title="2.4 The hinge">
-  <h3>The lesson isn't "give your agent graph tools."</h3>
-  <h2><span class="accent">Put the graph algorithms in the retrieval path,
-      deterministically — where the model doesn't get a vote.</span></h2>
-  <div class="marker">§2.4 · the hinge</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>2.4 The hinge</em></p>
     <p><strong>This is the spine of the rest of the hour.</strong> Land it
     slowly. Every section from here is about what belongs <em>in that path</em>:
     resolution before indexing, PageRank inside retrieval, community caps on the
@@ -434,23 +390,6 @@
     <p><em>One of the talk's four photograph slides. Set it like one.</em></p>
   </aside>
 </section>
-
-<section data-menu-title="2.5 Hand-off">
-  <h3 class="muted">Which leaves exactly one question —</h3>
-  <h2>What specifically do you put in the path?</h2>
-  <p class="sub accent">Four failures. Four algorithms.</p>
-  <div class="marker">§2.5 · 0:30</div>
-  <aside class="notes">
-    <p><strong>0:30.</strong> The graph gives retrieval verbs it doesn't have,
-    the best available evidence says the combination roughly doubles factual
-    quality on multi-source questions, and the model won't drive the graph by
-    itself.</p>
-  </aside>
-</section>
-
-
-<!-- ============================ SECTION 3 ================================ -->
-<!-- Roadmap · 1:00 · starts 0:13:45 · One slide, one minute, stays up. -->
 
 <section data-menu-title="3.1 The map">
   <h3>Two stages. Four failures.</h3>
@@ -479,20 +418,20 @@
     §6.1 at 0:35.</p>
     <p><em>Build this table once, parameterized — §4–§7 each re-show it with
     their row lit (add class "dim" to the others).</em></p>
+    <hr>
+    <p class="muted"><em>2.5 Hand-off (no slide — folded here)</em></p>
+    <p><strong>0:30.</strong> The graph gives retrieval verbs it doesn't have,
+    the best available evidence says the combination roughly doubles factual
+    quality on multi-source questions, and the model won't drive the graph by
+    itself.</p>
   </aside>
 </section>
-
-
-<!-- ============================ SECTION 4 ================================ -->
-<!-- "Your entities are a mess" · 10:00 (budget 9:00) · starts 0:14:45
-     node similarity + WCC. Demo is a recording, on rawluna.
-     Constraints: no precision/recall percentages — the gold set is a
-     hand-built reference, not ground truth. Sacagawea is the spine. -->
 
 <section class="divider" data-menu-title="§4 divider">
   <p class="kicker">Section 4 · Build time</p>
   <h2>"Your entities are a mess"</h2>
   <p class="algo">node similarity + weakly connected components</p>
+  
   <aside class="notes">
     <p><strong>10:00 against a 9:00 budget.</strong> Cut candidate if needed:
     4.7 down to its two-line recall/precision slide (−0:30). Do not cut 4.2,
@@ -522,19 +461,11 @@
   </aside>
 </section>
 
-<section data-menu-title="4.2 Make it personal">
+<section data-menu-title="4.2 Make it personal + 4.2 The forms">
   <p class="bignum">8</p>
   <p class="bignum-sub">chunks in which Sacagawea is named</p>
-  <div class="marker">§4.2 · 1:00</div>
-  <aside class="notes">
-    <p><strong>1:00 across this and the forms build.</strong> She is present for
-    the entire expedition and named eight times. Ask this graph for Sacagawea
-    and you get eight chunks' worth of someone who is everywhere.</p>
-    <p><strong>This is the section in one slide. Hold on it.</strong></p>
-  </aside>
-</section>
 
-<section data-menu-title="4.2 The forms">
+  <div class="fragment">
   <h3>…and the forms she is <em>actually</em> referred to by</h3>
   <pre class="term"><code data-trim data-noescape>
 SACAGAWEA          INDIAN WOMAN        THE INDIAN WOMAN
@@ -546,8 +477,16 @@ THE WIFE OF SHABONO    WIFE OF SHABONO    SNAKE INDIAN WIFE
 INTERPRETERS WIFE      OUR INTERPRETER THE SNAKE WOMAN
   </code></pre>
   <h2 class="fragment">Nineteen nodes. One woman.</h2>
-  <div class="marker">§4.2 · the forms</div>
+  </div>
+  <div class="marker">§4.2 · 1:00 → §4.2 · the forms</div>
   <aside class="notes">
+    <p class="muted"><em>4.2 Make it personal</em></p>
+    <p><strong>1:00 across this and the forms build.</strong> She is present for
+    the entire expedition and named eight times. Ask this graph for Sacagawea
+    and you get eight chunks' worth of someone who is everywhere.</p>
+    <p><strong>This is the section in one slide. Hold on it.</strong></p>
+    <hr>
+    <p class="muted"><em>4.2 The forms</em></p>
     <p><strong>Handle the language once, here, plainly, then never again:</strong>
     <em>"'Squaw' was ordinary usage in the captains' 1805 English. It is
     offensive now. These are the journals' words, not mine, and they are on the
@@ -557,7 +496,7 @@ INTERPRETERS WIFE      OUR INTERPRETER THE SNAKE WOMAN
   </aside>
 </section>
 
-<section data-menu-title="4.3 String ladder">
+<section data-menu-title="4.3 String ladder + 4.3 The wall">
   <h3>The naive fix — and it's good engineering</h3>
   <table>
     <tr><th>signal</th><th>catches</th></tr>
@@ -565,8 +504,14 @@ INTERPRETERS WIFE      OUR INTERPRETER THE SNAKE WOMAN
     <tr><td>token containment</td><td class="mono">JOHN SHIELDS / SHIELDS</td></tr>
     <tr><td>double metaphone</td><td class="mono">Chabonah / Charbonneau — XPN vs XRPN</td></tr>
   </table>
-  <div class="marker">§4.3 · 1:15</div>
+
+  <div class="fragment">
+  <h1 style="font-size:1.7em">SACAGAWEA <span class="muted">→</span> THE INDIAN WOMAN</h1>
+  <p class="sub">no string algorithm will ever connect these</p>
+  </div>
+  <div class="marker">§4.3 · 1:15 → §4.3 · the wall</div>
   <aside class="notes">
+    <p class="muted"><em>4.3 String ladder</em></p>
     <p><strong>1:15 for this and the wall.</strong> The journals spell
     Charbonneau at least six ways. Metaphone catches it: the letters diverge,
     the <em>sounds</em> do not. This ladder is good engineering and it gets you a
@@ -579,14 +524,8 @@ INTERPRETERS WIFE      OUR INTERPRETER THE SNAKE WOMAN
     Invisible bug, the name of the function is the trap, fix is
     <span class="mono">1 - x</span>. Worth five seconds because everyone here has
     shipped one of these.</p>
-  </aside>
-</section>
-
-<section class="statement" data-menu-title="4.3 The wall">
-  <h1 style="font-size:1.7em">SACAGAWEA <span class="muted">→</span> THE INDIAN WOMAN</h1>
-  <p class="sub">no string algorithm will ever connect these</p>
-  <div class="marker">§4.3 · the wall</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>4.3 The wall</em></p>
     <p>There is nothing to connect. Not a shared prefix, not a shared token, not
     a shared phoneme. <strong>The letters have run out.</strong></p>
     <p>And this is not an edge case — it is <em>most</em> of the nineteen.</p>
@@ -614,18 +553,12 @@ SOURCE_URL = "https://lewis-clark.org/people/sacagawea/sacagawea-in-the-journals
   </aside>
 </section>
 
-<section data-menu-title="4.5 The idea">
+<section data-menu-title="4.5 The idea + 4.5 The signal, drawn">
   <h2>Two names that keep appearing alongside<br>
       the same people, places and dates<br>
       <span class="accent">are probably the same entity</span></h2>
-  <div class="marker">§4.5 · 1:15</div>
-  <aside class="notes">
-    <p><strong>1:15 across this, the diagram and OVERLAP.</strong> You have more
-    information than you think.</p>
-  </aside>
-</section>
 
-<section data-menu-title="4.5 The signal, drawn">
+  <div class="fragment">
   <h3>The signal, drawn</h3>
   <div class="diagram">
     <div class="todo">
@@ -641,8 +574,14 @@ SOURCE_URL = "https://lewis-clark.org/people/sacagawea/sacagawea-in-the-journals
     </div>
   </div>
   <p class="footnote">Two names. The same eight passages. The same brother, the same husband.</p>
-  <div class="marker">§4.5 · the diagram</div>
+  </div>
+  <div class="marker">§4.5 · 1:15 → §4.5 · the diagram</div>
   <aside class="notes">
+    <p class="muted"><em>4.5 The idea</em></p>
+    <p><strong>1:15 across this, the diagram and OVERLAP.</strong> You have more
+    information than you think.</p>
+    <hr>
+    <p class="muted"><em>4.5 The signal, drawn</em></p>
     <p><strong>This is the slide the section turns on, and it needs no
     numbers.</strong> Two nodes the string ladder cannot touch, standing in the
     same eight journal entries, beside the same two people. <em>That</em> is the
@@ -655,7 +594,7 @@ SOURCE_URL = "https://lewis-clark.org/people/sacagawea/sacagawea-in-the-journals
   </aside>
 </section>
 
-<section data-menu-title="4.5 Where the signal is">
+<section data-menu-title="4.5 Where the signal is + 4.5 OVERLAP">
   <h3>Where the signal already is</h3>
   <ul>
     <li>entity ↔ entity co-occurrence, weighted by shared chunk count</li>
@@ -663,14 +602,8 @@ SOURCE_URL = "https://lewis-clark.org/people/sacagawea/sacagawea-in-the-journals
     <li>union it with the string and alias signals</li>
     <li><strong class="win">costs zero LLM tokens</strong> — it reads structure extraction already built</li>
   </ul>
-  <div class="marker">§4.5 · the how</div>
-  <aside class="notes">
-    <p>Vendor-neutral on purpose — §9.2 argues these are algorithms, not
-    products. The GDS call name is in the draft if anyone asks.</p>
-  </aside>
-</section>
 
-<section data-menu-title="4.5 OVERLAP">
+  <div class="fragment">
   <h3>Why OVERLAP, not Jaccard</h3>
   <div class="todo">
     §4.5 OVERLAP two-circle diagram — <strong>arrows.app export</strong>, real
@@ -681,8 +614,14 @@ SOURCE_URL = "https://lewis-clark.org/people/sacagawea/sacagawea-in-the-journals
     <span class="mono">OVERLAP = 18/51 = 0.35</span> (divide by the SMALLER) vs
     <span class="mono">JACCARD = 18/207 = 0.09</span> (divide by EVERYTHING).
   </div>
-  <div class="marker">§4.5 · OVERLAP</div>
+  </div>
+  <div class="marker">§4.5 · the how → §4.5 · OVERLAP</div>
   <aside class="notes">
+    <p class="muted"><em>4.5 Where the signal is</em></p>
+    <p>Vendor-neutral on purpose — §9.2 argues these are algorithms, not
+    products. The GDS call name is in the draft if anyone asks.</p>
+    <hr>
+    <p class="muted"><em>4.5 OVERLAP</em></p>
     <p>A rare name and a common name for the same person have
     <strong>lopsided</strong> neighbourhoods. Jaccard divides by the union and
     punishes her for being rare. Overlap divides by the smaller set and asks the
@@ -695,7 +634,7 @@ SOURCE_URL = "https://lewis-clark.org/people/sacagawea/sacagawea-in-the-journals
   </aside>
 </section>
 
-<section data-menu-title="4.6 The payoff">
+<section data-menu-title="4.6 The payoff + 4.6 8 to 47">
   <h3>The closed component <span class="muted">— <span class="mono">demo_resolution.py</span>, recording</span></h3>
   <pre class="term"><code data-trim>
 INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
@@ -703,8 +642,19 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
 +  THE SQUAR  +  THE SQUAW  +  THE WIFE OF SHABONO
   </code></pre>
   <h2 class="fragment">Ten surface forms. One entity. <span class="accent">No website.</span></h2>
-  <div class="marker">§4.6 · 1:30</div>
+
+  <div class="fragment">
+  <h3>And now the number, because this is what it bought</h3>
+  <table>
+    <tr><th></th><th>passages you get for "Sacagawea"</th></tr>
+    <tr><td>unresolved — the node <em>named</em> <span class="mono">SACAGAWEA</span></td><td class="num"><strong>8</strong></td></tr>
+    <tr><td>her other 13 names, standing separately</td><td class="num muted">40 more, over 13 nodes</td></tr>
+    <tr class="is-win"><td><strong>after resolution — one node</strong></td><td class="num"><strong>47</strong></td></tr>
+  </table>
+  </div>
+  <div class="marker">§4.6 · 1:30 → §4.6 · the receipt</div>
   <aside class="notes">
+    <p class="muted"><em>4.6 The payoff</em></p>
     <p><strong>1:30. Recording, not live</strong> — on
     <span class="mono">rawluna</span> (pre-disambiguation), so the closed cluster
     comes from <span class="mono">demo_resolution.py --adjudicate</span> rather
@@ -716,19 +666,8 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
     <p><strong>The line:</strong> the graph found her the way a reader does — not
     by how the name is spelled, but by <strong>who she is always standing next
     to.</strong></p>
-  </aside>
-</section>
-
-<section data-menu-title="4.6 8 to 47">
-  <h3>And now the number, because this is what it bought</h3>
-  <table>
-    <tr><th></th><th>passages you get for "Sacagawea"</th></tr>
-    <tr><td>unresolved — the node <em>named</em> <span class="mono">SACAGAWEA</span></td><td class="num"><strong>8</strong></td></tr>
-    <tr><td>her other 13 names, standing separately</td><td class="num muted">40 more, over 13 nodes</td></tr>
-    <tr class="is-win"><td><strong>after resolution — one node</strong></td><td class="num"><strong>47</strong></td></tr>
-  </table>
-  <div class="marker">§4.6 · the receipt</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>4.6 8 to 47</em></p>
     <p><strong>Eight to forty-seven.</strong> That is the section, quantified.</p>
     <p>One detail worth five seconds because it's the mechanism in miniature:
     those 48 passages <strong>do not overlap at all.</strong> Every journal entry
@@ -745,18 +684,11 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
   </aside>
 </section>
 
-<section data-menu-title="4.7 What it costs">
+<section data-menu-title="4.7 What it costs + 4.7 Division of labour">
   <h2>On its own, the graph signal is <span class="bad">bad</span>.</h2>
   <p class="sub">Hundreds of wrong pairs for every right one.</p>
-  <div class="marker">§4.7 · 1:00</div>
-  <aside class="notes">
-    <p><strong>1:00.</strong> Anyone who ships this unfiltered gets nonsense. I
-    want to be straight about that, because the next slide is why it doesn't
-    matter.</p>
-  </aside>
-</section>
 
-<section data-menu-title="4.7 Division of labour">
+  <div class="fragment">
   <h2>Recall is what the <span class="accent">algorithm</span> is for.<br>
       Precision is what the <span class="accent">adjudicator</span> is for.</h2>
   <table style="margin-top:0.8em">
@@ -765,8 +697,15 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
     <tr><td>what the signals propose</td><td class="num"><strong>~1,100</strong></td></tr>
     <tr><td>what that costs to adjudicate</td><td class="num"><em>fractions of a cent</em></td></tr>
   </table>
-  <div class="marker">§4.7 · the table</div>
+  </div>
+  <div class="marker">§4.7 · 1:00 → §4.7 · the table</div>
   <aside class="notes">
+    <p class="muted"><em>4.7 What it costs</em></p>
+    <p><strong>1:00.</strong> Anyone who ships this unfiltered gets nonsense. I
+    want to be straight about that, because the next slide is why it doesn't
+    matter.</p>
+    <hr>
+    <p class="muted"><em>4.7 Division of labour</em></p>
     <p>The algorithm's job is not to decide. It is to turn an O(n²) problem into
     a list short enough that something slower and better can read all of it.</p>
     <p><strong>A signal with 1% precision is not a broken signal when something
@@ -776,22 +715,13 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
   </aside>
 </section>
 
-<section data-menu-title="4.8 What WCC is">
+<section data-menu-title="4.8 What WCC is + 4.8 The problem it solves + 4.8 The correction">
   <h3>Weakly Connected Components</h3>
   <h2>Follow the edges, ignoring direction.<br>
       Everything you can reach is one component.</h2>
   <p class="sub">That's the entire algorithm.</p>
-  <div class="marker">§4.8 · 1:45</div>
-  <aside class="notes">
-    <p><strong>1:45 for all of 4.8.</strong> Say what it <em>is</em> first,
-    because "component" sounds like jargon and isn't: start anywhere, follow
-    every edge you can, ignore which way the arrows point, stop when you can't
-    reach anything new. That set is a component. One pass, linear in the edges,
-    <strong>no parameters</strong> — nothing to tune, nothing to seed.</p>
-  </aside>
-</section>
 
-<section data-menu-title="4.8 The problem it solves">
+  <div class="fragment">
   <h3>The problem it solves</h3>
   <div class="todo">
     §4.8 — <strong>arrows.app export:</strong> three separate pairwise
@@ -799,8 +729,22 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
     JANEY), none of which sees the whole identity, resolving through WCC into
     one entity with four names.
   </div>
-  <div class="marker">§4.8 · closure</div>
+  </div>
+
+  <div class="fragment">
+  <h2>WCC answers "are these connected at all"<br>
+      <span class="muted">not "are these a topic"</span></h2>
+  </div>
+  <div class="marker">§4.8 · 1:45 → §4.8 · closure → §4.8 · the correction</div>
   <aside class="notes">
+    <p class="muted"><em>4.8 What WCC is</em></p>
+    <p><strong>1:45 for all of 4.8.</strong> Say what it <em>is</em> first,
+    because "component" sounds like jargon and isn't: start anywhere, follow
+    every edge you can, ignore which way the arrows point, stop when you can't
+    reach anything new. That set is a component. One pass, linear in the edges,
+    <strong>no parameters</strong> — nothing to tune, nothing to seed.</p>
+    <hr>
+    <p class="muted"><em>4.8 The problem it solves</em></p>
     <p>The problem it solves is the one I actually have: <strong>my matcher only
     ever produces pairs.</strong> It said Sacagawea ≈ the squar, and separately
     the squar ≈ Indian woman. Nothing in the pipeline ever looked at an
@@ -811,14 +755,8 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
     <p><em>§6 comes back to this contrast with a receipt: on the retrieval graph
     WCC returns ONE component containing all 8,139 nodes; Leiden returns 47
     communities inside it. Same family, different question.</em></p>
-  </aside>
-</section>
-
-<section data-menu-title="4.8 The correction">
-  <h2>WCC answers "are these connected at all"<br>
-      <span class="muted">not "are these a topic"</span></h2>
-  <div class="marker">§4.8 · the correction</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>4.8 The correction</em></p>
     <p>It gets taught as clustering and that is misleading. Run it on a raw
     corpus graph and you get one giant component and some dust. Here it does the
     one thing it is exactly right for: <strong>transitive closure.</strong>
@@ -826,7 +764,7 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
   </aside>
 </section>
 
-<section data-menu-title="4.8 The bridge">
+<section data-menu-title="4.8 The bridge + 4.8 The rule">
   <h3 class="bad">And the danger, in the same breath</h3>
   <div class="todo">
     §4.8 bridge-node chain — <strong>arrows.app export:</strong>
@@ -834,8 +772,13 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
     INTERPRETER]── GEORGE DROUILLARD</span>. Each link defensible; closure makes
     them one wrong entity.
   </div>
-  <div class="marker">§4.8 · the bridge</div>
+
+  <div class="fragment">
+  <h2>Fix what enters the candidate set,<br>not what comes out of it.</h2>
+  </div>
+  <div class="marker">§4.8 · the bridge → §4.8 · the rule</div>
   <aside class="notes">
+    <p class="muted"><em>4.8 The bridge</em></p>
     <p><strong>Strongest content in the section.</strong> I did this to my own
     graph. <strong>Sacagawea absorbed Drouillard.</strong></p>
     <p>Ask the model directly and it gets the hard ones right: <em>is Sacagawea
@@ -854,13 +797,8 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
     <p>So it isn't that the model was perfect and the algorithm ruined it.
     <strong>Sparse entities get bad answers from both halves</strong> — and
     closure turns individual mistakes into one merged identity.</p>
-  </aside>
-</section>
-
-<section class="statement" data-menu-title="4.8 The rule">
-  <h2>Fix what enters the candidate set,<br>not what comes out of it.</h2>
-  <div class="marker">§4.8 · the rule</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>4.8 The rule</em></p>
     <p>No amount of per-pair accuracy saves you here, because
     <strong>the pairs that fail are the ones nobody can judge.</strong></p>
     <p>This pipeline has a <span class="mono">flag_generic_locations</span> step
@@ -891,17 +829,11 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
   </aside>
 </section>
 
-
-<!-- ============================ SECTION 5 ================================ -->
-<!-- "Your ranking can't tell people apart" · 10:25 (budget 10:00) · 0:24:45
-     entity-seeded personalized PageRank. LIVE DEMO at 5.9.
-     All eleven cuts applied. Nothing runs on `neo4j`. No retraction story.
-     Numbers are all `lewisclark`; demo uses --seeder decomposed. -->
-
 <section class="divider" data-menu-title="§5 divider">
   <p class="kicker">Section 5 · Query time</p>
   <h2>"Your ranking can't<br>tell people apart"</h2>
   <p class="algo">entity-seeded personalized PageRank</p>
+  
   <aside class="notes">
     <p><strong>10:25 against 10:00.</strong> Eleven cuts already applied. To
     close the last 0:25: move 5.12 to open §6 (a section-budget trade), or drop
@@ -977,20 +909,13 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
   </aside>
 </section>
 
-<section data-menu-title="5.3 PPR the two questions">
+<section data-menu-title="5.3 PPR the two questions + 5.3 The animation">
   <h3>How personalized PageRank actually works</h3>
   <p><strong>PageRank:</strong> what is important in this graph?</p>
   <p><strong class="accent">Personalized PageRank:</strong> what is important
      <em>relative to these nodes?</em></p>
-  <div class="marker">§5.3 · 1:30</div>
-  <aside class="notes">
-    <p><strong>1:30 for all of 5.3.</strong> Reworked because every later beat in
-    this section is an argument about where mass goes, and the room can't follow
-    those arguments from "PageRank in 60 seconds."</p>
-  </aside>
-</section>
 
-<section data-menu-title="5.3 The animation">
+  <div class="fragment">
   <h3>Put mass on the node you care about. Let it spread.</h3>
   <div class="todo">
     §5.3 <strong>mass-distribution animation — the one build in the talk that
@@ -1005,8 +930,15 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
     mention the seed now hold mass</strong>
     <br>step 4 — iterate until the numbers stop moving
   </div>
-  <div class="marker">§5.3 · the animation</div>
+  </div>
+  <div class="marker">§5.3 · 1:30 → §5.3 · the animation</div>
   <aside class="notes">
+    <p class="muted"><em>5.3 PPR the two questions</em></p>
+    <p><strong>1:30 for all of 5.3.</strong> Reworked because every later beat in
+    this section is an argument about where mass goes, and the room can't follow
+    those arguments from "PageRank in 60 seconds."</p>
+    <hr>
+    <p class="muted"><em>5.3 The animation</em></p>
     <p><strong>Say it as one sentence and let the animation carry it:</strong>
     put a unit of mass on the node you care about, let every node hand its mass
     to its neighbours, repeat until the numbers stop changing. Whatever ends up
@@ -1055,11 +987,20 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
   </aside>
 </section>
 
-<section data-menu-title="5.4 Discrete edge">
+<section data-menu-title="5.4 Discrete edge + 5.4 Don't pick one">
   <h3><span class="mono">MENTIONED_IN</span> is a <strong>discrete</strong> edge</h3>
   <h2>Either extraction attached the entity, or it didn't.</h2>
-  <div class="marker">§5.4 · 1:15</div>
+
+  <div class="fragment">
+  <h3>Your entity resolution will never be perfect.</h3>
+  <h2><span class="accent">So stop building retrieval that needs it to be.</span></h2>
+  <p class="footnote">Question mentions a tree. Your graph has four
+     <span class="mono">POPULUS</span> species — and you genuinely do not know
+     which one is "real."</p>
+  </div>
+  <div class="marker">§5.4 · 1:15 → §5.4 · the reframe</div>
   <aside class="notes">
+    <p class="muted"><em>5.4 Discrete edge</em></p>
     <p><strong>1:15 for all of 5.4.</strong> No averaging. Identity is binary.
     That's the hard constraint cosine can only express softly — and it's the
     whole trick.</p>
@@ -1070,17 +1011,8 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
     extracted entity-to-entity edges are out, and so is the chunk-to-chunk
     chain. Why is a good question and it's §6's, where the projection changes and
     it matters. (5.5 cut — cut 1.)</em></p>
-  </aside>
-</section>
-
-<section data-menu-title="5.4 Don't pick one">
-  <h3>Your entity resolution will never be perfect.</h3>
-  <h2><span class="accent">So stop building retrieval that needs it to be.</span></h2>
-  <p class="footnote">Question mentions a tree. Your graph has four
-     <span class="mono">POPULUS</span> species — and you genuinely do not know
-     which one is "real."</p>
-  <div class="marker">§5.4 · the reframe</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>5.4 Don't pick one</em></p>
     <p><strong>This is the slide that earns §4 its place and forgives it.</strong>
     You just watched resolution take Sacagawea from 8 passages to 47 — and leave
     nine forms behind, and leave DREWYER and GEORGE DROUILLARD as two nodes.
@@ -1093,14 +1025,27 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
   </aside>
 </section>
 
-<section data-menu-title="5.4 Live receipt">
+<section data-menu-title="5.4 Live receipt + 5.4 Nov 4 passage">
   <h3>Seeds chosen for the Pacific question, from the question alone</h3>
   <pre class="term"><code data-trim data-noescape>
 PACIFIC OCEAN   (WaterBody · 19 passages)   weight 0.605
 PACIFIC OCIAN   (WaterBody ·  5 passages)   weight 0.395   &lt;- Clark's spelling, unmerged
   </code></pre>
-  <div class="marker">§5.4 · the receipt</div>
+
+  <div class="fragment">
+  <h3>The passage that proves the mechanism</h3>
+  <p class="footnote" style="margin-top:0">Cosine rank <strong>20</strong> · 305 characters · and it <strong>never says her name</strong></p>
+  <div class="passage receipt">
+    "a french man by Name Chabonah, who Speaks the Big Belley language visit us,
+    he wished to hire &amp; informed us his 2 Squars were Snake Indians, we engau
+    him to go on with us and <strong>take one of his wives to interpet the Snake
+    language</strong>"
+    <span class="cite">1804-11-04</span>
+  </div>
+  </div>
+  <div class="marker">§5.4 · the receipt → §5.4 · protected</div>
   <aside class="notes">
+    <p class="muted"><em>5.4 Live receipt</em></p>
     <p>It seeds <strong>both</strong> Pacific nodes. It does not know which is
     "real" and does not need to. <strong>Take an argmax over entity candidates
     and you've built a single point of failure into retrieval that fails
@@ -1118,21 +1063,8 @@ PACIFIC OCIAN   (WaterBody ·  5 passages)   weight 0.395   &lt;- Clark's spelli
     share a token. DREWYER and GEORGE DROUILLARD — one man, no shared token — do
     NOT get hedged. A spelling shard is build-time work. (Q&amp;A pocket: outline
     finding 5k — 297 and 84 on this graph.)</em></p>
-  </aside>
-</section>
-
-<section data-menu-title="5.4 Nov 4 passage">
-  <h3>The passage that proves the mechanism</h3>
-  <p class="footnote" style="margin-top:0">Cosine rank <strong>20</strong> · 305 characters · and it <strong>never says her name</strong></p>
-  <div class="passage receipt">
-    "a french man by Name Chabonah, who Speaks the Big Belley language visit us,
-    he wished to hire &amp; informed us his 2 Squars were Snake Indians, we engau
-    him to go on with us and <strong>take one of his wives to interpet the Snake
-    language</strong>"
-    <span class="cite">1804-11-04</span>
-  </div>
-  <div class="marker">§5.4 · protected</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>5.4 Nov 4 passage</em></p>
     <p><strong>Protected from cutting.</strong> That's the hiring <em>and</em> the
     arrangement — he speaks Hidatsa, she interprets Shoshone. Best single passage
     in the corpus for "which nations did Sacagawea interpret for, and how did
@@ -1146,7 +1078,7 @@ PACIFIC OCIAN   (WaterBody ·  5 passages)   weight 0.395   &lt;- Clark's spelli
   </aside>
 </section>
 
-<section data-menu-title="5.6 The hub trap">
+<section data-menu-title="5.6 The hub trap + 5.6 Three choices + 5.6 The mechanism">
   <h3>Top entities by how many passages mention them</h3>
   <pre class="term"><code data-trim data-noescape>
 825  MERIWETHER LEWIS         &lt;- 28% of the corpus
@@ -1157,20 +1089,8 @@ PACIFIC OCIAN   (WaterBody ·  5 passages)   weight 0.395   &lt;- Clark's spelli
 348  MISSOURI RIVER
 297  DREWYER
   </code></pre>
-  <div class="marker">§5.6 · 0:45</div>
-  <aside class="notes">
-    <p><strong>0:45.</strong> <strong>Lewis is in 28% of the corpus — and the elk
-    outranks Captain Clark.</strong> A daily record of what the party shot and
-    ate.</p>
-    <p>Whatever you assumed your hub was — check: on the previous extraction of
-    this same corpus, the <em>white-tailed deer</em> outranked both captains. A
-    better extractor moved the hub. <strong>It did not remove it.</strong></p>
-    <p><strong>And row seven: DREWYER, 297 passages. GEORGE DROUILLARD is a
-    separate node.</strong> §4's unresolved entities, on screen, for free.</p>
-  </aside>
-</section>
 
-<section data-menu-title="5.6 Three choices">
+  <div class="fragment">
   <h3>What hubs do to a naive walk — and what three choices do about it</h3>
   <table>
     <tr><th>graph</th><th>walk</th><th>weights</th><th>same top-8 entities across questions</th></tr>
@@ -1180,8 +1100,29 @@ PACIFIC OCIAN   (WaterBody ·  5 passages)   weight 0.395   &lt;- Clark's spelli
   <pre><code data-trim>
 weight  =  log( 1 + total_chunks / chunks_mentioning_this_entity )
   </code></pre>
-  <div class="marker">§5.6 · the ladder</div>
+  </div>
+
+  <div class="fragment">
+  <h2>Hubs <span class="accent">concentrate</span> at the entity level<br>
+      and <span class="accent">dissipate</span> at the passage level.</h2>
+  <div class="todo">
+    §5.6 — <strong>arrows.app export:</strong> one hub, many arrows in, the same
+    many arrows out, thin.
+  </div>
+  </div>
+  <div class="marker">§5.6 · 0:45 → §5.6 · the ladder → §5.6 · transfers</div>
   <aside class="notes">
+    <p class="muted"><em>5.6 The hub trap</em></p>
+    <p><strong>0:45.</strong> <strong>Lewis is in 28% of the corpus — and the elk
+    outranks Captain Clark.</strong> A daily record of what the party shot and
+    ate.</p>
+    <p>Whatever you assumed your hub was — check: on the previous extraction of
+    this same corpus, the <em>white-tailed deer</em> outranked both captains. A
+    better extractor moved the hub. <strong>It did not remove it.</strong></p>
+    <p><strong>And row seven: DREWYER, 297 passages. GEORGE DROUILLARD is a
+    separate node.</strong> §4's unresolved entities, on screen, for free.</p>
+    <hr>
+    <p class="muted"><em>5.6 Three choices</em></p>
     <p>Top row is the configuration everyone writes first: all your edges,
     damping 0.85 because that's the number in every tutorial, no weighting
     because why would you weight. Fourteen different questions and the walk
@@ -1194,18 +1135,8 @@ weight  =  log( 1 + total_chunks / chunks_mentioning_this_entity )
     <p><em>Middle rows, if you want them out loud (cut 6 moved them here): IDF
     alone gets 2.84 → 2.04; the short walk alone gets to 1.27. Together with the
     projection: 0.47.</em></p>
-  </aside>
-</section>
-
-<section data-menu-title="5.6 The mechanism">
-  <h2>Hubs <span class="accent">concentrate</span> at the entity level<br>
-      and <span class="accent">dissipate</span> at the passage level.</h2>
-  <div class="todo">
-    §5.6 — <strong>arrows.app export:</strong> one hub, many arrows in, the same
-    many arrows out, thin.
-  </div>
-  <div class="marker">§5.6 · transfers</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>5.6 The mechanism</em></p>
     <p><strong>This is the part that transfers.</strong> A hub receives mass from
     all 825 passages that mention it — then sprays it back across all 825, so
     each gets almost nothing.</p>
@@ -1234,7 +1165,7 @@ weight  =  log( 1 + total_chunks / chunks_mentioning_this_entity )
   </aside>
 </section>
 
-<section data-menu-title="5.9 LIVE DEMO">
+<section data-menu-title="5.9 LIVE DEMO + 5.9 The payoff">
   <h3 class="accent">LIVE DEMO</h3>
   <pre><code class="language-bash" data-trim>
 NEO4J_DATABASE=lewisclark python scripts/demo_pagerank.py \
@@ -1246,19 +1177,8 @@ named in the question:  'Toussaint Charbonneau'  (Person, via fulltext)
 
 TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
   </code></pre>
-  <div class="marker">§5.9 · 0:55 · LIVE</div>
-  <aside class="notes">
-    <p><strong>0:55. One of two live demos.</strong> Warm the DB before you walk
-    on.</p>
-    <p>One seed — because the question names one entity, and the seeder now
-    <em>names</em> entities instead of embedding the whole question. The old
-    semantic seeder added two degree-1 relatives that each spiked one arbitrary
-    passage; they are simply gone.</p>
-    <p><em>Backup recording exists. Runs in ~215 ms.</em></p>
-  </aside>
-</section>
 
-<section data-menu-title="5.9 The payoff">
+  <div class="fragment">
   <h3>Cosine top-8: <span class="bad">2 of 8</span> passages carry him.</h3>
   <h2>Blended top-8: <span class="win">6 of 8.</span></h2>
   <div class="fragment" style="margin-top:1em">
@@ -1267,8 +1187,19 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
       <span class="cite">1805-03-18 · the hiring itself · cosine rank 22</span>
     </div>
   </div>
-  <div class="marker">§5.9 · the promotion</div>
+  </div>
+  <div class="marker">§5.9 · 0:55 · LIVE → §5.9 · the promotion</div>
   <aside class="notes">
+    <p class="muted"><em>5.9 LIVE DEMO</em></p>
+    <p><strong>0:55. One of two live demos.</strong> Warm the DB before you walk
+    on.</p>
+    <p>One seed — because the question names one entity, and the seeder now
+    <em>names</em> entities instead of embedding the whole question. The old
+    semantic seeder added two degree-1 relatives that each spiked one arbitrary
+    passage; they are simply gone.</p>
+    <p><em>Backup recording exists. Runs in ~215 ms.</em></p>
+    <hr>
+    <p class="muted"><em>5.9 The payoff</em></p>
     <p>Cosine's own #1 was the <em>end</em> of the story — the 1806 settlement,
     "Settled with Touisant Chabono for his Services as an enterpreter … 500$ 33⅓
     cents." <strong>The graph adds how the job began.</strong> Cosine had the
@@ -1285,11 +1216,31 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
   </aside>
 </section>
 
-<section data-menu-title="5.10 Limit 1">
+<section class="tight" data-menu-title="5.10 Limit 1 + 5.10 Limit 2 + 5.10 Limit 3">
   <h3>Three things it cannot do</h3>
   <h2>1 · It combines evidence — but you don't choose the weights.</h2>
-  <div class="marker">§5.10 · 1:00</div>
+
+  <div class="fragment">
+  <h2>2 · It cannot enumerate or order.</h2>
+  <p><em>"What was happening in the days before Sergeant Floyd died?"</em></p>
+  <p>18 passages exist in that week. Cosine's top-8 contains <strong>3</strong>.
+     So does every graph variant I tried — including one with the journal's own
+     <span class="mono">NEXT_CHUNK</span> sequence and a long walk:
+     <strong class="bad">3 of 18</strong>.</p>
+  </div>
+
+  <div class="fragment">
+  <h2>3 · It is bounded by extraction.</h2>
+  <p><em>"When was the keelboat sent back down the Missouri?"</em> — the boat the
+     entire first year happened on. Here is every keelboat entity in the graph:</p>
+  <pre class="term"><code data-trim data-noescape>
+'keelboat'  -&gt;  (nothing)
+  </code></pre>
+  <h2 class="fragment bad">There is no keelboat.</h2>
+  </div>
+  <div class="marker">§5.10 · 1:00 → §5.10 · limit 2 → §5.10 · limit 3</div>
   <aside class="notes">
+    <p class="muted"><em>5.10 Limit 1</em></p>
     <p><strong>1:00 for all three limits. Do not cut these — they're what makes
     the multi-tool argument structural rather than a hedge.</strong></p>
     <p><strong>Good news first:</strong> additivity <em>is</em> a conjunction
@@ -1306,34 +1257,13 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
     free to ignore</strong> — and you did not pick that weighting, your graph
     did.</p>
     <p><em>Cut 8 applied — normalisation parenthetical is a Q&amp;A pocket.</em></p>
-  </aside>
-</section>
-
-<section data-menu-title="5.10 Limit 2">
-  <h2>2 · It cannot enumerate or order.</h2>
-  <p><em>"What was happening in the days before Sergeant Floyd died?"</em></p>
-  <p>18 passages exist in that week. Cosine's top-8 contains <strong>3</strong>.
-     So does every graph variant I tried — including one with the journal's own
-     <span class="mono">NEXT_CHUNK</span> sequence and a long walk:
-     <strong class="bad">3 of 18</strong>.</p>
-  <div class="marker">§5.10 · limit 2</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>5.10 Limit 2</em></p>
     <p><strong>A date filter returns all eighteen in one hop.</strong> Nothing in
     those passages' vocabulary <em>or</em> entity structure says "the days before
     Floyd died." Only the date does.</p>
-  </aside>
-</section>
-
-<section data-menu-title="5.10 Limit 3">
-  <h2>3 · It is bounded by extraction.</h2>
-  <p><em>"When was the keelboat sent back down the Missouri?"</em> — the boat the
-     entire first year happened on. Here is every keelboat entity in the graph:</p>
-  <pre class="term"><code data-trim data-noescape>
-'keelboat'  -&gt;  (nothing)
-  </code></pre>
-  <h2 class="fragment bad">There is no keelboat.</h2>
-  <div class="marker">§5.10 · limit 3</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>5.10 Limit 3</em></p>
     <p>The journals call it "the barge" or "the boat," the extractor never
     promoted it to an entity, and the seeder honestly reports the miss. The
     April 7th 1805 passage that answers the question <em>exists</em> — and
@@ -1384,23 +1314,11 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
   </aside>
 </section>
 
-<section data-menu-title="5.12 Names nothing">
+<section data-menu-title="5.12 Names nothing + 5.12 The buttons">
   <h3>"What goods did the expedition trade with Native nations along the route?"</h3>
   <h2>Entities named: <span class="bad">none.</span></h2>
-  <div class="marker">§5.12 · 1:00</div>
-  <aside class="notes">
-    <p><strong>1:00.</strong> The section so far said: name the entity, make
-    identity the hard constraint. Fine. <strong>Now take that away.</strong></p>
-    <p>The decomposer parses this and comes back empty — correctly. There is no
-    tag to filter on. Every trick in this section is off the table, and cosine is
-    the only baseline that even runs.</p>
-    <p><strong>⚠️ This is the beat to MOVE TO §6 if you need §5's last
-    0:25</strong> — the illness collapse is §6's motivating failure and this sets
-    it up.</p>
-  </aside>
-</section>
 
-<section data-menu-title="5.12 The buttons">
+  <div class="fragment">
   <h3>The promotion — cosine rank <strong>77</strong></h3>
   <p class="footnote" style="margin-top:0">Carried by <span class="mono">BUTTONS</span> — a <span class="mono">Supply</span> node in <strong>5</strong> passages</p>
   <div class="passage receipt">
@@ -1411,8 +1329,20 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
     they returned with about 3 bushels of roots and some bread"
     <span class="cite">1806-06-02</span>
   </div>
-  <div class="marker">§5.12 · the receipt</div>
+  </div>
+  <div class="marker">§5.12 · 1:00 → §5.12 · the receipt</div>
   <aside class="notes">
+    <p class="muted"><em>5.12 Names nothing</em></p>
+    <p><strong>1:00.</strong> The section so far said: name the entity, make
+    identity the hard constraint. Fine. <strong>Now take that away.</strong></p>
+    <p>The decomposer parses this and comes back empty — correctly. There is no
+    tag to filter on. Every trick in this section is off the table, and cosine is
+    the only baseline that even runs.</p>
+    <p><strong>⚠️ This is the beat to MOVE TO §6 if you need §5's last
+    0:25</strong> — the illness collapse is §6's motivating failure and this sets
+    it up.</p>
+    <hr>
+    <p class="muted"><em>5.12 The buttons</em></p>
     <p><strong>The captains cutting the buttons off their coats to buy
     food.</strong> The best trade-goods passage in the corpus, and cosine had it
     at 77 — because it doesn't <em>describe</em> trade goods, <strong>it spends
@@ -1430,7 +1360,7 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
   </aside>
 </section>
 
-<section data-menu-title="5.13 The brother">
+<section data-menu-title="5.13 The brother + 5.13 The name">
   <h3>"What do we know about Sacagawea's brother?"</h3>
   <table>
     <tr><th>mode</th><th>its top-8 contains</th></tr>
@@ -1438,8 +1368,20 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
     <tr><td>filter on SACAGAWEA</td><td>can only ever see <strong>2 of 16</strong> — he's mostly in passages she isn't</td></tr>
     <tr><td>blend with the walk</td><td>her biography — <strong class="bad">0 of 16</strong></td></tr>
   </table>
-  <div class="marker">§5.13 · 0:45</div>
+
+  <div class="fragment">
+  <h3>What the walk actually did</h3>
+  <div class="passage receipt">
+    "Charbono, the Indian Woman, <strong class="win">Cameahwait</strong> and
+    about 50 men… arrived"
+    <span class="cite">pure walk, rank 4 · cosine had this passage at 1187</span>
+  </div>
+  <h2 class="fragment" style="margin-top:0.8em">The walk's top-8 hands you<br>
+      the thing you were missing — <span class="accent">the name.</span></h2>
+  </div>
+  <div class="marker">§5.13 · 0:45 → §5.13 · two-step</div>
   <aside class="notes">
+    <p class="muted"><em>5.13 The brother</em></p>
     <p><strong>0:45.</strong> Sixteen passages are about her brother. Here is
     everything failing to find them, and I want to show you the failure because
     <strong>the reason is one number.</strong></p>
@@ -1454,20 +1396,8 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
     <strong>338 → 601. All fourteen fall.</strong> The mass crosses exactly where
     the mechanism says. <strong>There just isn't enough of it — the anchor is too
     famous.</strong></p>
-  </aside>
-</section>
-
-<section data-menu-title="5.13 The name">
-  <h3>What the walk actually did</h3>
-  <div class="passage receipt">
-    "Charbono, the Indian Woman, <strong class="win">Cameahwait</strong> and
-    about 50 men… arrived"
-    <span class="cite">pure walk, rank 4 · cosine had this passage at 1187</span>
-  </div>
-  <h2 class="fragment" style="margin-top:0.8em">The walk's top-8 hands you<br>
-      the thing you were missing — <span class="accent">the name.</span></h2>
-  <div class="marker">§5.13 · two-step</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>5.13 The name</em></p>
     <p>One-shot retrieval can't answer this question. But query CAMEAHWAIT and
     all sixteen passages are simply his tag set. On a famous anchor this is a
     <strong>two-step retrieval</strong>: the walk performs the name-discovery
@@ -1513,16 +1443,11 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
   </aside>
 </section>
 
-
-<!-- ============================ SECTION 6 ================================ -->
-<!-- "Your context is redundant" · 6:00 · starts 0:35:10
-     Leiden only — Louvain is gone from the code too. No vendor procedure
-     signatures on slides. demo_communities.py ships as captured output. -->
-
 <section class="divider" data-menu-title="§6 divider">
   <p class="kicker">Section 6 · Query time</p>
   <h2>"Your context is redundant"</h2>
   <p class="algo">Leiden community detection, and conductance</p>
+  
   <aside class="notes">
     <p><strong>⏱ TIMEKEEPING ANCHOR #2 of 2 — see 6.1.</strong></p>
     <p>6:00, on budget. If 5.12 moved here, this becomes 7:00.</p>
@@ -1561,18 +1486,13 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
   </aside>
 </section>
 
-<section data-menu-title="6.2 WCC vs Leiden">
+<section data-menu-title="6.2 WCC vs Leiden + 6.2 One WCC, 47 communities">
   <h3>Same family as §4's WCC. Opposite question.</h3>
   <p><strong>WCC</strong> (§4): <em>connected at all</em> — one path suffices.</p>
   <p><strong class="accent">Leiden</strong>: <em>densely connected relative to
      chance</em> — neighborhoods, not reachability.</p>
-  <div class="marker">§6.2 · 1:00</div>
-  <aside class="notes">
-    <p><strong>1:00 for all of 6.2.</strong></p>
-  </aside>
-</section>
 
-<section data-menu-title="6.2 One WCC, 47 communities">
+  <div class="fragment">
   <h3>The same graph, both algorithms, measured</h3>
   <div class="todo">
     §6.2 — <strong>arrows.app export, Nathan's ask.</strong> One outlined
@@ -1583,8 +1503,13 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
     WCC says <strong>1</strong>. Leiden says <strong>47</strong>.
     <em>(Numbers verified 2026-09-08.)</em>
   </div>
-  <div class="marker">§6.2 · the diagram</div>
+  </div>
+  <div class="marker">§6.2 · 1:00 → §6.2 · the diagram</div>
   <aside class="notes">
+    <p class="muted"><em>6.2 WCC vs Leiden</em></p>
+    <p><strong>1:00 for all of 6.2.</strong></p>
+    <hr>
+    <p class="muted"><em>6.2 One WCC, 47 communities</em></p>
     <p>Run both on the same projection and this is what you get: <strong>WCC
     returns one component containing every node in the graph. Leiden returns
     forty-seven communities inside it.</strong></p>
@@ -1599,11 +1524,19 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
   </aside>
 </section>
 
-<section data-menu-title="6.2 One call">
+<section data-menu-title="6.2 One call + 6.2 Honesty beat">
   <h2>47 communities · all 2,913 chunks covered · ~100 ms</h2>
   <h3><strong class="accent">weighted · seeded · single-threaded</strong></h3>
-  <div class="marker">§6.2 · the call</div>
+
+  <div class="fragment">
+  <h3 class="warn">Leiden <em>guarantees</em> internally connected communities.</h3>
+  <h2>Ours had one 24-node community split <strong>13 / 11</strong>.</h2>
+  <p class="sub">Verify — it's one WCC call per community, and you already know
+     WCC from §4.</p>
+  </div>
+  <div class="marker">§6.2 · the call → §6.2 · the asterisk</div>
   <aside class="notes">
+    <p class="muted"><em>6.2 One call</em></p>
     <p>One call — and deliberately <strong>not</strong> shown as one vendor's
     procedure signature; §9.2 argues these are algorithms rather than products
     and I'd rather not undercut that here. Every library spells this differently
@@ -1620,16 +1553,8 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
     disconnected communities, no seed parameter — deals a fresh partition every
     run. That last property was silently in this talk's own benchmark until
     2026-09-08. One sentence, then move on.</em></p>
-  </aside>
-</section>
-
-<section data-menu-title="6.2 Honesty beat">
-  <h3 class="warn">Leiden <em>guarantees</em> internally connected communities.</h3>
-  <h2>Ours had one 24-node community split <strong>13 / 11</strong>.</h2>
-  <p class="sub">Verify — it's one WCC call per community, and you already know
-     WCC from §4.</p>
-  <div class="marker">§6.2 · the asterisk</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>6.2 Honesty beat</em></p>
     <p><strong>The asterisk is the section in miniature:</strong> the algorithm's
     <em>paper</em> guarantees connectivity; the implementation on your graph is a
     claim to check, and the check costs one query.
@@ -1724,7 +1649,7 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
   </aside>
 </section>
 
-<section data-menu-title="6.4 The fix">
+<section data-menu-title="6.4 The fix + 6.4 What filled the slots">
   <h3>The whole fix</h3>
   <pre><code class="language-python" data-trim>
 wide   = expand(question, k=50)                  # section 5's walk, deeper slate
@@ -1735,18 +1660,8 @@ window = diversify(wide, max_per_community=2)    # <= 2 chunks per community
     <tr><td>walk top-8</td><td class="num bad">1</td><td class="num bad">1</td><td class="num">2</td></tr>
     <tr class="is-win"><td><strong>walk, capped</strong></td><td class="num"><strong>4</strong></td><td class="num"><strong>5</strong></td><td class="num"><strong>0</strong></td></tr>
   </table>
-  <div class="marker">§6.4 · 1:45</div>
-  <aside class="notes">
-    <p><strong>1:45. Do NOT cut this beat — it's the fix the section exists to
-    show.</strong></p>
-    <p><strong>The cap applies to the walk's own ranking</strong> — that matters.
-    Capping cosine is the textbook demo; our collapse came from the walk, so the
-    cap has to ride its slate. Keep the two best Long Camp passages, then keep
-    walking down the ranking, skipping any community that already gave two.</p>
-  </aside>
-</section>
 
-<section data-menu-title="6.4 What filled the slots">
+  <div class="fragment">
   <h3>What the freed slots filled with <span class="muted">(hand-read)</span></h3>
   <pre class="term"><code data-trim data-noescape>
 1806-08-12  Lewis shot through the thigh by Cruzatte              (cosine rank 21)
@@ -1757,8 +1672,18 @@ window = diversify(wide, max_per_community=2)    # <= 2 chunks per community
     <h3>And on the two questions the walk already won:</h3>
     <h2>The capped window is <span class="accent">byte-identical</span> to the uncapped one.</h2>
   </div>
-  <div class="marker">§6.4 · the receipts</div>
+  </div>
+  <div class="marker">§6.4 · 1:45 → §6.4 · the receipts</div>
   <aside class="notes">
+    <p class="muted"><em>6.4 The fix</em></p>
+    <p><strong>1:45. Do NOT cut this beat — it's the fix the section exists to
+    show.</strong></p>
+    <p><strong>The cap applies to the walk's own ranking</strong> — that matters.
+    Capping cosine is the textbook demo; our collapse came from the walk, so the
+    cap has to ride its slate. Keep the two best Long Camp passages, then keep
+    walking down the ranking, skipping any community that already gave two.</p>
+    <hr>
+    <p class="muted"><em>6.4 What filled the slots</em></p>
     <p>What came back — judged by reading, like everything in this talk: the most
     famous injury of the whole expedition, <strong>Lewis shot by his own
     hunter</strong>, which <em>no</em> strategy's window had. The Fort Clatsop
@@ -1771,7 +1696,7 @@ window = diversify(wide, max_per_community=2)    # <= 2 chunks per community
   </aside>
 </section>
 
-<section data-menu-title="6.5 The bound">
+<section data-menu-title="6.5 The bound + 6.6 Hand-off">
   <h3>What the cap cannot do</h3>
   <p>Community <strong>23</strong>: 286 chunks, 1804-05 → 1806-09 — "the corps members."</p>
   <p>It contains Long Camp <em>and</em> the Sept-1805 starvation sickness.</p>
@@ -1779,8 +1704,19 @@ window = diversify(wide, max_per_community=2)    # <= 2 chunks per community
      <span class="muted">(it sits at cosine rank 2 — plain vector search has it)</span>.</p>
   <h2 class="fragment" style="margin-top:0.8em">A cap <strong>diversifies a ranking</strong>.<br>
       It cannot make the ranking deeper.</h2>
-  <div class="marker">§6.5 · 1:00 · drop-in candidate</div>
+
+  <div class="fragment">
+  <h3>The decision table, one row longer</h3>
+  <table>
+    <tr><th>resolution outcome</th><th>route</th></tr>
+    <tr class="is-highlighted"><td>zero mentions (thematic)</td><td>passage-seeded expansion <strong>+ community cap</strong></td></tr>
+    <tr><td>seeds df ≲ 15</td><td>expand</td></tr>
+    <tr><td>seeds df ≳ 40</td><td>filter + cosine, stop</td></tr>
+  </table>
+  </div>
+  <div class="marker">§6.5 · 1:00 · drop-in candidate → §6.6 · 0:30</div>
   <aside class="notes">
+    <p class="muted"><em>6.5 The bound</em></p>
     <p><strong>1:00. First drop-in if the clock is tight.</strong></p>
     <p><strong>Two honest limits. First:</strong> communities are coarser than
     episodes. The passages this window still misses aren't missing because the
@@ -1792,19 +1728,8 @@ window = diversify(wide, max_per_community=2)    # <= 2 chunks per community
     <p>So §5's routing rule gets its final row: <em>questions that name nothing →
     passage-seeded expansion, capped per community</em> — with the cap understood
     as <strong>insurance against episode collapse, not a relevance signal.</strong></p>
-  </aside>
-</section>
-
-<section data-menu-title="6.6 Hand-off">
-  <h3>The decision table, one row longer</h3>
-  <table>
-    <tr><th>resolution outcome</th><th>route</th></tr>
-    <tr class="is-highlighted"><td>zero mentions (thematic)</td><td>passage-seeded expansion <strong>+ community cap</strong></td></tr>
-    <tr><td>seeds df ≲ 15</td><td>expand</td></tr>
-    <tr><td>seeds df ≳ 40</td><td>filter + cosine, stop</td></tr>
-  </table>
-  <div class="marker">§6.6 · 0:30</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>6.6 Hand-off</em></p>
     <p><strong>0:30.</strong> The window now covers the question instead of
     restating one afternoon.</p>
     <p><strong>The next failure is different in kind:</strong> the system can
@@ -1814,17 +1739,11 @@ window = diversify(wide, max_per_community=2)    # <= 2 chunks per community
   </aside>
 </section>
 
-
-<!-- ============================ SECTION 7 ================================ -->
-<!-- "You can't explain the answer" · 5:00 · starts 0:41:10
-     LIVE: one terminal session, two queries (7.2 and 7.4).
-     ⚠️ WARM THE PROJECTION — first path query ~212 ms, then ~23 ms.
-     Anchors must be pinned: lewisclark has no Person vector index. -->
-
 <section class="divider" data-menu-title="§7 divider">
   <p class="kicker">Section 7 · Query time</p>
   <h2>"You can't explain the answer"</h2>
   <p class="algo">Yen's k-shortest paths, with receipts</p>
+  
   <aside class="notes">
     <p><strong>⚠️ PRE-FLIGHT: run one throwaway path query before you walk on.</strong>
     First call in a fresh process is ~212 ms; every one after is ~23 ms. Warm it
@@ -1853,7 +1772,7 @@ window = diversify(wide, max_per_community=2)    # <= 2 chunks per community
   </aside>
 </section>
 
-<section data-menu-title="7.2 LIVE Ask HOW">
+<section data-menu-title="7.2 LIVE Ask HOW + 7.2 Route 3 receipt">
   <h3 class="accent">LIVE DEMO</h3>
   <pre><code class="language-bash" data-trim>
 demo_paths.py --from Sacagawea --to Cameahwait
@@ -1864,16 +1783,8 @@ demo_paths.py --from Sacagawea --to Cameahwait
 3  SACAGAWEA -[PARTICIPATED_IN]-&gt;  MEETING OF THOSE PEOPLE
                                    &lt;-[PARTICIPATED_IN]-            CAMEAHWAIT
   </code></pre>
-  <div class="marker">§7.2 · 1:30 · LIVE</div>
-  <aside class="notes">
-    <p><strong>1:30. Live — first of two queries in one terminal session.</strong></p>
-    <p>Route 1: they both knew Lewis — <strong>true and useless.</strong>
-    Route 2: same nation — warmer. Route 3: both participated in one event, and
-    both hops cite the <strong>same journal entry</strong>.</p>
-  </aside>
-</section>
 
-<section data-menu-title="7.2 Route 3 receipt">
+  <div class="fragment">
   <h3>Route 3's receipt — both hops, the same passage</h3>
   <div class="passage receipt">
     "Capt. Clark arrived with the Interpreter Charbono, and the Indian woman,
@@ -1881,8 +1792,16 @@ demo_paths.py --from Sacagawea --to Cameahwait
     the meeting of those people was really affecting…"
     <span class="cite">Lewis, August 17, 1805</span>
   </div>
-  <div class="marker">§7.2 · the receipt</div>
+  </div>
+  <div class="marker">§7.2 · 1:30 · LIVE → §7.2 · the receipt</div>
   <aside class="notes">
+    <p class="muted"><em>7.2 LIVE Ask HOW</em></p>
+    <p><strong>1:30. Live — first of two queries in one terminal session.</strong></p>
+    <p>Route 1: they both knew Lewis — <strong>true and useless.</strong>
+    Route 2: same nation — warmer. Route 3: both participated in one event, and
+    both hops cite the <strong>same journal entry</strong>.</p>
+    <hr>
+    <p class="muted"><em>7.2 Route 3 receipt</em></p>
     <p><strong>The recognition scene — the one passage in 2,913 that states the
     sibling relationship.</strong> One passage is the entire explanation, and it
     arrived as a <strong>citation</strong>, not a similarity score. <strong>About
@@ -1974,26 +1893,6 @@ demo_paths.py --from Sacagawea --to Cameahwait
   </aside>
 </section>
 
-
-<!-- ============================ SECTION 8 ================================ -->
-<!-- "Does this actually help?" · 4:00 · starts 0:46:10
-     Audience: developers who want practical guidelines — not statisticians.
-     No macro/micro, variance, or confidence vocabulary on screen.
-     All numbers re-measured 2026-09-08 on the Leiden default. -->
-
-<section class="divider" data-menu-title="§8 divider">
-  <p class="kicker">Section 8 · The receipts</p>
-  <h2>"Does this actually help?"</h2>
-  <p class="algo">answer-entity recall over 14 questions</p>
-  <aside class="notes">
-    <p><strong>The boring result IS the result.</strong> This section's job is to
-    earn trust by reporting +1 gold entity as +1 gold entity, right before §9
-    tells them when that one entity is the one they need.</p>
-    <p>Slides carry things they can <em>do</em>; methodology lives in these
-    notes.</p>
-  </aside>
-</section>
-
 <section data-menu-title="8.1 Measure it yourself">
   <h3>How do you know if any of this helped <em>your</em> corpus?</h3>
   <h2>Did the retrieved context contain the entities<br>a correct answer needs?</h2>
@@ -2017,10 +1916,17 @@ demo_paths.py --from Sacagawea --to Cameahwait
     fixing that was half the work of this section. <strong>Verify your gold
     labels against the graph before you trust a number</strong>; that script's in
     the repo too.</p>
+    <hr>
+    <p class="muted"><em>§8 divider (no slide — folded here)</em></p>
+    <p><strong>The boring result IS the result.</strong> This section's job is to
+    earn trust by reporting +1 gold entity as +1 gold entity, right before §9
+    tells them when that one entity is the one they need.</p>
+    <p>Slides carry things they can <em>do</em>; methodology lives in these
+    notes.</p>
   </aside>
 </section>
 
-<section data-menu-title="8.2 The table">
+<section data-menu-title="8.2 The table + 8.2 expand vs ppr">
   <h3>Fourteen questions, seven strategies, k=8</h3>
   <table>
     <tr><th>strategy</th><th>what you watched</th><th>recall</th><th>Δ vs vector</th><th>p50</th></tr>
@@ -2039,8 +1945,14 @@ demo_paths.py --from Sacagawea --to Cameahwait
     <h3 class="win">✓ Controls: every strategy scored 100%, every run.</h3>
     <p class="sub">Nothing paid for the hard questions with the easy ones.</p>
   </div>
-  <div class="marker">§8.2 · 1:15</div>
+
+  <div class="fragment callout">
+    <p><span class="mono">expand</span> is <strong>the demo you watched at minute 25</strong> — the <strong class="win">+1.8</strong> row.<br>
+       <span class="mono">ppr</span> is the variant shown for contrast — the <strong class="muted">+0.0</strong> row.</p>
+  </div>
+  <div class="marker">§8.2 · 1:15 → §8.2 · say this out loud</div>
   <aside class="notes">
+    <p class="muted"><em>8.2 The table</em></p>
     <p><strong>1:15. Read it top to bottom.</strong> Plain vector, on a graph
     where §4 already did its job, gets 86%. The best graph strategy adds 1.8
     points — in raw counts, <strong>one more answer entity in the
@@ -2058,16 +1970,8 @@ demo_paths.py --from Sacagawea --to Cameahwait
     mean is the honest number and the range is the honest error bar.</p>
     <p><strong>Three — the whole right-hand column is milliseconds.</strong> The
     graph is not your latency problem.</p>
-  </aside>
-</section>
-
-<section data-menu-title="8.2 expand vs ppr">
-  <h2><span class="mono">expand</span> is the demo you watched at minute 25.<br>
-      It is the <strong class="win">+1.8</strong> row.</h2>
-  <h2><span class="mono">ppr</span> is the variant I showed for contrast.<br>
-      It is the <strong class="muted">+0.0</strong> row.</h2>
-  <div class="marker">§8.2 · say this out loud</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>8.2 expand vs ppr</em></p>
     <p><strong>Say this out loud, because the audience cannot read it off the
     table.</strong> The demo at minute 25 is <span class="mono">expand</span> — it
     scores <em>every chunk in the corpus</em>, which is the only way a passage at
@@ -2106,18 +2010,13 @@ demo_paths.py --from Sacagawea --to Cameahwait
   </aside>
 </section>
 
-<section data-menu-title="8.4 The Ghoshal split">
+<section data-menu-title="8.4 The Ghoshal split + 8.4 Three signals">
   <h2>Graph algorithms fix <strong class="accent">reasoning</strong> problems.<br>
       They do very little for <strong class="warn">coverage</strong> problems.</h2>
   <p class="sub">If retrieval fails because the right chunk never came back —
      fix your chunking and your embeddings first.</p>
-  <div class="marker">§8.4 · 1:00</div>
-  <aside class="notes">
-    <p><strong>1:00. Vocabulary borrowed from Ghoshal, with attribution.</strong></p>
-  </aside>
-</section>
 
-<section data-menu-title="8.4 Three signals">
+  <div class="fragment">
   <h3>Reach for the graph when:</h3>
   <ol>
     <li>the answer requires <strong>traversal</strong>, not lookup —
@@ -2128,8 +2027,13 @@ demo_paths.py --from Sacagawea --to Cameahwait
     <li>the question is about <strong>how things connect</strong>, not what they
         say — <em>"what about her brother?"</em></li>
   </ol>
-  <div class="marker">§8.4 · the shapes</div>
+  </div>
+  <div class="marker">§8.4 · 1:00 → §8.4 · the shapes</div>
   <aside class="notes">
+    <p class="muted"><em>8.4 The Ghoshal split</em></p>
+    <p><strong>1:00. Vocabulary borrowed from Ghoshal, with attribution.</strong></p>
+    <hr>
+    <p class="muted"><em>8.4 Three signals</em></p>
     <p><strong>All three of these you watched happen.</strong></p>
     <p><strong>Traversal</strong> is the cold open, closed. Charbonneau's role: 2
     of 8 became 6 of 8, and the passage that made it work was the enlistment
@@ -2174,22 +2078,7 @@ demo_paths.py --from Sacagawea --to Cameahwait
   </aside>
 </section>
 
-
-<!-- ============================ SECTION 9 ================================ -->
-<!-- How to implement this · 3:00 · starts 0:50:10
-     Deliberately brief and vendor-plural. NetworkX named, never benchmarked. -->
-
-<section class="divider" data-menu-title="§9 divider">
-  <p class="kicker">Section 9 · 3 minutes</p>
-  <h2>How to implement this</h2>
-  <p class="algo">the router, the tools, and what not to tune</p>
-  <aside class="notes">
-    <p>The honest axis is not "who has a better PageRank" — it's
-    <em>where does your graph live, and how often does it change.</em></p>
-  </aside>
-</section>
-
-<section data-menu-title="9.1 The curve">
+<section data-menu-title="9.1 The curve + 9.1 The router">
   <h3>One number decides — and here's the curve underneath it</h3>
   <p class="footnote" style="margin-top:0">38,098 anchor–satellite pairs · median walk-rank of the satellite's unshared passages, by anchor degree</p>
   <table>
@@ -2206,8 +2095,18 @@ demo_paths.py --from Sacagawea --to Cameahwait
     <span class="mono">results/bridge-decay-lewisclark.csv</span>. The table
     stays in the appendix/PDF.
   </div>
-  <div class="marker">§9.1 · 1:15</div>
+
+  <div class="fragment">
+  <h3>The router is one query</h3>
+  <pre><code class="language-cypher" data-trim>
+MATCH (e {canonicalName: $seed})-[:MENTIONED_IN]->(c)
+RETURN count(c)
+// <= 15 -> walk  ·  >= 40 -> filter + cosine  ·  0 -> passage-expand
+  </code></pre>
+  </div>
+  <div class="marker">§9.1 · 1:15 → §9.1 · the router</div>
   <aside class="notes">
+    <p class="muted"><em>9.1 The curve</em></p>
     <p><strong>1:15.</strong> §5 ended with a decision table; here is the curve
     underneath it. <strong>Monotonic, no exceptions</strong>, and the two cases
     you watched sit right on it — <strong>in this sweep</strong>, the Walla Walla
@@ -2220,18 +2119,8 @@ demo_paths.py --from Sacagawea --to Cameahwait
     measurements, two numbers, and the audience heard the first one nine minutes
     ago — <strong>so name the measurement, or it reads as a number that
     drifted.</strong></p>
-  </aside>
-</section>
-
-<section data-menu-title="9.1 The router">
-  <h3>The router is one query</h3>
-  <pre><code class="language-cypher" data-trim>
-MATCH (e {canonicalName: $seed})-[:MENTIONED_IN]->(c)
-RETURN count(c)
-// <= 15 -> walk  ·  >= 40 -> filter + cosine  ·  0 -> passage-expand
-  </code></pre>
-  <div class="marker">§9.1 · the router</div>
-  <aside class="notes">
+    <hr>
+    <p class="muted"><em>9.1 The router</em></p>
     <p>The mechanism is the bridge fraction — how much of the seed's edge mass
     points toward the answer — but <strong>you can't observe that before
     retrieving. Degree you can.</strong> It's one COUNT query, it runs before you
@@ -2252,6 +2141,10 @@ RETURN count(c)
     required).</p>
     <p><em>ASSET: annotate the three routes on the Cypher itself, not a second
     slide.</em></p>
+    <hr>
+    <p class="muted"><em>§9 divider (no slide — folded here)</em></p>
+    <p>The honest axis is not "who has a better PageRank" — it's
+    <em>where does your graph live, and how often does it change.</em></p>
   </aside>
 </section>
 
@@ -2305,10 +2198,6 @@ RETURN count(c)
     Drafted number-free deliberately.</em></p>
   </aside>
 </section>
-
-
-<!-- ============================ SECTION 10 =============================== -->
-<!-- Three things to take home · 2:00 · starts 0:53:10 · Q&A from 0:55:10 -->
 
 <section data-menu-title="10.1 Three things">
   <h3>Three things to take home</h3>

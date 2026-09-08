@@ -240,6 +240,26 @@
   letter-spacing: 0.08em;
 }
 
+/* A compact emphasis block for a build that has to share a slide with a table
+   — see §8.2, where two headings would have overflowed the benchmark slide. */
+.reveal .callout {
+  border-left: 4px solid var(--accent);
+  background: rgba(1, 139, 255, 0.10);
+  border-radius: 4px;
+  padding: 0.45em 0.75em;
+  font-size: 0.72em;
+  line-height: 1.45;
+  margin-top: 0.5em;
+}
+.reveal .callout p { margin: 0; }
+
+/* For slides carrying three builds that must all be on screen at once
+   (§5.10's three limits). Shrinks the scale, not the content. */
+.reveal section.tight h2 { font-size: 1.25em; margin-bottom: 0.3em; }
+.reveal section.tight h3 { font-size: 0.95em; }
+.reveal section.tight p  { font-size: 0.9em; margin-bottom: 0.4em; }
+.reveal section.tight pre { font-size: 0.44em; margin: 0.25em 0; }
+
 /* ------------------------------------------------------------- layout ---- */
 
 .reveal .two-col {
