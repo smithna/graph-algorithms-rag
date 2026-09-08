@@ -10,9 +10,16 @@ passage that evidences it. The retrieved context is therefore not "eight
 passages that mention Sacagawea" but "the specific passages that establish the
 chain connecting Sacagawea to the Shoshone horses."
 
-Multiple paths matter more than the single shortest one. The shortest path is
-often a trivial co-occurrence; the second and third are where the interesting
-mechanism usually lives.
+Multiple paths matter, but not for the reason usually given. On a graph of
+*typed extracted relationships* the single shortest path is a strong claim, not
+a trivial co-occurrence (hand-read on `lewisclark`: Sacagawea MEMBER_OF Shoshone
+at k=1 is the load-bearing fact for the horse question). Where k earns its keep
+is hub-mediated pairs: Sacagawea and Cameahwait are siblings, but the graph has
+no sibling edge, so k=1 and k=2 route through "both knew Lewis" and the shared
+nation — the recognition scene only surfaces at k=3, through the Event node both
+PARTICIPATED_IN. And higher k exposes graph defects a single path hides: an
+unmerged duplicate makes a route through the anchor's own alias look like an
+explanation. Ask for several routes and read the receipts.
 """
 
 from __future__ import annotations
@@ -101,10 +108,24 @@ def k_shortest_paths(
     config = config or PathConfig()
     graph = graph if graph is not None else get_graph()
 
+    # Two GDS behaviours make the naive call unusable on stage, both measured:
+    # Yen's treats parallel relationships as distinct paths, so asking for k=25
+    # returned 7 distinct node sequences (one route came back 12 times) — hence
+    # the over-request below. And its ordering among equal-cost routes is
+    # nondeterministic: three consecutive identical calls returned the three
+    # tied 2-hop routes in three different orders. Routes are therefore deduped,
+    # then tie-sorted by hop count and route text.
+    #
+    # What that buys, exactly: any cost class the over-request enumerates
+    # COMPLETELY (the 1- and 2-hop classes on the demo pairs) comes back stable,
+    # every run. A cost class larger than the remaining raw budget (3-hop ties
+    # number in the dozens) is sampled, and WHICH ties fill the tail can differ
+    # between invocations — the sort stabilises order, not membership. Talk over
+    # the head of the list; treat the tail as "more routes exist at this cost".
     params: dict = {
         "sourceNode": source.node_id,
         "targetNode": target.node_id,
-        "k": config.k_paths,
+        "k": min(config.k_paths * 5, 50),
         "relationshipTypes": list(config.relationship_types),
     }
     if config.weighted:
@@ -122,15 +143,15 @@ def k_shortest_paths(
         node_ids = list(row.nodeIds)
         if len(node_ids) - 1 > config.max_hops:
             continue
-        # Yen's treats parallel relationships as distinct paths; a route here is
-        # a node sequence, and _hydrate shows one relationship per hop anyway.
         if tuple(node_ids) in seen_routes:
             continue
         seen_routes.add(tuple(node_ids))
         hydrated = _hydrate(node_ids, total_cost=float(row.totalCost))
         if hydrated:
             paths.append(hydrated)
-    return paths
+
+    paths.sort(key=lambda p: (p.total_cost, p.hops, p.describe()))
+    return paths[: config.k_paths]
 
 
 def _hydrate(node_ids: list[int], *, total_cost: float) -> Path | None:
@@ -156,9 +177,16 @@ def _hydrate(node_ids: list[int], *, total_cost: float) -> Path | None:
         for nid in node_ids
     ]
 
-    # One relationship per hop. Yen's works on the undirected projection, so the
-    # stored relationship may point either way — match undirected and record the
-    # direction we actually traversed.
+    # One relationship per hop, reported in its STORED direction. Yen's works on
+    # the undirected projection, so a hop may traverse an edge backwards; the
+    # extractor asserted a direction and the display must keep it, or
+    # "CAMEAHWAIT MEMBER_OF SHOSHONE" renders as "SHOSHONE MEMBER_OF CAMEAHWAIT".
+    #
+    # Receipts: entity merges combine parallel relationships, leaving ~400 with
+    # list-valued chunkId — and the merged date array is RAGGED (measured: 11
+    # chunkIds against 8 dates on one edge), so r.date[i] can belong to a
+    # different receipt than r.chunkId[i]. Every receipt is kept, ordered by the
+    # receipt chunk's own date, and the hop's date comes from its first chunk.
     hop_rows = query(
         """
         UNWIND range(0, size($nodeIds) - 2) AS i
@@ -167,35 +195,37 @@ def _hydrate(node_ids: list[int], *, total_cost: float) -> Path | None:
         MATCH (b) WHERE id(b) = bId
         MATCH (a)-[r]-(b)
         WHERE type(r) <> 'MENTIONED_IN'
-        // Entity merges combine parallel relationships, leaving list-valued
-        // date/chunkId on ~400 relationships; take the first element of each.
-        WITH i, a, b, r,
-             CASE WHEN valueType(r.date) STARTS WITH 'LIST'
-                  THEN r.date[0] ELSE r.date END       AS relDate,
-             CASE WHEN valueType(r.chunkId) STARTS WITH 'LIST'
-                  THEN r.chunkId[0] ELSE r.chunkId END AS relChunkId
-        ORDER BY i, relDate
-        RETURN i,
-               head(labels(a))                       AS fromType,
-               coalesce(a.canonicalName, a.name, '') AS fromName,
-               type(r)                               AS relType,
-               head(labels(b))                       AS toType,
-               coalesce(b.canonicalName, b.name, '') AS toName,
-               relChunkId                            AS chunkId,
-               toString(relDate)                     AS date
+        WITH i, r,
+             head(labels(startNode(r)))                                   AS fromType,
+             coalesce(startNode(r).canonicalName, startNode(r).name, '')  AS fromName,
+             head(labels(endNode(r)))                                     AS toType,
+             coalesce(endNode(r).canonicalName, endNode(r).name, '')      AS toName,
+             CASE WHEN r.chunkId IS NULL THEN []
+                  WHEN valueType(r.chunkId) STARTS WITH 'LIST' THEN r.chunkId
+                  ELSE [r.chunkId] END                                    AS rawIds
+        CALL (rawIds) {
+            OPTIONAL MATCH (c:Chunk) WHERE c.chunkId IN rawIds
+            WITH c ORDER BY c.date
+            RETURN collect(c.chunkId) AS chunkIds, toString(head(collect(c.date))) AS date
+        }
+        RETURN i, fromType, fromName, type(r) AS relType, toType, toName,
+               chunkIds, date
+        ORDER BY i, date
         """,
         nodeIds=node_ids,
     )
 
-    first_per_hop: dict[int, dict] = {}
+    per_hop: dict[int, list[dict]] = {}
     for row in hop_rows:
-        first_per_hop.setdefault(row["i"], row)
+        per_hop.setdefault(row["i"], []).append(row)
 
     relationships: list[Relationship] = []
     for i in range(len(node_ids) - 1):
-        row = first_per_hop.get(i)
-        if row is None:
+        rows = per_hop.get(i)
+        if not rows:
             return None
+        row, rest = rows[0], rows[1:]
+        chunk_ids = row["chunkIds"] or []
         relationships.append(
             Relationship(
                 from_name=row["fromName"],
@@ -203,8 +233,10 @@ def _hydrate(node_ids: list[int], *, total_cost: float) -> Path | None:
                 rel_type=row["relType"],
                 to_name=row["toName"],
                 to_type=row["toType"],
-                chunk_id=row.get("chunkId"),
+                chunk_id=chunk_ids[0] if chunk_ids else None,
                 date=row.get("date"),
+                chunk_ids=chunk_ids,
+                parallel_types=sorted({r["relType"] for r in rest} - {row["relType"]}),
             )
         )
 
@@ -214,19 +246,43 @@ def _hydrate(node_ids: list[int], *, total_cost: float) -> Path | None:
 def evidence_chunks(paths: list[Path], limit: int = 8) -> list[RetrievedChunk]:
     """The journal passages that justify each hop.
 
-    Prefers the ``chunkId`` recorded on the relationship at extraction time.
-    Structural relationships such as ``BELONGS_TO`` carry no chunkId, so those
-    hops fall back to a passage where both endpoints are mentioned together.
+    Prefers the ``chunkId`` receipts recorded on the relationship at extraction
+    time — all of them, since merged relationships carry several. Structural
+    relationships such as ``BELONGS_TO`` carry no chunkId, so those hops fall
+    back to a passage where both endpoints are mentioned together. Know the
+    fallback's limits before putting it on a slide: Taxon nodes have no
+    MENTIONED_IN edges, so a taxonomy hop yields ZERO passages, silently — and
+    the fallback matches endpoints by name, so a duplicate name (two SHOSHONE
+    COVE nodes exist) can cite a passage about the other node.
     """
-    direct_ids: list[str] = []
+    # Receipt selection is round-robin over hops in route order: the first
+    # receipt of every hop of route 1, then route 2, ... then every hop's second
+    # receipt, and so on until the cap. Two simpler schemes both failed a hand
+    # read: taking only receipt [0] hid the explicit membership passage sitting
+    # at [1], and taking every receipt in date order filled the cap with a merged
+    # hop's eleven council passages and pushed the recognition scene out
+    # entirely. Selection follows route priority; display order is chronological.
+    per_hop_ids: list[list[str]] = []
     fallback_pairs: list[tuple[str, str]] = []
 
     for path in paths:
         for rel in path.relationships:
-            if rel.chunk_id:
-                direct_ids.append(rel.chunk_id)
+            if rel.chunk_ids:
+                per_hop_ids.append(rel.chunk_ids)
+            elif rel.chunk_id:
+                per_hop_ids.append([rel.chunk_id])
             else:
                 fallback_pairs.append((rel.from_name, rel.to_name))
+
+    direct_ids: list[str] = []
+    depth = 0
+    while len(direct_ids) < limit and any(depth < len(ids) for ids in per_hop_ids):
+        for ids in per_hop_ids:
+            if depth < len(ids) and ids[depth] not in direct_ids:
+                direct_ids.append(ids[depth])
+                if len(direct_ids) >= limit:
+                    break
+        depth += 1
 
     chunks: dict[str, RetrievedChunk] = {}
 

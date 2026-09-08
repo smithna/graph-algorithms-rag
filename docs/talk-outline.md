@@ -20,7 +20,7 @@ before the section's slides can be written honestly.
 | 4 | Entities are a mess → node similarity + WCC | `resolution.py`, `adjudicate.py`, `demo_resolution.py`, `cooccurrence.py` | ✅ **built, verified, and the section's story settled** — Sacagawea cluster is the spine; see *Section 4 findings* |
 | 5 | Ranking can't tell people apart → entity-seeded PPR | `pagerank.py`, `projection.py`, `decompose.py`, `demo_pagerank.py`, `sweep_pagerank.py`, `measure_seeds.py`, `measure_extraction_grade.py`, `measure_ablation.py`, `measure_budget_graph.py`, `measure_name_shards.py` | ✅ **built, verified live, slides drafted** — thesis settled on the third attempt (co-typed entity substitution); `charbonneau-role` is the spine. **Start at *Section 5 in one page*.** New: decomposed seeder (5d-ter's fix), built + measured — named-entity coverage 10/11 vs semantic 8/11, finding 5f. Open: title, demo-graph choice, whether 5f gets stage time. New: 5h screens PPR's remaining case after 5g's filter parity; **framing approved** (5h-5: gold-plated §4 path vs budget cheap-extraction path, walk compensates at query time). **Ablation built and measured (5i, `measure_ablation.py`): the filter goes blind to the coref-only passages and the walk does NOT buy them back — ranks 114–1108 ablated vs 11–62 full; SACAGAWEA keeps 6/64 edges; NEXT_CHUNK is no coref patch. Replicated on a REAL budget graph (5j, `measure_budget_graph.py` on new `budgetluna` = rawluna + indexes, no resolution): harsher — identity shattered across 19 shards + 25 untagged chunks, fever/Aug-14 at rank 1709/1475, and the edge-support metric scores the worse graph better. Multi-shard seeding measured (5j-bis): oracle shards restore even the FILTER on 2 of 3 — query-time compensation is query-time entity resolution; the sole adjacency win needs the impure shard the correct merge excludes. "About as good, less work up front" refuted; surviving beat: the walk covers duplicates and hubs; shards need resolving — at build time once or at query time forever. Spelling-shard case measured (5k, `measure_name_shards.py`): DREWYER 265 / GEORGE DROUILLARD 63 unmerged ON THE DEMO GRAPH — 5g's parity requires *resolved* tags; vector discovery ranks the other spelling #22 behind the Dorions; the walk trails cosine at bridging it; the df-prop merged walk (median 168) or a two-tag filter fixes it — the easy §3-machinery merge the pipeline never ran. New: 5l (`measure_thematic.py`, on `lewisclark`): thematic questions are the no-filter class — all three decompose to zero mentions, bar drops to cosine alone; hand-read verdict: expand **wins trade-goods** (buttons-off-coats promoted from cosine 77, Twisted Hair gun payment from 112, month coverage 3→7, carried by df-4..16 Supply nodes) **and food-sources** (5→7 months, ration passage from rank 34), **collapses illness-and-injury onto one episode** (4→1 months, 7/8 chunks from Long Camp May 1806) — the measured hand-off to §6 diversification. Passage half discriminative; junk Event entity seeds mattered by demotion, not promotion. New: 5m (`measure_neighborhood.py`, `lewisclark`): neighborhood questions ("Sacagawea's brother") — filter covers 2/16 and 1/8 by construction; hub-anchor flagship fails ALL strategies in the top-8 (bridge = 2 of the anchor's 85 edges; delete-test 338→601 median confirms the bridge is the mechanism) but pure walk surfaces the *name* at rank 4 → two-step retrieval; low-df-anchor replication (Walla Walla chief, anchor df 3) wins one-shot: blend median 10 vs cosine 43, walk crosses 1-of-12 nation shards to the chief's untagged chunks. New: 5n (`measure_bridge_decay.py`): Nathan's agent rule measured as a curve — 38k anchor/satellite pairs, median walk-rank of exclusive chunks monotonic in anchor df (39 at df 2-5 → 1058 at df 300+, no exceptions); routing table: df≲15 expand, df≳40 filter (5g) or two-step (5m), zero mentions passage-expand (5l); §9 material — the graph-tool decision is one COUNT query. **Stage close redrafted (2026-09-07): 5.12–5.14 in `section-05-slides.md` now tell the 5l/5m/5n story (buttons → the brother's name → the routing table), decay curve parked for §9; section runs 14:00 raw, cut plan to 10:00 drafted; sign-offs pending: trims inside protected beats, or 5.12→§6.** **MIGRATED to `lewisclark` (2026-09-07, finding 5o): every 5.1–5.11 number re-measured — failure table 69/300/2; Lewis is now the TOP hub (825 chunks, 28.3%: the deer punchline is dead, elk-outranks-Clark replaces it); ladder 2.84→0.47/8; damping direction holds; alpha=1.0 verifies 14/14; fresh question ~215 ms; hand read redone on the new windows, 3/11 clear (Nathan's read pending); receipts adapted — duplicate seeding now PACIFIC OCEAN/OCIAN df-proportional (one SACAGAWEA remains, §4 merged it), degree imbalance now LEWIS+CYNOMYS (6.1% bonus), extraction bound now the missing keelboat (the horse receipt got FIXED by luna: Aug-18 passage carries HORSES and ranks #1). Slides updated; `neo4j` history kept in findings 1–5k** |
 | 6 | Context is redundant → communities | `communities.py`, `demo_communities.py`, `measure_communities.py` | ✅ **built, measured on `lewisclark`, slides drafted** — Leiden + conductance added; seeded Leiden is the measured partition (Louvain redraws every run, 6a); Louvain's disconnected-community flaw caught live (1,089-node case) and GDS Leiden's guarantee has a measured asterisk (6b); `diversify()` caps *any* strategy's slate — capping the walk repairs 5l's illness collapse (1→4 months, recovers Lewis's gunshot + Fort Clatsop sick-list, hand-read) and is byte-identical on the two questions the walk already wins (6c). Read-pack: `results/communities-lewisclark.md`; slides [`docs/section-06-slides.md`](section-06-slides.md). **Stage scope decided 2026-09-07: Leiden only — Louvain findings are Q&A backup, no slide time** |
-| 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | ✅ runs live (needed a resolution fix — see below) |
+| 7 | Can't explain → path finding | `paths.py`, `demo_paths.py` | ✅ **built, measured on `lewisclark`, slides drafted** — both section claims audited by hand-reading 22 routes / 85 receipt passages (read-pack: `results/paths-lewisclark-readpack.md`, local only). The k claim was BACKWARDS on a typed graph (7a): mechanism at k=1 when the edge exists; the brother pair has NO sibling edge anywhere, so the recognition scene arrives at k=3 via the Event node, both hops citing the same chunk — 5m's two-step completes (7g). Receipts hold, and the five wrong edges they expose are the demo (7b: wrong-captain GUIDED, Cameahwait-as-Hidatsa). `[0]` receipt pick replaced — merged arrays are ragged, 11 chunkIds vs 8 dates (7c); BELONGS_TO fallback returns zero passages silently, taxonomy route needs raw k=40 (7d); Yen's dedup + deterministic tie-sort shipped (7e: k=25 raw → 7 unique, tie order unstable across runs); Step-0 resolver incident reproduces with SHOSHONE BOY as the decoy, fix verified; HIS WIFE tautology route is §4-refusal-meets-§7 (7f). Slides [`docs/section-07-slides.md`](section-07-slides.md) |
 | 8 | Does this help? | `benchmark.py`, `metrics.py` | runs; **gold set is broken worse than reported** — 4 labels missing *and* at least 4 more silently resolving to near-empty decoy nodes. See *Section 5 findings* #10 |
 | 9 | How to implement | docs only | not started |
 | 10 | Takeaways | none | not started |
@@ -3861,6 +3861,180 @@ one-query demonstrations, which is the talk's whole thesis in miniature.
 - ~~**Known compatibility risks**~~ — **all resolved.** See Step 0 results above.
 
 
+### Section 7 findings — working notes, not slide material
+
+All measured on `lewisclark` (2026-09-07). Method: `results/make_paths_readpack.py`
+ran Yen's at k=8 for four anchor pairs and dumped **every hop of every route with
+every receipt's full passage text** — 22 unique routes, 85 distinct passages, all
+hand-read. `results/` is gitignored; the read-pack lives only on this machine and
+regenerates in ~10 s. A fresh path query answers in ~220–470 ms end to end.
+
+#### 7a. The k claim was backwards — on a typed graph, co-occurrence lives at HIGH k
+
+The outline asserted "the single shortest path is usually trivial co-occurrence;
+the 2nd/3rd carry the mechanism." Hand-reading every route says otherwise, and
+the reason is structural: Yen's here walks the **extracted typed relationships**
+(`RELATED` projection), not a co-occurrence graph, so a 1-hop path is a strong
+semantic claim, not an incidental one.
+
+- **Pairs with a direct extracted edge get the mechanism at k=1.**
+  Sacagawea→Shoshone: k=1 is `MEMBER_OF`, and its receipt array contains both
+  the kinship-dependence passage ("our only dependence for a friendly
+  negociation with the Snake Indians on whom we depend for horses") and the
+  explicit membership statement ("they were not of her nation, the Snake
+  Indians"). Charbonneau→Hidatsa: k=1 is `INTERPRETED_FOR`, receipt = the
+  actual hiring scene at Fort Mandan (1804-11-04). For the questions the bank
+  pins to these anchors, k=1 *is* the answer.
+- **The mechanism moves to k>1 exactly when the graph lacks the edge.**
+  Sacagawea→Cameahwait are brother and sister; the graph has **no sibling
+  relationship of any type** (checked: zero SIBLING/BROTHER/SISTER/FAMILY rel
+  types corpus-wide) — the extraction bound, §5o's keelboat pattern again. The
+  recognition scene survives only as an Event node: k=1 routes through "both
+  knew Lewis", k=2 through the shared nation, and **k=3 is both anchors
+  `PARTICIPATED_IN` → MEETING OF THOSE PEOPLE — both hops citing the SAME
+  chunk, `dd08cca`, the passage that says "the Indian woman, who proved to be
+  a sister of the Chif Cameahwait."** One passage is the entire explanation.
+- **Higher k drifts INTO co-occurrence, not out of it.** The 3-hop tie class is
+  shared-hub and shared-commodity routes: both acquired a FLAG / SHIRT /
+  TOBACCO / HORSE / CORN (Supply hubs), both observed the white apple or
+  quawmash (plant hubs), both met Lewis. The claimed direction is inverted.
+
+**The honest re-statement, and it is better on stage:** k does not buy you a
+*better* path at position k — all three 2-hop Cameahwait routes are exact cost
+ties, and Yen's has no notion of which one explains. **k buys the set**; the
+reader (or the LLM the context is handed to) picks the mechanism. That is also
+the honest reason the k=3 position can't be sold as a ranking — see 7e.
+
+#### 7b. Receipts hold — and where they don't, that's the demo
+
+"Every hop hands back the journal passage that evidences it" survives the audit:
+most hops' receipts genuinely evidence the relationship. The exceptions are
+extraction errors that **only reading the receipt catches**, which turns the
+fidelity hazard into the section's strongest material:
+
+| hop on a live route | what the receipt actually says |
+|---|---|
+| `SACAGAWEA -[GUIDED]-> MERIWETHER LEWIS` (her only GUIDED edge) | Clark's journal, 1806-07-06 — she guided **Clark** on the Yellowstone leg; Lewis was elsewhere. Wrong captain. |
+| `CAMEAHWAIT -[MEMBER_OF]-> HIDATSA` | the receipt says the Hidatsa **attacked** his people ("killed or taken prisoners"); he is Shoshone. The edge asserts the opposite of its own evidence. |
+| `NEESH-NE-PAR-KE-YOU-OOK -[MEMBER_OF]-> SHOSHONE` | Cut Nose is Nez Perce; the passage has "The Shoshone man" *traveling with* him. |
+| `LEWIS -[MET_WITH]-> HIDATSA`, receipts [4] and [5] | both are the 1806 Two Medicine **Blackfeet** encounter — the journals call both nations "Minnetares", and the extractor filed the fight under the wrong one. |
+| `SHABONO -[INTERPRETED_FOR]-> SHOSHONE`, receipt [1] | the passage says his **wife** was the interpretess for the Shoshoni; he was for the Crow. |
+
+The audit verdict is not "the receipts are unreliable" — it is that **a path
+without receipts would have asserted all five of those falsehoods with nothing
+to check them against.** The receipt is the audit mechanism. (And the LLM that
+gets the context sees the passage, not the edge label, so the wrong edges are
+survivable at generation time.)
+
+#### 7c. Hazard (a) measured: the `[0]` receipt pick was not honest, and the arrays can't even be zipped
+
+403 relationships carry list-valued `chunkId` from §4's merges (OBSERVED alone:
+260, mean 7.7 receipts, max **113** on one edge). Two measured facts killed the
+old `[0]`-element display:
+
+1. **`[0]` hid the best receipt.** On the demo's own k=1 hop
+   (`SACAGAWEA MEMBER_OF SHOSHONE`, 6 receipts), element [0] was the *implied*
+   receipt (the sulphur-spring passage) while the **explicit** one ("not of her
+   nation, the Snake Indians") sat at [1].
+2. **The arrays are ragged, so `date[i]` does not belong to `chunkId[i]`.**
+   `LEWIS MET_WITH CAMEAHWAIT` carries **11 chunkIds against 8 dates**; checked
+   element-wise, alignment holds at [0]–[1] and is garbage beyond. Any display
+   that zips the two arrays cites real passages under wrong dates.
+
+Shipped fix in `paths.py`: every hop keeps **all** receipts, ordered by the
+receipt chunk's own date; the hop's displayed date comes from the chunk, never
+from the edge array; the demo prints `chunkId (+N more)`. Evidence assembly
+selects round-robin across hops in route order (first receipt of every hop of
+route 1, then route 2, …) — because the two simpler schemes both failed a hand
+read: `[0]`-only hid receipts (above), and all-receipts-in-date-order filled
+the 8-slot cap with one merged hop's eleven council passages and **pushed the
+recognition scene out of the context entirely**. Selection is route-priority;
+display stays chronological.
+
+#### 7d. Hazard (b) measured: the structural fallback returns nothing, silently
+
+`BELONGS_TO` is the only relationship type with no chunkId — 1,172 edges, all
+taxonomy. The fallback ("a passage where both endpoints are mentioned
+together") returns **zero passages for every taxonomy hop**, because Taxon
+nodes have no `MENTIONED_IN` edges at all — verified: URSUS AMERICANUS ~ Ursus
+co-mention count is 0. So a route through the taxonomy arrives with no receipts
+and contributes nothing to context, and nothing warns you. The demo now prints
+`structural — no receipt` instead of a blank.
+
+The taxonomy route is also nearly unreachable: between the two bear species,
+`URSUS AMERICANUS → Ursus → URSUS ARCTOS HORRIBILIS` — the one route that
+actually says "these are both bears" — first appears at **raw k=40**, behind 39
+paths of the form "someone once saw both animals." Second fallback gotcha, noted
+for Q&A: the co-mention query matches endpoints **by name**, and duplicate names
+exist (two SHOSHONE COVE nodes), so a fallback receipt can cite the other node.
+
+#### 7e. Yen's on-stage mechanics: duplicates eat k, and tie order is not stable
+
+Both measured, both now handled in `paths.py`:
+
+- **Parallel relationships are distinct paths to Yen's.** Raw k=25 between the
+  bear species returned **7 distinct node sequences** — one sequence came back
+  12 times (its hops have that many parallel extracted edges). Ask for 8
+  routes, get 5–6. Fix: over-request 5×, dedup on node sequence.
+- **Ordering among equal-cost routes is nondeterministic.** Three consecutive
+  identical calls returned the three tied 2-hop Cameahwait routes in three
+  different orders — and at fixed k the *membership* of the 3-hop tail differed
+  between invocations minutes apart. Fix: deterministic tie-sort
+  (cost, hops, route text). What that buys, precisely: any cost class the raw
+  request enumerates completely (the 1- and 2-hop classes on every demo pair)
+  is stable every run; a class bigger than the leftover budget (3-hop ties
+  number in the dozens) is a *sample* — order stable, membership not. The demo
+  script talks over the head of the list and treats the tail as "more routes
+  exist at this cost." The k=3 recognition-scene position is stable because the
+  cost-2 class has exactly three members; it is an artifact of the shipped
+  tie-sort, not a relevance ranking, and the slide must not claim otherwise.
+
+#### 7f. §4 breaks §7, three ways — all live on `lewisclark`
+
+1. **The Step-0 resolver incident reproduces with a new decoy.** The stray
+   1-mention `SHOSHONE :Person` that emptied every path query on `neo4j` does
+   not exist here — but `SHOSHONE BOY :Person` (1 mention) outscores the real
+   `:NativeNation` (150 mentions) on fulltext, **8.19 vs 6.48**, for exactly
+   the Step-0 reason (Lucene rarity ≠ corpus prominence). The mention-count
+   near-tie break holds — resolution lands on the nation — verified, not
+   assumed. Same disease, different patient, fix generalizes: that is the
+   one-sentence §4 callback.
+2. **Unmerged duplicates fabricate explanation routes through the anchor's own
+   alias.** A live k=8 route: `SACAGAWEA -[OBSERVED]-> PEDIOMELUM SP. (the
+   white apple) <-[OBSERVED]- HIS WIFE -[INTERPRETED_FOR]-> SHOSHONE` — every
+   hop receipt-faithful (both "women" gather white apples on the trail; the
+   1806-07-03 passage really does say the interpretess served the Shoshoni),
+   and the route is still a tautology: **HIS WIFE is Sacagawea**, the §4
+   bridge node the consistency gate deliberately refused to merge (3d/3g).
+   Same pattern doubled elsewhere: SHABONO vs TOUSSAINT CHARBONNEAU spawn
+   parallel route families, and DREWYER (297 chunks) vs GEORGE DROUILLARD (84)
+   put the §5k unmerged pair on the route table. The graph explains Sacagawea's
+   Shoshone tie *via Sacagawea under another name*, with receipts.
+3. **Fulltext-first resolution misroutes species anchors.** "Grizzly Bear"
+   resolves to `BEAR CREEK` (WaterBody, 2 mentions) — token overlap in the
+   Place index short-circuits before the semantic labels are tried — and every
+   path query from it returns empty. The docstring's own example failed live.
+   Demo fix: `--from-label/--to-label` pin the resolver
+   (`--from-label AnimalSpecies` → BEAR, 121 mentions, routes return).
+   `resolve.py` itself left untouched — §5's measurements run through it.
+
+#### 7g. The two-step landing: 5m's flagship completes here
+
+5m measured: "What do we know about Sacagawea's brother?" defeats every one-shot
+retriever (no strategy puts a target in the top-8), and the pure walk's rank-4
+chunk hands the asker one thing — the **name** Cameahwait. §7 is the second
+step, and it is not a better ranker, it is a different query: pin both anchors,
+ask for routes. The k=3 route lands both feet on `dd08cca` — the recognition
+scene, the single passage in 2,913 that states the sibling relationship — in
+~220 ms, deterministically, and the round-robin evidence assembly keeps it in
+the 6-passage context. The walk performs name discovery; the path query performs
+explanation; neither can do the other's job (the walk ranked `dd08cca` nowhere
+near the window, and the path query cannot start until something names the
+second anchor). That is the §5→§7 arc in one sentence, with §6's hand-off ("the
+system can hand you eight diverse, relevant passages and still not tell you how
+two things are connected") as the bridge between the steps.
+
+
 ## Context
 
 Nathan is giving a 60-minute KCDC session on using graph algorithms to improve
@@ -4346,19 +4520,32 @@ five communities and four months, redundancy 0.128 → 0.050.
 
 ### 7. "You can't explain the answer" → path finding (5 min) · 0:39
 
-**The failure.** The system tells you two things are related. It cannot tell
-you *how* — and "how" is usually the actual question.
+*(Measured 2026-09-07 — see Section 7 findings. Slides drafted:
+[`docs/section-07-slides.md`](section-07-slides.md).)*
 
-**Yen's k-shortest paths**, and specifically why **k** matters: the single
-shortest path is very often a trivial co-occurrence. The second and third are
-where the mechanism lives.
+**The failure.** The system tells you two things are related. It cannot tell
+you *how* — and "how" is usually the actual question. Entrance is §5m's
+flagship: every retriever missed the brother question, the walk surfaced the
+*name* at rank 4 — now explain the connection, with receipts.
+
+**Yen's k-shortest paths**, and why **k** matters — the measured version, which
+inverts the outline's original claim (finding 7a): on a typed extracted graph
+the shortest path is a strong claim when the edge exists, and *higher* k drifts
+into shared-commodity co-occurrence. k earns its keep where the graph lacks the
+edge: no sibling relationship exists anywhere in the graph, so the recognition
+scene arrives at k=3, through the Event node both anchors PARTICIPATED_IN — both
+hops citing the same passage. k buys the *set*; Yen's cannot rank explanations
+(the 2-hop routes are exact cost ties).
 
 **Paths carry receipts.** Every extracted relationship stores the `chunkId` it
-came from, so each hop hands back the journal passage that evidences it. The
-context isn't "eight passages mentioning Sacagawea" — it's the specific chain
-establishing how the Shoshone horses were obtained.
+came from, so each hop hands back the journal passage that evidences it — all
+of them now, not element `[0]` of a merged array (finding 7c). And the receipts
+are the audit: five wrong edges on live demo routes are catchable only by
+reading their own citations (finding 7b — the wrong-captain GUIDED edge,
+Cameahwait filed as Hidatsa).
 
-**Demo** — `demo_paths.py`, Sacagawea → Shoshone.
+**Demo** — `demo_paths.py`, Sacagawea → Cameahwait (the §5/§6/§7 storyline
+pair; Sacagawea → Shoshone as backup). Deterministic route order, ~220 ms.
 
 **Callback.** This is the tool the NICD agent never called once. Deterministic
 retrieval path, not an agent tool.

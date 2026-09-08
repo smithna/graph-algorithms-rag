@@ -2,10 +2,19 @@
 """Yen's k-shortest paths: why two concepts are related, with receipts.
 
     python scripts/demo_paths.py --from Sacagawea --to Shoshone
-    python scripts/demo_paths.py --from "Grizzly Bear" --to "Great Falls" -k 5
+    python scripts/demo_paths.py --from Sacagawea --to Cameahwait
+    python scripts/demo_paths.py --from "grizzly bear" --from-label AnimalSpecies \\
+                                 --to "Great Falls" -k 5
 
-Every hop reports the journal passage it was extracted from, so the path is not
-just a claim about a connection — it is a citation trail.
+Every hop reports the journal passages it was extracted from, so the path is
+not just a claim about a connection — it is a citation trail. Hops render in
+the direction the relationship is stored, which is the direction the extractor
+asserted, not the direction the route traversed it.
+
+Anchors resolve through full-text first ("Grizzly Bear" lands on BEAR CREEK,
+a two-mention waterbody, because token matching runs before the semantic
+indexes); pin the label with --from-label/--to-label when the anchor is a
+species, event, or taxon.
 """
 
 from __future__ import annotations
@@ -33,6 +42,10 @@ def main() -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--from", dest="source", required=True, help="first anchor concept")
     parser.add_argument("--to", dest="target", required=True, help="second anchor concept")
+    parser.add_argument("--from-label", dest="source_label", default=None,
+                        help="pin the first anchor to a label (e.g. AnimalSpecies)")
+    parser.add_argument("--to-label", dest="target_label", default=None,
+                        help="pin the second anchor to a label")
     parser.add_argument("-k", "--k-paths", type=int, default=5, help="how many routes")
     parser.add_argument("--max-hops", type=int, default=5)
     parser.add_argument("--weighted", action="store_true",
@@ -40,8 +53,8 @@ def main() -> int:
     parser.add_argument("--evidence", type=int, default=6, help="evidence passages to show")
     args = parser.parse_args()
 
-    source = resolve_entity(args.source)
-    target = resolve_entity(args.target)
+    source = resolve_entity(args.source, args.source_label)
+    target = resolve_entity(args.target, args.target_label)
 
     if source is None or target is None:
         missing = args.source if source is None else args.target
@@ -82,7 +95,13 @@ def main() -> int:
     for i, path in enumerate(found, 1):
         console.print(f"\n[bold cyan]Route {i}[/]")
         for rel in path.relationships:
-            citation = f"  [dim]{rel.date or 'undated'} · {rel.chunk_id or 'structural'}[/]"
+            if rel.chunk_ids:
+                extra = f" (+{len(rel.chunk_ids) - 1} more)" if len(rel.chunk_ids) > 1 else ""
+                citation = f"  [dim]{rel.date or 'undated'} · {rel.chunk_id}{extra}[/]"
+            else:
+                citation = "  [dim]structural — no receipt[/]"
+            if rel.parallel_types:
+                citation += f"  [dim](also {', '.join(rel.parallel_types)})[/]"
             console.print(f"  {rel.describe()}{citation}")
 
     evidence = paths.evidence_chunks(found, limit=args.evidence)

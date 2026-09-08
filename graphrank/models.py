@@ -22,6 +22,10 @@ class Entity:
 
 @dataclass
 class Relationship:
+    #: from/to reflect the direction the relationship is STORED with, which is
+    #: the direction the extractor asserted — not the direction a path happened
+    #: to traverse it. Rendering traversal order once put "SHOSHONE MEMBER_OF
+    #: CAMEAHWAIT" on screen.
     from_name: str
     from_type: str
     rel_type: str
@@ -29,6 +33,13 @@ class Relationship:
     to_type: str
     chunk_id: str | None = None
     date: str | None = None
+    #: Every receipt this relationship carries, in chunk-date order. Entity
+    #: merges leave ~400 relationships with list-valued chunkId; showing only
+    #: element [0] silently hid the strongest receipt on the demo path.
+    chunk_ids: list[str] = field(default_factory=list)
+    #: Other relationship types stored between the same two nodes. A path shows
+    #: one relationship per hop; these make the hidden parallel edges visible.
+    parallel_types: list[str] = field(default_factory=list)
 
     def describe(self) -> str:
         return (
