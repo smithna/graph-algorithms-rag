@@ -1917,6 +1917,22 @@ demo_paths.py --from Sacagawea --to Cameahwait
     labels against the graph before you trust a number</strong>; that script's in
     the repo too.</p>
     <hr>
+    <p><strong>⚠️ LAST-SLOT PACING — you are at minute 46 of the last session of
+    the conference.</strong> This is where the room is most tired, and §8 and §9
+    are the two most number-dense sections in the talk. Three things:</p>
+    <p><strong>Slow down and read the table for them.</strong> Do not assume
+    anyone is doing arithmetic. Say the one number that matters — <em>"the best
+    graph strategy adds one more answer entity"</em> — before you say anything
+    about columns.</p>
+    <p><strong>If the room is visibly flat, the drop-ins are 8.3's Ghoshal
+    bullet and 9.3 entirely.</strong> Do not drop 8.4's disagreement beat —
+    it is the most interesting thing left in the talk and it wakes people up,
+    because it is the speaker saying two of his own wins don't survive
+    measurement.</p>
+    <p><strong>Put the feedback QR up before you think you need to.</strong>
+    People start packing at minute 50 in the last slot, and §10.2 is where both
+    QR codes live.</p>
+    <hr>
     <p class="muted"><em>§8 divider (no slide — folded here)</em></p>
     <p><strong>The boring result IS the result.</strong> This section's job is to
     earn trust by reporting +1 gold entity as +1 gold entity, right before §9
@@ -1929,18 +1945,19 @@ demo_paths.py --from Sacagawea --to Cameahwait
 <section data-menu-title="8.2 The table + 8.2 expand vs ppr">
   <h3>Fourteen questions, seven strategies, k=8</h3>
   <table>
-    <tr><th>strategy</th><th>what you watched</th><th>recall</th><th>Δ vs vector</th><th>p50</th></tr>
-    <tr><td><strong>vector</strong></td><td class="muted">the cold open's baseline</td><td class="num"><strong>86.3%</strong></td><td class="num">—</td><td class="num">7 ms</td></tr>
-    <tr><td>ppr <em>(rerank)</em></td><td class="muted">§5's contrast variant — top-50 only</td><td class="num">86.3%</td><td class="num">+0.0</td><td class="num">87 ms</td></tr>
-    <tr class="is-win"><td><strong>expand</strong></td><td><strong>§5.9's live demo</strong></td><td class="num"><strong>88.1%</strong></td><td class="num"><strong>+1.8</strong></td><td class="num">202 ms</td></tr>
-    <tr><td>community</td><td class="muted">§6's capped window</td><td class="num">88.1%</td><td class="num">+1.8</td><td class="num">8 ms</td></tr>
-    <tr><td>cooccurrence</td><td class="muted">the §4 beat that got cut</td><td class="num bad">82.1%</td><td class="num bad">−4.2</td><td class="num">16 ms</td></tr>
-    <tr><td>paths</td><td class="muted">§7 — only 3 questions have anchors</td><td class="num">76.1% *</td><td class="num">—</td><td class="num">23 ms</td></tr>
-    <tr class="is-win"><td><strong>hybrid</strong></td><td><strong>§5 + §6 together — the production one</strong></td><td class="num"><strong>88.1%</strong></td><td class="num"><strong>+1.8</strong></td><td class="num">90 ms</td></tr>
+    <tr><th>strategy</th><th>what you watched</th><th>recall</th></tr>
+    <tr><td><strong>vector</strong></td><td class="muted">the cold open's baseline</td><td class="num"><strong>86.3%</strong></td></tr>
+    <tr><td>ppr <em>(rerank)</em></td><td class="muted">§5's contrast variant — top-50 only</td><td class="num">86.3% <span class="muted">+0.0</span></td></tr>
+    <tr class="is-win"><td><strong>expand</strong></td><td><strong>§5.9's live demo</strong></td><td class="num"><strong>88.1% +1.8</strong></td></tr>
+    <tr><td>community</td><td class="muted">§6's capped window</td><td class="num">88.1% <strong>+1.8</strong></td></tr>
+    <tr><td>cooccurrence</td><td class="muted">the §4 beat that got cut</td><td class="num bad">82.1% −4.2</td></tr>
+    <tr><td>paths</td><td class="muted">§7 — only 3 questions have anchors</td><td class="num">76.1% *</td></tr>
+    <tr class="is-win"><td><strong>hybrid</strong></td><td><strong>§5 + §6 together — the production one</strong></td><td class="num"><strong>88.1% +1.8</strong></td></tr>
   </table>
   <p class="footnote">* <span class="mono">paths</span> is a mean over 10 runs
-     (range 69.4–88.9). <strong>It is the only row here that moves.</strong>
-     Everything else is identical run to run.</p>
+     (range 69.4–88.9) — <strong>the only row here that moves.</strong><br>
+     Every strategy runs in <strong>7–200 ms</strong>. The graph is not your
+     latency problem.</p>
   <div class="fragment" style="margin-top:0.5em">
     <h3 class="win">✓ Controls: every strategy scored 100%, every run.</h3>
     <p class="sub">Nothing paid for the hard questions with the easy ones.</p>
@@ -1968,8 +1985,12 @@ demo_paths.py --from Sacagawea --to Cameahwait
     Yen's enumerates tied routes and there are more three-hop ties than the query
     asks for, so the tail is effectively sampled. Ten runs spread 69 to 89. The
     mean is the honest number and the range is the honest error bar.</p>
-    <p><strong>Three — the whole right-hand column is milliseconds.</strong> The
-    graph is not your latency problem.</p>
+    <p><strong>Three — latency.</strong> It's the one line under the table now
+    rather than a column, because a tired room at minute 47 will not read a
+    five-column table. Say it and move: <strong>7 to 200 milliseconds, all of
+    it. The graph is not your latency problem.</strong> The per-strategy p50/p95
+    numbers are in <span class="mono">results/benchmark.md</span> if anyone
+    asks.</p>
     <hr>
     <p class="muted"><em>8.2 expand vs ppr</em></p>
     <p><strong>Say this out loud, because the audience cannot read it off the

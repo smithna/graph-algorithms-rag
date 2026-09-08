@@ -52,8 +52,41 @@ asked for, and it is only fair to say where the remaining +1:55 went:
 The rest is §4 landing at 9:45 after 4.9 came out rather than at 8:55, because
 4.3 and 4.7 stayed in (Nathan: *"Cut 4.9. Keep 4.3 and 4.7"*).
 
-**Two candidates for the last ~2 minutes**, both already argued in-place and
-neither applied — they are rehearsal calls, not merge fixes:
+### ⚠️ Slot: last session, last day (Nathan, 2026-09-08)
+
+**This changes what "over budget" costs.** In a mid-morning slot, running two
+minutes long is untidy. In the final slot of the final day it means finishing
+to a room that is already standing up, and it eats the Q&A that a tired
+audience was never going to fill anyway. **Getting under 53:00 is now the
+highest-value change left in the talk** — higher than any remaining polish.
+
+It also re-ranks the cut list. The rule for a tired room is: **cut arithmetic,
+protect the beats that wake people up.** Measured across the deck there are
+**363 numbers on screen**, and they cluster where the fade is worst — §6
+carries 126 of them and §8 another 42, i.e. minutes 35–50. Meanwhile the
+things that pull a flat room back — the Jaro-Winkler bug, the elk outranking
+Captain Clark, the captains cutting buttons off their coats, §8.4 admitting
+two of its own wins don't survive measurement — cost seconds and were mostly
+sitting near the *top* of the cut lists. That was backwards and is now fixed
+in each section's list.
+
+**Recommended cut set for a tired last slot (−2:10, lands at 53:00):**
+
+| cut | saves | why it's the right one here |
+|---|---|---|
+| **§4.7's 328,455-pair table** | 0:30 | Four numbers in service of a point the two-line slide already makes. Highest density-per-second in §4 |
+| **§0.3's table of contents** | 0:20 | §3.1 does the same job better, ninety seconds later |
+| **§5.11's cost table** | 0:25 | Keep the spoken landing — *"~35× plain vector, and the generation call dwarfs it"* — drop the three-row table |
+| **§9.3 (tune vs decide)** | 0:45 | ⚠️ **the painful one.** It's one of the most transferable lessons in the talk, and it is also pure abstraction arriving at minute 50 to a room that is done. It survives as a Q&A pocket and in the repo |
+| **§6.3's projection table** | 0:10 | §5.4 already says the one-line version |
+
+**If §9.3 stays** — defensible; it's genuinely good — the alternative 0:45 is
+§2's NICD table down to two rows (−0:30) plus §6.5's second limit (−0:15). I'd
+rather lose §9.3 than the NICD table now that every number in it is verified,
+but that is a taste call and it is yours.
+
+**Two further candidates**, both already argued in-place and neither applied —
+rehearsal calls, not merge fixes:
 
 1. **Move 5.12 (trade-goods) to open §6** — the illness collapse is §6's
    motivating failure and trade-goods sets it up. Saves §5 1:00, costs §6 1:00:
@@ -877,7 +910,11 @@ INTERPRETERS WIFE      OUR INTERPRETER THE SNAKE WOMAN
 > shared phoneme. The letters have run out. And this is not an edge case — it is
 > *most* of the nineteen.
 
-**Optional 5-second aside if the room is technical:**
+**The Jaro-Winkler aside — 5 seconds, and keep it.** *(Marked "optional" in
+the first draft and ranked #2 for cutting; both were wrong once the slot was
+known. This is minute 18 of the final session of the conference and this is
+the talk's only real shipped-bug laugh. It earns its twenty seconds precisely
+when the room is flat.)*
 
 ```
 apoc.text.jaroWinklerDistance('SHIELDS','SHIELDS')  =  0.0
@@ -1225,15 +1262,19 @@ vector. The section was setting up a payoff that §8 refutes. It was also the
 Kept, per Nathan: **4.3 and 4.7**. Added, per Nathan: the WCC definition in
 4.8 (+0:15).
 
-Remaining candidates, none applied:
+Remaining candidates, re-ranked for the last slot:
 
 1. **4.7 down to its two-line recall/precision slide (−0:30)** — drop the
-   328,455-pair table. This is the one I would take.
-2. **4.3's Jaro-Winkler aside (−0:20)** — delightful, entirely optional. Note
-   it is also the only place the talk shows a real shipped bug, which is worth
-   more than twenty seconds of budget.
-3. **4.6's 8→47 table (−0:20)** — but it is the section's only hard number,
-   and it was the whole point of adding it.
+   328,455-pair table. **Take this one.** Four numbers serving a point the two
+   lines already make, and §4's densest few seconds.
+2. **4.6's 8→47 table (−0:20)** — reluctantly next. It is the section's only
+   hard number and the whole point of adding it, but three rows is three rows.
+3. **4.3's Jaro-Winkler aside (−0:20)** — ⚠️ **protect this, don't cut it.**
+   It was candidate #2 before the slot was known; that was backwards. It is
+   the only place the talk shows a real shipped bug, it gets a laugh, and a
+   laugh at minute 18 of the last session of the conference is worth more than
+   twenty seconds of budget. If the room is flat, this beat is *why* you keep
+   it.
 
 Cutting 1 lands at 9:30. Cutting 1 and 2 lands at 9:10.
 
@@ -2117,6 +2158,15 @@ form — *nothing* runs on `neo4j`.
 
 > **Editorial constraints for this section:**
 >
+> - **⚠️ This is the most number-dense section in the talk** — 126 figures on
+>   screen across six minutes, at minutes 35–41 of the final slot. Two of those
+>   clusters are fine and should not be "fixed": 6.1's eight repeated dates are
+>   meant to read as a *pattern*, not as data ("every slot is the same week"),
+>   and 6.3's themes table is meant to be skimmed as structure, the way you
+>   skim a book's contents page. Say both of those out loud as shapes rather
+>   than reading the numbers. The genuinely optional density is 6.3's
+>   projection table (§5.4 already gives the one-line version) — that is the
+>   drop-in if the room is flat.
 > - **Every number on screen is either exact or a hand read, and says which.**
 >   Community counts, months, community ids, cosine ranks, conductance: exact.
 >   "The recovered passages are the right ones": judged by reading, said so
@@ -2711,6 +2761,14 @@ beat to lose and the only one that is purely methodological.
 >   *do*; measurement methodology lives in speaker notes and Q&A. No
 >   macro/micro, variance, or confidence vocabulary on screen. Every slide
 >   should answer "what would I do with this on Monday."
+> - **And the slot sharpens that (2026-09-08): this section lands at minute 46
+>   of the last session of the last day.** §8 and §9 are the two most
+>   number-dense sections in the talk, arriving exactly when the room is most
+>   tired. 8.2's table has already been cut from five columns to three — the
+>   p50 column went, and latency is now one line under the table ("7–200 ms,
+>   all of it") rather than seven numbers. Read the table *for* them; assume
+>   nobody is doing arithmetic. The rule for the rest of the section: **say the
+>   one number that matters before you say anything about columns.**
 > - **Every number re-measured 2026-09-08 on `lewisclark`** after the
 >   Louvain→Leiden fix (review finding R2). `vector`/`ppr`/`expand`/
 >   `cooccurrence` are unchanged and identical across runs — quote them
