@@ -170,6 +170,9 @@
   margin: 0.4em 0;
 }
 .reveal pre code {
+  /* hljs supplied display:block via its .hljs class; nohighlight blocks
+     never get that class, so set it here for all code blocks. */
+  display: block;
   background: var(--panel);
   border-radius: 4px;
   padding: 0.8em 1em;
@@ -221,6 +224,7 @@
 
 .reveal .diagram { width: 100%; margin: 0.2em 0; }
 .reveal .diagram svg { width: 100%; height: auto; display: block; }
+.reveal .diagram img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
 
 /* A placeholder for assets that don't exist yet, loud enough to be obvious in
    rehearsal and impossible to leave in by accident. */

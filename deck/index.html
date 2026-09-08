@@ -157,15 +157,9 @@
 
 <section data-menu-title="1.1 Nodes and rels">
   <h3>Nodes, relationships — and this corpus</h3>
-  <div class="todo">
-    §1.1 corpus diagram — <strong>arrows.app export.</strong> Real labels, real
-    relationship types, drawn from the live graph:
-    <span class="mono">(SACAGAWEA:Person)-[:MEMBER_OF]-&gt;(SHOSHONE:NativeNation)</span>,
-    <span class="mono">(SACAGAWEA)-[:MENTIONED_IN]-&gt;(Chunk 1805-08-17 Lewis)-[:NEXT_CHUNK]-&gt;(Chunk 1805-08-17 Clark)</span>.
-    <strong>This export sets the visual language reused in §4–§7</strong>, so do
-    it first. Export checklist: add a <span class="mono">viewBox</span>, widen
-    nodes so captions don't wrap mid-word, check
-    <span class="mono">#959aa1</span> edge labels against this background.
+  <div class="diagram">
+    <img src="assets/images/1_1_corpus_diagram.svg" style="max-height: 620px"
+         alt="Corpus graph: SACAGAWEA (Person) MEMBER_OF SHOSHONE (NativeNation); SACAGAWEA MENTIONED_IN the 1805-08-17 Lewis chunk, which links by NEXT_CHUNK to the 1805-08-17 Clark chunk">
   </div>
   <div class="marker">§1.1 · 1:00</div>
   <aside class="notes">
@@ -273,11 +267,6 @@
     <p>A vector store answers one question: <em>what's near this?</em></p>
     <p>A graph adds verbs: <strong class="accent">traverse · path · rank · cluster</strong></p>
   </div>
-  <div class="fragment footnote">
-    On a natively-linked corpus, the community structure costs <strong>zero tokens</strong>.<br>
-    On an extracted corpus like ours: zero <strong>additional</strong> tokens —
-    the algorithms are token-free, the mention edges were paid for at extraction.
-  </div>
   <div class="marker">§2.2 · 1:30</div>
   <aside class="notes">
     <p><strong>1:30.</strong> Similarity search gives you one verb. The graph
@@ -293,7 +282,7 @@
 </section>
 
 <section data-menu-title="2.3 The evidence + 2.3 Awkward parts">
-  <h3>NICD, <em>Reducing hallucinations with GraphRAG</em></h3>
+  <h3>National Innovation Centre for Data, <em>Reducing hallucinations with GraphRAG</em></h3>
   <p class="footnote" style="margin-top:0">510 multi-source questions (MoNaCo) · 28,000 Wikipedia articles · three pipelines</p>
   <table>
     <tr><th></th><th>Vector RAG</th><th>Vector+graph</th><th>Zero-shot</th></tr>
@@ -304,12 +293,13 @@
     <tr><td>Total tokens (median)</td><td class="num">41,694</td><td class="num">45,695</td><td class="num">1,108</td></tr>
   </table>
 
+  <p class="fragment" style="margin-top:0.8em"><strong>Precision/recall measure knowledge;
+  truthfulness measures honesty about the limits of that knowledge.</strong></p>
+
   <div class="fragment">
-  <h3>The awkward parts — same font size</h3>
   <ul>
-    <li><strong>Zero-shot beats both</strong> on correctness — MoNaCo is public
-        Wikipedia; the model has memorized the corpus. <em>The authors say so
-        themselves.</em></li>
+    <li>Zero-shot has <strong>more knowledge of Wikipedia</strong> than either
+        retrieval system — and <strong>no idea when it's making things up.</strong></li>
     <li class="fragment"><strong>Coarse truthfulness favors plain vector RAG</strong>
         (−31 vs −49) — because it <em>refuses to answer</em> far more often.
         <strong>Refusing isn't winning.</strong></li>
@@ -320,6 +310,8 @@
   <div class="marker">§2.3 · 2:45 → §2.3 · honesty</div>
   <aside class="notes">
     <p class="muted"><em>2.3 The evidence</em></p>
+    <p>NICD — the National Innovation Centre for Data — is part of
+    Newcastle University (UK).</p>
     <p><strong>2:45 for this and the awkward parts.</strong> Headline: adding
     the graph to vector RAG roughly <strong>doubles</strong> factual precision
     and recall, and wins fine-grained truthfulness outright, for about nine
@@ -351,43 +343,40 @@
     its credibility.</p>
     <p><em>Q&amp;A pocket — is the −31/−49 gap real? CIs don't overlap:
     [−31, −18] against [−61, −44].</em></p>
-  </aside>
-</section>
-
-<section class="statement" data-menu-title="2.4 The gift + 2.4 The hinge">
-  <h2>The agent in that study<br>had a shortest-path tool.</h2>
-  <h2 class="fragment"><span class="accent" style="font-size:1.5em">It was called zero times.</span></h2>
-  <p class="fragment sub">Not once, in 510 questions.</p>
-
-  <div class="fragment">
-  <h3>The lesson isn't "give your agent graph tools."</h3>
-  <h2><span class="accent">Put the graph algorithms in the retrieval path,
-      deterministically — where the model doesn't get a vote.</span></h2>
-  </div>
-  <div class="marker">§2.4 · 1:30 → §2.4 · the hinge</div>
-  <aside class="notes">
-    <p class="muted"><em>2.4 The gift</em></p>
-    <p><strong>1:30 for this and the hinge.</strong> My favorite finding in the
-    paper and it's in nobody's abstract. The agent had graph tools
-    <em>available</em>. The system prompt encouraged them. It never touched the
-    path tool — it fell back to vector search, every time.</p>
-    <p><strong>And that last clause is the authors', not mine.</strong> Their
-    explanation: graph tools for complex QA are "likely under-represented in LLM
-    training," and "LLMs are conservative in their tool selection, and are
-    biased towards tools that align with their training." So this isn't a quirk
-    of one agent — <strong>it's a prediction about yours.</strong></p>
+    <hr>
+    <p class="muted"><em>2.4 The gift + the hinge (no slide — folded here)</em></p>
+    <p><strong>Say this from here before leaving the table:</strong> the agent
+    in that study had a <strong>shortest-path tool</strong>. It was called
+    <strong>zero times</strong> — not once, in 510 questions. Graph tools were
+    available, the system prompt encouraged them, and the agent fell back to
+    vector search every time. The authors' explanation: graph tools for complex
+    QA are "likely under-represented in LLM training," and "LLMs are
+    conservative in their tool selection." Not a quirk of one agent — a
+    prediction about yours.</p>
+    <p><strong>The hinge, spoken slowly — it's the spine of the rest of the
+    hour:</strong> the lesson isn't "give your agent graph tools." It's
+    <em>put the graph algorithms in the retrieval path, deterministically —
+    where the model doesn't get a vote.</em> Every section from here is about
+    what belongs in that path: resolution before indexing, PageRank inside
+    retrieval, community caps on the window, paths in the answer.</p>
     <p><em>Q&amp;A pocket: two more tools went unused, backlinks and a
     calculator. Name shortest-path from the stage because it's the one this talk
     spends five minutes on in §7.</em></p>
-    <p><em>(Beat.)</em></p>
-    <hr>
-    <p class="muted"><em>2.4 The hinge</em></p>
-    <p><strong>This is the spine of the rest of the hour.</strong> Land it
-    slowly. Every section from here is about what belongs <em>in that path</em>:
-    resolution before indexing, PageRank inside retrieval, community caps on the
-    window, paths in the answer. Code that runs whether or not the model feels
-    like it.</p>
-    <p><em>One of the talk's four photograph slides. Set it like one.</em></p>
+  </aside>
+</section>
+
+<section class="divider" data-menu-title="§3 divider">
+  <p class="kicker">From the paper to your pipeline</p>
+  <h2>Build time</h2>
+  <h2>Query time</h2>
+  <aside class="notes">
+    <p><strong>~0:15.</strong> Spoken, screen stays sparse: "Now that we've seen
+    the academic research showing GraphRAG is effective, let's talk about how
+    practitioners thinking in graphs solve real-world problems. The problems
+    come up in two places — <strong>while we're building the knowledge
+    graph</strong>, <strong>and in the retrieval process</strong>."</p>
+    <p>These two words are the first column of the next slide's table — say
+    them, then let the map elaborate.</p>
   </aside>
 </section>
 
@@ -400,15 +389,15 @@
     <tr><td><strong>Query</strong></td><td>Your context is redundant</td><td>Leiden</td></tr>
     <tr><td><strong>Query</strong></td><td>You can't explain the answer</td><td>Yen's k-shortest paths</td></tr>
   </table>
-  <p class="footnote"><em>Build time makes the graph worth retrieving from.
-    Query time decides what comes back. Skip the first and the second returns
-    garbage.</em></p>
   <div class="marker">§3.1 · 1:00</div>
   <aside class="notes">
     <p><strong>1:00. Leave this up for the full minute.</strong></p>
     <p>Graph algorithms serve RAG at <strong>two stages</strong>. One section on
     build time — unglamorous, and it gates everything. Three on query time —
     where your retrieval actually improves.</p>
+    <p><strong>Say (was on the slide):</strong> build time makes the graph worth
+    retrieving from; query time decides what comes back. Skip the first and the
+    second returns garbage.</p>
     <p>Each section opens with a failure you have already hit, whether or not
     you knew its name. <strong>If a row is a failure you genuinely don't have —
     some corpora don't — that section will tell you so.</strong> Part of the
@@ -467,14 +456,14 @@
 
   <div class="fragment">
   <h3>…and the forms she is <em>actually</em> referred to by</h3>
-  <pre class="term"><code data-trim data-noescape>
-SACAGAWEA          INDIAN WOMAN        THE INDIAN WOMAN
-OUR INDIAN WOMAN   THE INDIAN WOMAN WITH US
-SQUAR              THE SQUAR           THE SQUAW
-HIS SQUAR          SQUARWIFE           SQUAR INTERPRETRESS
-SQUAR WIFE TO SHABONO                  JANEY
-THE WIFE OF SHABONO    WIFE OF SHABONO    SNAKE INDIAN WIFE
-INTERPRETERS WIFE      OUR INTERPRETER THE SNAKE WOMAN
+  <pre class="term"><code class="nohighlight" data-trim data-noescape>
+SACAGAWEA               INDIAN WOMAN               THE INDIAN WOMAN
+OUR INDIAN WOMAN        THE INDIAN WOMAN WITH US
+SQUAR                   THE SQUAR                  THE SQUAW
+HIS SQUAR               SQUARWIFE                  SQUAR INTERPRETRESS
+SQUAR WIFE TO SHABONO   JANEY
+THE WIFE OF SHABONO     WIFE OF SHABONO            SNAKE INDIAN WIFE
+INTERPRETERS WIFE       OUR INTERPRETER            THE SNAKE WOMAN
   </code></pre>
   <h2 class="fragment">Nineteen nodes. One woman.</h2>
   </div>
@@ -636,7 +625,7 @@ SOURCE_URL = "https://lewis-clark.org/people/sacagawea/sacagawea-in-the-journals
 
 <section data-menu-title="4.6 The payoff + 4.6 8 to 47">
   <h3>The closed component <span class="muted">— <span class="mono">demo_resolution.py</span>, recording</span></h3>
-  <pre class="term"><code data-trim>
+  <pre class="term"><code class="nohighlight" data-trim>
 INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
 +  SQUAR WIFE TO SHABONO  +  THE INDIAN WOMAN  +  THE INDIAN WOMAN WITH US
 +  THE SQUAR  +  THE SQUAW  +  THE WIFE OF SHABONO
@@ -723,11 +712,9 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
 
   <div class="fragment">
   <h3>The problem it solves</h3>
-  <div class="todo">
-    §4.8 — <strong>arrows.app export:</strong> three separate pairwise
-    judgements (SACAGAWEA ≈ THE SQUAR, THE SQUAR ≈ INDIAN WOMAN, INDIAN WOMAN ≈
-    JANEY), none of which sees the whole identity, resolving through WCC into
-    one entity with four names.
+  <div class="diagram">
+    <img src="assets/images/4_8_wcc.svg" style="max-height: 340px"
+         alt="Three pairwise IS_SIMILAR judgements — SACAGAWEA to THE SQUAR, THE SQUAR to INDIAN WOMAN, INDIAN WOMAN to JANEY — resolving through WCC into one entity with four names">
   </div>
   </div>
 
@@ -766,11 +753,9 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
 
 <section data-menu-title="4.8 The bridge + 4.8 The rule">
   <h3 class="bad">And the danger, in the same breath</h3>
-  <div class="todo">
-    §4.8 bridge-node chain — <strong>arrows.app export:</strong>
-    <span class="mono">SACAGAWEA ──[HIS WIFE]── TOUSSAINT CHARBONNEAU ──[THE
-    INTERPRETER]── GEORGE DROUILLARD</span>. Each link defensible; closure makes
-    them one wrong entity.
+  <div class="diagram">
+    <img src="assets/images/4_8_bridge.svg" style="max-height: 420px"
+         alt="Bridge-node chain: SACAGAWEA linked as HIS WIFE to TOUSSAINT CHARBONNEAU, linked as THE INTERPRETER to GEORGE DROUILLARD — each link defensible, closure makes them one wrong entity">
   </div>
 
   <div class="fragment">
@@ -845,7 +830,7 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
 
 <section data-menu-title="5.1 The failure">
   <h3>"What was Toussaint Charbonneau's role on the expedition?"</h3>
-  <pre class="term"><code data-trim data-noescape>
+  <pre class="term"><code class="nohighlight" data-trim data-noescape>
 1.  Chabono              &lt;- him: paid off "for his Services as an enterpreter"
 2.  Duriaur              &lt;- a Sioux go-between
 3.  (nobody)             &lt;- the return to St. Charles
@@ -1027,7 +1012,7 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
 
 <section data-menu-title="5.4 Live receipt + 5.4 Nov 4 passage">
   <h3>Seeds chosen for the Pacific question, from the question alone</h3>
-  <pre class="term"><code data-trim data-noescape>
+  <pre class="term"><code class="nohighlight" data-trim data-noescape>
 PACIFIC OCEAN   (WaterBody · 19 passages)   weight 0.605
 PACIFIC OCIAN   (WaterBody ·  5 passages)   weight 0.395   &lt;- Clark's spelling, unmerged
   </code></pre>
@@ -1080,7 +1065,7 @@ PACIFIC OCIAN   (WaterBody ·  5 passages)   weight 0.395   &lt;- Clark's spelli
 
 <section data-menu-title="5.6 The hub trap + 5.6 Three choices + 5.6 The mechanism">
   <h3>Top entities by how many passages mention them</h3>
-  <pre class="term"><code data-trim data-noescape>
+  <pre class="term"><code class="nohighlight" data-trim data-noescape>
 825  MERIWETHER LEWIS         &lt;- 28% of the corpus
 587  CERVUS CANADENSIS        (elk)
 506  WILLIAM CLARK
@@ -1097,17 +1082,19 @@ PACIFIC OCIAN   (WaterBody ·  5 passages)   weight 0.395   &lt;- Clark's spelli
     <tr><td>all three types</td><td>long (d=0.85)</td><td>none</td><td><strong class="bad">2.84 / 8</strong> · Lewis ranks <strong>3.2</strong></td></tr>
     <tr class="is-win"><td><strong>mentions only</strong></td><td><strong>short</strong></td><td><strong>IDF</strong></td><td><strong>0.47 / 8</strong> · Lewis ranks <strong>18.1</strong></td></tr>
   </table>
-  <pre><code data-trim>
+  <pre><code class="nohighlight" data-trim>
 weight  =  log( 1 + total_chunks / chunks_mentioning_this_entity )
   </code></pre>
   </div>
 
   <div class="fragment">
-  <h2>Hubs <span class="accent">concentrate</span> at the entity level<br>
-      and <span class="accent">dissipate</span> at the passage level.</h2>
-  <div class="todo">
-    §5.6 — <strong>arrows.app export:</strong> one hub, many arrows in, the same
-    many arrows out, thin.
+  <div class="two-col">
+    <h2>Hubs <span class="accent">concentrate</span> at the entity level<br>
+        and <span class="accent">dissipate</span> at the passage level.</h2>
+    <div class="diagram">
+      <img src="assets/images/5_6_hubs.svg" style="max-height: 280px"
+           alt="A hub entity with many MENTIONED_IN arrows in from chunks, and the same many arrows spreading out again, each thin">
+    </div>
   </div>
   </div>
   <div class="marker">§5.6 · 0:45 → §5.6 · the ladder → §5.6 · transfers</div>
@@ -1172,7 +1159,7 @@ NEO4J_DATABASE=lewisclark python scripts/demo_pagerank.py \
   "What was Toussaint Charbonneau's role on the expedition?" \
   --seeder decomposed
   </code></pre>
-  <pre class="term"><code data-trim data-noescape>
+  <pre class="term"><code class="nohighlight" data-trim data-noescape>
 named in the question:  'Toussaint Charbonneau'  (Person, via fulltext)
 
 TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
@@ -1233,7 +1220,7 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
   <h2>3 · It is bounded by extraction.</h2>
   <p><em>"When was the keelboat sent back down the Missouri?"</em> — the boat the
      entire first year happened on. Here is every keelboat entity in the graph:</p>
-  <pre class="term"><code data-trim data-noescape>
+  <pre class="term"><code class="nohighlight" data-trim data-noescape>
 'keelboat'  -&gt;  (nothing)
   </code></pre>
   <h2 class="fragment bad">There is no keelboat.</h2>
@@ -1456,14 +1443,14 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
 
 <section data-menu-title="6.1 The failure">
   <h3>"What illnesses and injuries did the corps deal with?"</h3>
-  <pre class="term"><code data-trim data-noescape>
+  <pre class="term"><code class="nohighlight" data-trim data-noescape>
 1806-05-24 · 1806-05-27 · 1806-05-22 · 1806-05-24
 1806-05-22 · 1806-05-26 · 1806-05-24 · 1806-05-28
   </code></pre>
   <h2 class="fragment">One week. Twenty-eight months of journals,<br>
       and every slot is the same medical drama at Long Camp.</h2>
   <div class="fragment" style="margin-top:0.8em">
-    <pre class="term"><code data-trim>c23 · c23 · c23 · c23 · c23 · c23 · c23 · c23</code></pre>
+    <pre class="term"><code class="nohighlight" data-trim>c23 · c23 · c23 · c23 · c23 · c23 · c23 · c23</code></pre>
   </div>
   <div class="marker">§6.1 · 1:00</div>
   <aside class="notes">
@@ -1494,15 +1481,11 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
 
   <div class="fragment">
   <h3>The same graph, both algorithms, measured</h3>
-  <div class="todo">
-    §6.2 — <strong>arrows.app export, Nathan's ask.</strong> One outlined
-    boundary labelled "one WCC component: all 8,139 nodes", containing 47
-    coloured Leiden clusters; the five largest labelled with chunk counts
-    (c5/691, c23/286, c8/275, c44/212, c24/160), the rest as unlabelled dots.
-    <br><strong>The caption is the slide:</strong>
-    WCC says <strong>1</strong>. Leiden says <strong>47</strong>.
-    <em>(Numbers verified 2026-09-08.)</em>
+  <div class="diagram">
+    <img src="assets/images/6_2_leiden.svg" style="max-height: 460px"
+         alt="One connected graph — a single WCC component of all 8,139 nodes — rendered as 47 coloured Leiden clusters">
   </div>
+  <h2>WCC says <strong class="accent">1</strong>. Leiden says <strong class="accent">47</strong>.</h2>
   </div>
   <div class="marker">§6.2 · 1:00 → §6.2 · the diagram</div>
   <aside class="notes">
@@ -1592,7 +1575,7 @@ TOUSSAINT CHARBONNEAU   (Person)   weight 1.000
 
 <section data-menu-title="6.3 Table of contents">
   <h3>The table of contents nobody wrote</h3>
-  <pre class="term"><code data-trim data-noescape>
+  <pre class="term"><code class="nohighlight" data-trim data-noescape>
  id  chunks  span                 cond.  defining entities
  5      691  1804-05 → 1806-09    0.37   MERIWETHER LEWIS, CERVUS CANADENSIS, WILLIAM CLARK, DREWYER
  23     286  1804-05 → 1806-09    0.39   PRYOR, SHIELDS, SHANNON, GASS, SACAGAWEA, GEORGE DROUILLARD
@@ -1663,7 +1646,7 @@ window = diversify(wide, max_per_community=2)    # <= 2 chunks per community
 
   <div class="fragment">
   <h3>What the freed slots filled with <span class="muted">(hand-read)</span></h3>
-  <pre class="term"><code data-trim data-noescape>
+  <pre class="term"><code class="nohighlight" data-trim data-noescape>
 1806-08-12  Lewis shot through the thigh by Cruzatte              (cosine rank 21)
 1806-02-22  Fort Clatsop sick-list: "…something of the influenza"  (rank 44)
 1806-06-08  Bratton "no longer an invalid" — the recovery          (rank 104)
@@ -1777,7 +1760,7 @@ window = diversify(wide, max_per_community=2)    # <= 2 chunks per community
   <pre><code class="language-bash" data-trim>
 demo_paths.py --from Sacagawea --to Cameahwait
   </code></pre>
-  <pre class="term"><code data-trim data-noescape>
+  <pre class="term"><code class="nohighlight" data-trim data-noescape>
 1  SACAGAWEA -[GUIDED]-&gt;           MERIWETHER LEWIS -[MET_WITH]-&gt;  CAMEAHWAIT
 2  SACAGAWEA -[MEMBER_OF]-&gt;        SHOSHONE  &lt;-[MEMBER_OF]-        CAMEAHWAIT
 3  SACAGAWEA -[PARTICIPATED_IN]-&gt;  MEETING OF THOSE PEOPLE
@@ -1843,7 +1826,7 @@ demo_paths.py --from Sacagawea --to Cameahwait
 
 <section data-menu-title="7.4 Receipts catch lies">
   <h3>Receipts catch the graph lying</h3>
-  <pre class="term"><code data-trim data-noescape>
+  <pre class="term"><code class="nohighlight" data-trim data-noescape>
 1  CAMEAHWAIT -[MEMBER_OF]-&gt; HIDATSA        1805-08-13 · d067c3d2…
    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   </code></pre>

@@ -48,7 +48,7 @@ The deck is 1600×900 (16:9), matching last year's 10 × 5.625in deck.
 
 ## What's still needed
 
-**13 asset placeholders**, each rendered as a loud dashed box naming exactly
+**8 asset placeholders**, each rendered as a loud dashed box naming exactly
 what's missing. Find them with:
 
 ```bash
@@ -63,8 +63,10 @@ They fall into two groups:
    widen nodes until captions stop wrapping mid-word, and check the default
    `#959aa1` edge-label grey against the dark background on the actual
    projector.
-   The one that matters most is **§1.1** — it sets the visual language reused
-   in §4–§7 — and the one with the most work in it is **§5.3's
+   Five are in as of 2026-09-08 — **§1.1**, both **§4.8** diagrams, **§5.6**,
+   and **§6.2** — sourced from `docs/images/` and copied to `assets/images/`
+   (§6.2's export shipped without a `viewBox`; the copy in `assets/images/` has
+   one added). The one with the most work still to come is **§5.3's
    mass-distribution animation**, five reveal fragments over one export.
 2. **The repo QR code** on §10.2 — blocked on the repo actually existing. It
    has no git remote yet; create it under `smithna`, push, *then* generate the
