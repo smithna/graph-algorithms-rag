@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1050 620">
+  <!-- Area-accurate: R ∝ √174, r ∝ √51; centers 200.4 apart so the lens is
+       35% of the small circle's area — matching OVERLAP = 18/51 = 0.35. -->
+  <!-- INDIAN WOMAN — the common name -->
+  <circle cx="400" cy="300" r="185" fill="#7A8FA6" fill-opacity="0.13" stroke="#7A8FA6" stroke-width="3"/>
+  <!-- SACAGAWEA — the rare name -->
+  <circle cx="600.4" cy="300" r="100" fill="#018BFF" fill-opacity="0.20" stroke="#018BFF" stroke-width="3"/>
+
+  <g font-family="Calibri, Carlito, 'Avenir Next', 'Segoe UI', sans-serif">
+    <text x="330" y="290" text-anchor="middle" font-size="30" font-weight="bold" fill="#E8EDF2">INDIAN WOMAN</text>
+    <text x="330" y="322" text-anchor="middle" font-size="22" fill="#7A8FA6">174 co-occurring entities</text>
+
+    <text x="722" y="290" text-anchor="start" font-size="30" font-weight="bold" fill="#E8EDF2">SACAGAWEA</text>
+    <text x="722" y="322" text-anchor="start" font-size="22" fill="#7A8FA6">51 co-occurring entities</text>
+
+    <!-- lens -->
+    <text x="543" y="296" text-anchor="middle" font-size="40" font-weight="bold" fill="#E8EDF2">18</text>
+    <text x="543" y="324" text-anchor="middle" font-size="20" fill="#E8EDF2">shared</text>
+
+    <line x1="543" y1="398" x2="543" y2="528" stroke="#7A8FA6" stroke-width="1.5"/>
+    <text x="543" y="560" text-anchor="middle" font-size="21" fill="#7A8FA6">CAMEAHWAIT · HIDATSA · DREWYER · HORSES · CANOES · …</text>
+  </g>
+</svg>

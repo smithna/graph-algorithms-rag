@@ -92,6 +92,14 @@
 .muted     { color: var(--muted); }
 .mono      { font-family: var(--font-mono); }
 
+/* The .reveal h1–h4 color rules above are more specific than a bare class,
+   so restate the emphases at heading specificity. */
+.reveal :is(h1,h2,h3,h4).accent { color: var(--accent); }
+.reveal :is(h1,h2,h3,h4).win    { color: var(--highlight); }
+.reveal :is(h1,h2,h3,h4).warn   { color: var(--warn); }
+.reveal :is(h1,h2,h3,h4).bad    { color: var(--bad); }
+.reveal :is(h1,h2,h3,h4).muted  { color: var(--muted); }
+
 /* ------------------------------------------------------- big-number slide */
 /* §0.2's "2 of 8", §4.2's "8", §8.3's token count. One number, huge. */
 
@@ -223,6 +231,10 @@
    add one on export (see the draft's Appendix A). */
 
 .reveal .diagram { width: 100%; margin: 0.2em 0; }
+/* Click-through overlay stack: identical frames drawn on an opaque background,
+   each later frame a fragment that covers the one before (§5.3's PPR steps). */
+.reveal .anim-stack { position: relative; }
+.reveal .anim-stack img.overlay { position: absolute; top: 0; left: 0; right: 0; margin: 0 auto; }
 .reveal .diagram svg { width: 100%; height: auto; display: block; }
 .reveal .diagram img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
 

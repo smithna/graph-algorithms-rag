@@ -452,20 +452,19 @@
 
 <section data-menu-title="4.2 Make it personal + 4.2 The forms">
   <p class="bignum">8</p>
-  <p class="bignum-sub">chunks in which Sacagawea is named</p>
+  <p class="bignum-sub">chunks from which SACAGAWEA was extracted by name</p>
 
   <div class="fragment">
-  <h3>…and the forms she is <em>actually</em> referred to by</h3>
+  <h3>…and the <strong>eighteen other names</strong> she was extracted under</h3>
   <pre class="term"><code class="nohighlight" data-trim data-noescape>
-SACAGAWEA               INDIAN WOMAN               THE INDIAN WOMAN
-OUR INDIAN WOMAN        THE INDIAN WOMAN WITH US
-SQUAR                   THE SQUAR                  THE SQUAW
-HIS SQUAR               SQUARWIFE                  SQUAR INTERPRETRESS
-SQUAR WIFE TO SHABONO   JANEY
-THE WIFE OF SHABONO     WIFE OF SHABONO            SNAKE INDIAN WIFE
-INTERPRETERS WIFE       OUR INTERPRETER            THE SNAKE WOMAN
+SACAGAWEA           INDIAN WOMAN               THE INDIAN WOMAN
+OUR INDIAN WOMAN    THE INDIAN WOMAN WITH US   SQUAR
+THE SQUAR           THE SQUAW                  HIS SQUAR
+SQUARWIFE           SQUAR INTERPRETRESS        SQUAR WIFE TO SHABONO
+JANEY               THE WIFE OF SHABONO        WIFE OF SHABONO
+SNAKE INDIAN WIFE   INTERPRETERS WIFE          OUR INTERPRETER
+THE SNAKE WOMAN
   </code></pre>
-  <h2 class="fragment">Nineteen nodes. One woman.</h2>
   </div>
   <div class="marker">§4.2 · 1:00 → §4.2 · the forms</div>
   <aside class="notes">
@@ -495,7 +494,7 @@ INTERPRETERS WIFE       OUR INTERPRETER            THE SNAKE WOMAN
   </table>
 
   <div class="fragment">
-  <h1 style="font-size:1.7em">SACAGAWEA <span class="muted">→</span> THE INDIAN WOMAN</h1>
+  <h1 style="font-size:1.7em; margin-top:0.9em">SACAGAWEA <span class="muted">→</span> THE INDIAN WOMAN</h1>
   <p class="sub">no string algorithm will ever connect these</p>
   </div>
   <div class="marker">§4.3 · 1:15 → §4.3 · the wall</div>
@@ -545,24 +544,13 @@ SOURCE_URL = "https://lewis-clark.org/people/sacagawea/sacagawea-in-the-journals
 <section data-menu-title="4.5 The idea + 4.5 The signal, drawn">
   <h2>Two names that keep appearing alongside<br>
       the same people, places and dates<br>
-      <span class="accent">are probably the same entity</span></h2>
+      <span class="accent">could be the same entity</span></h2>
 
   <div class="fragment">
-  <h3>The signal, drawn</h3>
   <div class="diagram">
-    <div class="todo">
-      §4.5 — <strong>Nathan's export exists:</strong>
-      <span class="mono">docs/sacagawea appears with indian woman.svg</span>.
-      Three fixes before it ships: (a) add
-      <span class="mono">viewBox="0 0 1776.88 1045.58"</span> and drop the fixed
-      width/height, or it won't scale here; (b) captions wrap mid-word
-      (<span class="mono">Sacagawe|a</span>, <span class="mono">Cameahw|ait</span>)
-      — widen nodes and re-export; (c) <span class="mono">#959aa1</span> edge
-      labels want a projector contrast check. Then inline it here and delete
-      this block.
-    </div>
+    <img src="assets/images/4_5_signal.svg" style="max-height: 640px"
+         alt="The unresolved graph: SACAGAWEA and INDIAN WOMAN, two separate entity nodes, each MENTIONED_IN the same eight journal chunks, alongside TOUSSAINT CHARBONNEAU and CAMEAHWAIT">
   </div>
-  <p class="footnote">Two names. The same eight passages. The same brother, the same husband.</p>
   </div>
   <div class="marker">§4.5 · 1:15 → §4.5 · the diagram</div>
   <aside class="notes">
@@ -584,24 +572,19 @@ SOURCE_URL = "https://lewis-clark.org/people/sacagawea/sacagawea-in-the-journals
 </section>
 
 <section data-menu-title="4.5 Where the signal is + 4.5 OVERLAP">
-  <h3>Where the signal already is</h3>
+  <h3>Find the similarity signal in your graph</h3>
   <ul>
     <li>entity ↔ entity co-occurrence, weighted by shared chunk count</li>
     <li>a <strong>filtered node-similarity</strong> call, restricted to same-label pairs</li>
-    <li>union it with the string and alias signals</li>
-    <li><strong class="win">costs zero LLM tokens</strong> — it reads structure extraction already built</li>
+    <li><strong>the structure does the work</strong> — co-occurrence and
+        similarity are traversals of edges the graph already has</li>
+    <li>union similarity with string and alias signals</li>
   </ul>
 
   <div class="fragment">
-  <h3>Why OVERLAP, not Jaccard</h3>
-  <div class="todo">
-    §4.5 OVERLAP two-circle diagram — <strong>arrows.app export</strong>, real
-    numbers: SACAGAWEA appears alongside <strong>51</strong> entities, INDIAN
-    WOMAN alongside <strong>174</strong>, <strong>18 shared</strong>
-    (CAMEAHWAIT · HIDATSA · DREWYER · HORSES · CANOES). Small circle mostly
-    inside the large one.
-    <span class="mono">OVERLAP = 18/51 = 0.35</span> (divide by the SMALLER) vs
-    <span class="mono">JACCARD = 18/207 = 0.09</span> (divide by EVERYTHING).
+  <div class="diagram">
+    <img src="assets/images/4_5_overlap.svg" style="max-height: 420px"
+         alt="Two overlapping circles, drawn to scale: INDIAN WOMAN co-occurs with 174 entities, SACAGAWEA with 51, and 18 are shared — including CAMEAHWAIT, HIDATSA, DREWYER, HORSES, CANOES">
   </div>
   </div>
   <div class="marker">§4.5 · the how → §4.5 · OVERLAP</div>
@@ -611,6 +594,10 @@ SOURCE_URL = "https://lewis-clark.org/people/sacagawea/sacagawea-in-the-journals
     products. The GDS call name is in the draft if anyone asks.</p>
     <hr>
     <p class="muted"><em>4.5 OVERLAP</em></p>
+    <p><strong>Say the math (off the slide):</strong>
+    <span class="mono">OVERLAP = 18/51 = 0.35</span> — divide by the
+    <em>smaller</em> set. <span class="mono">JACCARD = 18/207 = 0.09</span> —
+    divide by everything.</p>
     <p>A rare name and a common name for the same person have
     <strong>lopsided</strong> neighbourhoods. Jaccard divides by the union and
     punishes her for being rare. Overlap divides by the smaller set and asks the
@@ -674,20 +661,15 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
 </section>
 
 <section data-menu-title="4.7 What it costs + 4.7 Division of labour">
-  <h2>On its own, the graph signal is <span class="bad">bad</span>.</h2>
-  <p class="sub">Hundreds of wrong pairs for every right one.</p>
-
-  <div class="fragment">
-  <h2>Recall is what the <span class="accent">algorithm</span> is for.<br>
-      Precision is what the <span class="accent">adjudicator</span> is for.</h2>
+  <h2>Node similarity delivers <span class="accent">recall</span>.<br>
+      An LLM adjudicator delivers <span class="accent">precision</span>.</h2>
   <table style="margin-top:0.8em">
     <tr><td>people in the graph</td><td class="num">811</td></tr>
     <tr><td>every possible pair</td><td class="num"><strong>328,455</strong></td></tr>
     <tr><td>what the signals propose</td><td class="num"><strong>~1,100</strong></td></tr>
     <tr><td>what that costs to adjudicate</td><td class="num"><em>fractions of a cent</em></td></tr>
   </table>
-  </div>
-  <div class="marker">§4.7 · 1:00 → §4.7 · the table</div>
+  <div class="marker">§4.7 · 1:00</div>
   <aside class="notes">
     <p class="muted"><em>4.7 What it costs</em></p>
     <p><strong>1:00.</strong> Anyone who ships this unfiltered gets nonsense. I
@@ -704,39 +686,39 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
   </aside>
 </section>
 
-<section data-menu-title="4.8 What WCC is + 4.8 The problem it solves + 4.8 The correction">
-  <h3>Weakly Connected Components</h3>
-  <h2>Follow the edges, ignoring direction.<br>
-      Everything you can reach is one component.</h2>
-  <p class="sub">That's the entire algorithm.</p>
+<section data-menu-title="4.8 The problem + 4.8 What WCC is + 4.8 The correction">
+  <h3>The signals identify <em>pairwise</em> similarity — but equality is transitive</h3>
+  <h2>A ≈ B and B ≈ C is a claim about <span class="accent">A and C</span>,<br>
+      whether you meant to make it or not.</h2>
 
   <div class="fragment">
-  <h3>The problem it solves</h3>
+  <h3>Weakly Connected Components — the implications, before you merge</h3>
+  <p class="sub">Follow the edges, ignoring direction. Everything you can reach is one
+     component.</p>
   <div class="diagram">
-    <img src="assets/images/4_8_wcc.svg" style="max-height: 340px"
+    <img src="assets/images/4_8_wcc.svg" style="max-height: 540px"
          alt="Three pairwise IS_SIMILAR judgements — SACAGAWEA to THE SQUAR, THE SQUAR to INDIAN WOMAN, INDIAN WOMAN to JANEY — resolving through WCC into one entity with four names">
   </div>
   </div>
-
-  <div class="fragment">
-  <h2>WCC answers "are these connected at all"<br>
-      <span class="muted">not "are these a topic"</span></h2>
-  </div>
-  <div class="marker">§4.8 · 1:45 → §4.8 · closure → §4.8 · the correction</div>
+  <div class="marker">§4.8 · 1:45 → §4.8 · WCC</div>
   <aside class="notes">
-    <p class="muted"><em>4.8 What WCC is</em></p>
-    <p><strong>1:45 for all of 4.8.</strong> Say what it <em>is</em> first,
-    because "component" sounds like jargon and isn't: start anywhere, follow
-    every edge you can, ignore which way the arrows point, stop when you can't
-    reach anything new. That set is a component. One pass, linear in the edges,
-    <strong>no parameters</strong> — nothing to tune, nothing to seed.</p>
+    <p class="muted"><em>4.8 The problem</em></p>
+    <p><strong>1:45 for all of 4.8.</strong> Frame the problem before naming the
+    algorithm: <strong>the matcher only ever produces pairs.</strong> It said
+    Sacagawea ≈ the squar, and separately the squar ≈ Indian woman. Nothing in
+    the pipeline ever looked at an <em>identity</em> — but merging acts on one,
+    because equality is transitive whether we thought about it or not.</p>
     <hr>
-    <p class="muted"><em>4.8 The problem it solves</em></p>
-    <p>The problem it solves is the one I actually have: <strong>my matcher only
-    ever produces pairs.</strong> It said Sacagawea ≈ the squar, and separately
-    the squar ≈ Indian woman. Nothing in the pipeline ever looked at an
-    <em>identity</em>. WCC turns a bag of pairs into "these ten names are one
-    person" — <strong>transitive closure, computed for free.</strong></p>
+    <p class="muted"><em>4.8 What WCC is</em></p>
+    <p>Say what it <em>is</em> plainly, because "component" sounds like jargon
+    and isn't: start anywhere, follow every edge you can, ignore which way the
+    arrows point, stop when you can't reach anything new. That set is a
+    component. One pass, linear in the edges, <strong>no parameters</strong> —
+    nothing to tune, nothing to seed.</p>
+    <p>Run it on the <span class="mono">IS_SIMILAR</span> pairs and it turns the
+    bag of pairs into "these ten names are one person" — <strong>transitive
+    closure, computed for free, shown to you before any node is
+    merged.</strong></p>
     <p>The Sacagawea cluster is built from ten pairwise judgements.
     <strong>No single one of them sees the whole identity.</strong></p>
     <p><em>§6 comes back to this contrast with a receipt: on the retrieval graph
@@ -752,16 +734,13 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
 </section>
 
 <section data-menu-title="4.8 The bridge + 4.8 The rule">
-  <h3 class="bad">And the danger, in the same breath</h3>
-  <div class="diagram">
+  <h3 class="bad">Spot potential over-merges before they happen</h3>
+  <div class="diagram" style="margin-top:1.4em">
     <img src="assets/images/4_8_bridge.svg" style="max-height: 420px"
          alt="Bridge-node chain: SACAGAWEA linked as HIS WIFE to TOUSSAINT CHARBONNEAU, linked as THE INTERPRETER to GEORGE DROUILLARD — each link defensible, closure makes them one wrong entity">
   </div>
 
-  <div class="fragment">
-  <h2>Fix what enters the candidate set,<br>not what comes out of it.</h2>
-  </div>
-  <div class="marker">§4.8 · the bridge → §4.8 · the rule</div>
+  <div class="marker">§4.8 · the bridge</div>
   <aside class="notes">
     <p class="muted"><em>4.8 The bridge</em></p>
     <p><strong>Strongest content in the section.</strong> I did this to my own
@@ -783,7 +762,9 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
     <strong>Sparse entities get bad answers from both halves</strong> — and
     closure turns individual mistakes into one merged identity.</p>
     <hr>
-    <p class="muted"><em>4.8 The rule</em></p>
+    <p class="muted"><em>4.8 The rule (no build — spoken over the diagram)</em></p>
+    <p><strong>Say the rule:</strong> fix what <em>enters</em> the candidate set,
+    not what comes out of it.</p>
     <p>No amount of per-pair accuracy saves you here, because
     <strong>the pairs that fail are the ones nobody can judge.</strong></p>
     <p>This pipeline has a <span class="mono">flag_generic_locations</span> step
@@ -796,10 +777,12 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
 </section>
 
 <section class="statement" data-menu-title="4.9 Take home">
-  <h2>Fix entity resolution<br>before you tune retrieval.</h2>
+  <h2>A clean graph opens the door<br>to <span class="accent">great retrieval</span>.</h2>
   <div class="marker">§4.9 · 0:30</div>
   <aside class="notes">
-    <p><strong>0:30. Hands directly to §5.</strong></p>
+    <p><strong>0:30. Hands directly to §5. Land this as the payoff beat</strong> —
+    §4 was real work, and this is where it starts paying you back: the door line
+    is a promise, and §5–§7 spend the rest of the hour keeping it.</p>
     <p>Personalized PageRank over a graph where Sacagawea is nineteen nodes will
     confidently rank the wrong passages — <strong>and it will look like it is
     working.</strong></p>
@@ -902,18 +885,17 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
 
   <div class="fragment">
   <h3>Put mass on the node you care about. Let it spread.</h3>
-  <div class="todo">
-    §5.3 <strong>mass-distribution animation — the one build in the talk that
-    has to move.</strong> Five reveal.js fragments over one arrows.app export
-    (same diagram, opacity/colour per fragment — cheaper and more reliable than
-    video, and it stays legible if the projector eats the animation):
-    <br>step 0 — <span class="mono">●1.00</span> on the seed, everything else 0
-    <br>step 1 — split along the seed's mention edges
-    (<span class="mono">●.125 ×8</span>, schematic)
-    <br>step 2 — each passage splits its mass over the entities it names
-    <br>step 3 — <strong>and back out to THEIR passages: passages that never
-    mention the seed now hold mass</strong>
-    <br>step 4 — iterate until the numbers stop moving
+  <div class="diagram anim-stack">
+    <img src="assets/images/5_3_ppr_step0.svg" style="max-height:520px"
+         alt="Step 0: all the mass (1.00) sits on the seed node SACAGAWEA; eight passages, three co-mentioned entities and their passages hold zero">
+    <img class="overlay fragment" src="assets/images/5_3_ppr_step1.svg" style="max-height:520px"
+         alt="Step 1: the seed's mass splits along its eight mention edges, .125 to each passage">
+    <img class="overlay fragment" src="assets/images/5_3_ppr_step2.svg" style="max-height:520px"
+         alt="Step 2: each passage splits its mass over every entity it names — CHARBONNEAU, CAMEAHWAIT, HIDATSA and back to the seed">
+    <img class="overlay fragment" src="assets/images/5_3_ppr_step3.svg" style="max-height:520px"
+         alt="Step 3: mass flows out to those entities' own passages — passages that never mention the seed now hold mass">
+    <img class="overlay fragment" src="assets/images/5_3_ppr_step4.svg" style="max-height:520px"
+         alt="Step 4: iterated to convergence — the numbers stop moving">
   </div>
   </div>
   <div class="marker">§5.3 · 1:30 → §5.3 · the animation</div>
@@ -941,6 +923,11 @@ INDIAN WOMAN  +  INTERPRETERS WIFE  +  SACAGAWEA  +  SQUAR INTERPRETRESS
     mention edges, so her first step hands each passage about 1.2% — worth
     saying, because it's exactly the arithmetic behind 5.6's hub trap and 5.13's
     "2 of 85" bridge.</em></p>
+    <p><em>The numbers on the frames are exact power iterations of PPR on the
+    schematic graph (d = 0.85, restart to the seed; generator script sits next
+    to the SVGs). If anyone notices the entities dip between steps 2 and 3
+    (.18 → .03): mass sloshes back and forth on a graph this small before it
+    settles — step 4 is the true converged vector.</em></p>
   </aside>
 </section>
 

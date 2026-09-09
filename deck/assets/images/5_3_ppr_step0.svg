@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 800">
+<rect width="100%" height="100%" fill="#0D1B2A"/>
+<defs><linearGradient id="heat" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#23344b"/><stop offset="5%" stop-color="#2d334d"/><stop offset="10%" stop-color="#383250"/><stop offset="15%" stop-color="#423152"/><stop offset="20%" stop-color="#4c3055"/><stop offset="25%" stop-color="#562f57"/><stop offset="30%" stop-color="#612e5a"/><stop offset="35%" stop-color="#6b2d5c"/><stop offset="40%" stop-color="#783255"/><stop offset="45%" stop-color="#86374f"/><stop offset="50%" stop-color="#933c48"/><stop offset="55%" stop-color="#a14142"/><stop offset="60%" stop-color="#ae463b"/><stop offset="65%" stop-color="#bc4b35"/><stop offset="70%" stop-color="#c9502e"/><stop offset="75%" stop-color="#d26134"/><stop offset="80%" stop-color="#db713b"/><stop offset="85%" stop-color="#e48241"/><stop offset="90%" stop-color="#ed9347"/><stop offset="95%" stop-color="#f6a34e"/><stop offset="100%" stop-color="#ffb454"/></linearGradient></defs><rect x="30" y="742" width="180" height="14" rx="7" fill="url(#heat)"/><text x="30" y="732" font-size="15" fill="#7A8FA6">mass  .01</text><text x="210" y="732" text-anchor="end" font-size="15" fill="#7A8FA6">1</text>
+<line x1="170" y1="390" x2="540" y2="80" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="170" y1="390" x2="540" y2="168" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="170" y1="390" x2="540" y2="256" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="170" y1="390" x2="540" y2="344" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="170" y1="390" x2="540" y2="432" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="170" y1="390" x2="540" y2="520" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="170" y1="390" x2="540" y2="608" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="170" y1="390" x2="540" y2="696" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="540" y1="80" x2="920" y2="200" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="540" y1="168" x2="920" y2="200" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="540" y1="256" x2="920" y2="200" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="540" y1="344" x2="920" y2="200" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="540" y1="432" x2="920" y2="400" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="540" y1="520" x2="920" y2="400" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="540" y1="608" x2="920" y2="580" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="540" y1="696" x2="920" y2="580" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="920" y1="200" x2="1310" y2="250" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="920" y1="400" x2="1310" y2="430" stroke="#5c6f85" stroke-width="1.8"/>
+<line x1="920" y1="580" x2="1310" y2="610" stroke="#5c6f85" stroke-width="1.8"/>
+<circle cx="170" cy="390" r="62" fill="#ffb454" stroke="#00bff3" stroke-width="3"/><text x="170" y="396.65" text-anchor="middle" font-size="19" font-weight="bold" fill="#1a1b1d">SACAGAWEA</text>
+<circle cx="540" cy="80" r="30" fill="#23344b" stroke="#ffb9f8" stroke-width="3"/>
+<circle cx="540" cy="168" r="30" fill="#23344b" stroke="#ffb9f8" stroke-width="3"/>
+<circle cx="540" cy="256" r="30" fill="#23344b" stroke="#ffb9f8" stroke-width="3"/>
+<circle cx="540" cy="344" r="30" fill="#23344b" stroke="#ffb9f8" stroke-width="3"/>
+<circle cx="540" cy="432" r="30" fill="#23344b" stroke="#ffb9f8" stroke-width="3"/>
+<circle cx="540" cy="520" r="30" fill="#23344b" stroke="#ffb9f8" stroke-width="3"/>
+<circle cx="540" cy="608" r="30" fill="#23344b" stroke="#ffb9f8" stroke-width="3"/>
+<circle cx="540" cy="696" r="30" fill="#23344b" stroke="#ffb9f8" stroke-width="3"/>
+<circle cx="920" cy="200" r="52" fill="#23344b" stroke="#00bff3" stroke-width="3"/><text x="920" y="205.25" text-anchor="middle" font-size="15" font-weight="bold" fill="#E8EDF2">CHARBONNEAU</text>
+<circle cx="920" cy="400" r="52" fill="#23344b" stroke="#00bff3" stroke-width="3"/><text x="920" y="405.25" text-anchor="middle" font-size="15" font-weight="bold" fill="#E8EDF2">CAMEAHWAIT</text>
+<circle cx="920" cy="580" r="52" fill="#23344b" stroke="#00bff3" stroke-width="3"/><text x="920" y="585.25" text-anchor="middle" font-size="15" font-weight="bold" fill="#E8EDF2">HIDATSA</text>
+<circle cx="1310" cy="250" r="30" fill="#23344b" stroke="#ffb9f8" stroke-width="3"/>
+<circle cx="1310" cy="430" r="30" fill="#23344b" stroke="#ffb9f8" stroke-width="3"/>
+<circle cx="1310" cy="610" r="30" fill="#23344b" stroke="#ffb9f8" stroke-width="3"/>
+<text x="170" y="482" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="27" font-weight="bold" fill="#FFB454">1.00</text>
+<text x="482" y="86" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="482" y="174" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="482" y="262" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="482" y="350" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="482" y="438" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="482" y="526" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="482" y="614" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="482" y="702" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="920" y="280" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="21" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="920" y="480" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="21" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="920" y="660" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="21" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="1372" y="256" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="1372" y="436" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="1372" y="616" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#7A8FA6">0</text>
+<text x="750.0" y="770" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="21" fill="#E8EDF2"><tspan fill="#FFB454">step 0</tspan> — all the mass starts on the seed</text>
+<text x="1484" y="26" text-anchor="end" font-size="16" fill="#7A8FA6">schematic — the real seed has 85 mention edges</text>
+</svg>

@@ -48,7 +48,7 @@ The deck is 1600×900 (16:9), matching last year's 10 × 5.625in deck.
 
 ## What's still needed
 
-**8 asset placeholders**, each rendered as a loud dashed box naming exactly
+**5 asset placeholders**, each rendered as a loud dashed box naming exactly
 what's missing. Find them with:
 
 ```bash
@@ -66,8 +66,11 @@ They fall into two groups:
    Five are in as of 2026-09-08 — **§1.1**, both **§4.8** diagrams, **§5.6**,
    and **§6.2** — sourced from `docs/images/` and copied to `assets/images/`
    (§6.2's export shipped without a `viewBox`; the copy in `assets/images/` has
-   one added). The one with the most work still to come is **§5.3's
-   mass-distribution animation**, five reveal fragments over one export.
+   one added). Three more landed 2026-09-09: **§4.5's** co-occurrence export
+   (fixed in place — viewBox, caption wraps, contrast), **§4.5's** OVERLAP
+   circles (hand-drawn, area-accurate), and **§5.3's** mass-distribution build
+   (five click-through overlay frames, exact PPR iterations —
+   `assets/images/5_3_ppr_generator.py` regenerates them).
 2. **The repo QR code** on §10.2 — blocked on the repo actually existing. It
    has no git remote yet; create it under `smithna`, push, *then* generate the
    code. Until then §8.1's "the harness is in the repo" and §10.2's "every
