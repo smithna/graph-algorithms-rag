@@ -32,14 +32,14 @@ def heat(v):
     t = 1 + math.log10(max(v, 0.01)) / 2   # .01 -> 0, .1 -> .5, 1.0 -> 1
     return ramp_color(max(0.0, min(1.0, t)))
 
-seed = (170, 390, 62)
+seed = (170, 390, 78)
 passages = [(540, 80+i*88, 30) for i in range(8)]
-entities = {"CHARBONNEAU": (920, 200, 52), "CAMEAHWAIT": (920, 400, 52), "HIDATSA": (920, 580, 52)}
+entities = {"SACAGAWEA": (920, 200, 52), "HIDATSA": (920, 400, 52), "MANDAN": (920, 580, 52)}
 rpass = [(1310, 250, 30), (1310, 430, 30), (1310, 610, 30)]
 
-p2e = {0:"CHARBONNEAU",1:"CHARBONNEAU",2:"CHARBONNEAU",3:"CHARBONNEAU",
-       4:"CAMEAHWAIT",5:"CAMEAHWAIT",6:"HIDATSA",7:"HIDATSA"}
-e2r = {"CHARBONNEAU":[0], "CAMEAHWAIT":[1], "HIDATSA":[2]}
+p2e = {0:"SACAGAWEA",1:"SACAGAWEA",2:"SACAGAWEA",3:"SACAGAWEA",
+       4:"HIDATSA",5:"HIDATSA",6:"MANDAN",7:"MANDAN"}
+e2r = {"SACAGAWEA":[0], "HIDATSA":[1], "MANDAN":[2]}
 
 def line(a, b, hot):
     return f'<line x1="{a[0]}" y1="{a[1]}" x2="{b[0]}" y2="{b[1]}" stroke="{WARN if hot else EDGE}" stroke-width="{3.5 if hot else 1.8}"/>'
@@ -71,7 +71,7 @@ def frame(step, caption, seed_m, p_m, e_m, r_m, hot):
     for i, p in enumerate(passages): o.append(line(p[:2], entities[p2e[i]][:2], hot == "pe"))
     for name, e in entities.items():
         for ri in e2r[name]: o.append(line(e[:2], rpass[ri][:2], hot == "er"))
-    o.append(node(*seed, ENTITY_RING, seed_m, "SACAGAWEA", 19))
+    o.append(node(*seed, ENTITY_RING, seed_m, "CHARBONNEAU", 17))
     for i, p in enumerate(passages): o.append(node(*p, CHUNK_RING, p_m[i]))
     for j, (name, e) in enumerate(entities.items()): o.append(node(*e, ENTITY_RING, e_m[j], name, 15))
     for k, p in enumerate(rpass): o.append(node(*p, CHUNK_RING, r_m[k]))
@@ -84,7 +84,7 @@ def frame(step, caption, seed_m, p_m, e_m, r_m, hot):
                  f'fill="{WARN if step==3 else MUTED}">these passages never<tspan x="1310" dy="24">mention the seed</tspan></text>')
     o.append(f'<text x="{W/2}" y="770" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="21" fill="{TEXT}">'
              f'<tspan fill="{WARN}">step {step}</tspan> — {caption}</text>')
-    o.append(f'<text x="{W-16}" y="26" text-anchor="end" font-size="16" fill="{MUTED}">schematic — the real seed has 85 mention edges</text>')
+    o.append(f'<text x="{W-16}" y="26" text-anchor="end" font-size="16" fill="{MUTED}">schematic — the real seed has 69 mention edges</text>')
     o.append('</svg>')
     return "\n".join(o)
 

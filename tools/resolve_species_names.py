@@ -34,13 +34,13 @@ import hashlib
 import json
 import os
 import re
-import sys
+import sys, pathlib
 import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
-sys.path.insert(0, "/Users/nathansmith/Documents/kcdc-2026/graph-algorithms-rag")
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--database", default="lewisclark")

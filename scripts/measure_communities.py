@@ -38,7 +38,7 @@ from reading the read-pack it writes to ``results/communities-<database>.md``
 — chunks already judged in 5l's read-pack (``results/thematic-<database>.md``)
 are flagged as such.
 
-Results and their reading live in ``docs/talk-outline.md``, section 6 findings.
+This script's own output is the write-up -- run it to see the numbers.
 """
 
 from __future__ import annotations

@@ -4,10 +4,10 @@
 under `vendor/reveal/` and **never loaded from a CDN**: the deck presents from
 this machine with conference wifi assumed dead.
 
-Content comes from [`../docs/talk-full-draft.md`](../docs/talk-full-draft.md),
-which is the source of truth for what gets said on stage. **Edit the draft
-first, then this.** The per-section `docs/section-NN-slides.md` files are behind
-both.
+`index.html` is the source of truth for what gets said on stage — every
+slide carries its own speaker notes and minute budget (see `M` below). The
+working drafts this deck was built from aren't part of this repo; the deck
+itself is the final form.
 
 ## Presenting
 
@@ -96,8 +96,12 @@ so last year's metrics survive and the deck stops depending on what's installed.
 
 ## Structure
 
-**69 slides**, all 11 sections, every slide carrying speaker notes and its
-minute budget — about 48 seconds a slide against the 55-minute run.
+**63 slides** (as of the 2026-09-09 §5/§6 rebuild — re-check with
+`Reveal.getTotalSlides()`, this number drifts every time slides are merged or
+cut), all 11 sections, every slide carrying speaker notes and its minute
+budget — about 51 seconds a slide against the current 53:40 draft total, summed
+directly from each slide's own marker (toggle with `M`); §5 and §6 are
+un-rehearsed estimates, not measured.
 
 It was 103 at first draft, which was ~32 seconds a slide and too many. The
 reduction was **consolidation, not cutting**: wherever the draft says
@@ -125,13 +129,21 @@ for (let i = 0; i < Reveal.getTotalSlides(); i++) {
 Note that browsers cache `theme-kcdc.css` aggressively during editing — a hash
 change won't reload it. Hard-reload, or bust it with a query string.
 
+Some speaker notes cite an internal research log by shorthand — `"finding
+5q"`, `"the outline"` — from working documents used while building the talk
+that aren't part of this repo. Treat those as flavor, not links: the actual
+receipts are in `results/` and the `scripts/` that produced them.
+
 Two timekeeping anchors are called out in the notes — **§3.1** (minute
 13-to-14) and **§6.1** (0:35) — because §4 and §5 are the only sections that
 have ever run long.
 
-Live demos are **two**: §5.9 (`demo_pagerank.py`) and §7.2 + §7.4
-(`demo_paths.py`, one terminal session, two queries). §0.1 is a screenshot and
-§4.6 is a recording.
+**This draft is demo-free (since 2026-09-09).** §5.9's live demo was cut in
+the §5 restructure; §7.2 and §7.4 now show `demo_paths.py`'s captured output
+as results on glass rather than running it live, so there is no pre-flight
+step left. §0.1 is a screenshot and §4.6 is a recording. If live demos come
+back, restore the old pre-flight (below) and §7's divider notes.
 
-**Pre-flight:** run one throwaway path query before walking on stage. The first
-path query in a fresh process costs ~212 ms; every one after costs ~23 ms.
+**Pre-flight (parked, not currently needed):** run one throwaway path query
+before walking on stage. The first path query in a fresh process costs
+~212 ms; every one after costs ~23 ms.

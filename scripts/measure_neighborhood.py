@@ -34,7 +34,7 @@ LLM step would only emit the phrase, so it is bypassed, same as 5k.
 chunks removed: if the satellite chunks' ranks crater, the bridge — not some
 diffuse similarity — is the mechanism.
 
-Results and their reading live in ``docs/talk-outline.md``, finding 5m.
+This script's own output is the write-up -- run it to see the numbers.
 """
 
 from __future__ import annotations

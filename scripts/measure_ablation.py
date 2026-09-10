@@ -39,7 +39,7 @@ classified first: if its seed-entity edge is name-backed it *survives* ablation
 and serves as a sanity control, not a test case. The test cases are the three
 SACAGAWEA coref-only passages.
 
-Results and their reading live in ``docs/talk-outline.md``, finding 5i.
+This script's own output is the write-up -- run it to see the numbers.
 
 Known boundary case, found during hand verification and kept deliberately:
 SHOSHONE -> Nov-4 is classed surface-only ("Snake Indians" is a filed alias but

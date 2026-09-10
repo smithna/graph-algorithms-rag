@@ -8,8 +8,8 @@ Under --apply, layer 3 runs with require_complete: a cluster merges only when
 every internal member pair carries a decided verdict and none is negative.
 Dry runs tolerate unverified pairs and report them instead.
 """
-import os, sys, argparse
-sys.path.insert(0, "/Users/nathansmith/Documents/kcdc-2026/graph-algorithms-rag")
+import os, sys, pathlib, argparse
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--database", default="lewisclark")

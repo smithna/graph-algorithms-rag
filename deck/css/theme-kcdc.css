@@ -163,7 +163,7 @@
   vertical-align: top;
 }
 .reveal table tr.is-highlighted td { background: rgba(1, 139, 255, 0.14); }
-.reveal table tr.is-win td         { background: rgba(0, 204, 118, 0.12); }
+.reveal table tr.is-win td         { background: rgba(0, 204, 118, 0.12); border-bottom-color: rgba(0, 204, 118, 0.30); }
 .reveal table td.num               { font-family: var(--font-mono); text-align: right; }
 
 /* The roadmap re-shows in §4–§7 with one row lit. Build it once, add a class. */

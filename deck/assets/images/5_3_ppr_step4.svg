@@ -20,7 +20,7 @@
 <line x1="920" y1="200" x2="1310" y2="250" stroke="#5c6f85" stroke-width="1.8"/>
 <line x1="920" y1="400" x2="1310" y2="430" stroke="#5c6f85" stroke-width="1.8"/>
 <line x1="920" y1="580" x2="1310" y2="610" stroke="#5c6f85" stroke-width="1.8"/>
-<circle cx="170" cy="390" r="62" fill="#d26235" stroke="#00bff3" stroke-width="3"/><text x="170" y="396.65" text-anchor="middle" font-size="19" font-weight="bold" fill="#1a1b1d">SACAGAWEA</text>
+<circle cx="170" cy="390" r="78" fill="#d26235" stroke="#00bff3" stroke-width="3"/><text x="170" y="395.95" text-anchor="middle" font-size="17" font-weight="bold" fill="#1a1b1d">CHARBONNEAU</text>
 <circle cx="540" cy="80" r="30" fill="#6d2e5b" stroke="#ffb9f8" stroke-width="3"/>
 <circle cx="540" cy="168" r="30" fill="#6d2e5b" stroke="#ffb9f8" stroke-width="3"/>
 <circle cx="540" cy="256" r="30" fill="#6d2e5b" stroke="#ffb9f8" stroke-width="3"/>
@@ -29,13 +29,13 @@
 <circle cx="540" cy="520" r="30" fill="#6b2d5c" stroke="#ffb9f8" stroke-width="3"/>
 <circle cx="540" cy="608" r="30" fill="#6b2d5c" stroke="#ffb9f8" stroke-width="3"/>
 <circle cx="540" cy="696" r="30" fill="#6b2d5c" stroke="#ffb9f8" stroke-width="3"/>
-<circle cx="920" cy="200" r="52" fill="#933c48" stroke="#00bff3" stroke-width="3"/><text x="920" y="205.25" text-anchor="middle" font-size="15" font-weight="bold" fill="#E8EDF2">CHARBONNEAU</text>
-<circle cx="920" cy="400" r="52" fill="#712f59" stroke="#00bff3" stroke-width="3"/><text x="920" y="405.25" text-anchor="middle" font-size="15" font-weight="bold" fill="#E8EDF2">CAMEAHWAIT</text>
-<circle cx="920" cy="580" r="52" fill="#712f59" stroke="#00bff3" stroke-width="3"/><text x="920" y="585.25" text-anchor="middle" font-size="15" font-weight="bold" fill="#E8EDF2">HIDATSA</text>
+<circle cx="920" cy="200" r="52" fill="#933c48" stroke="#00bff3" stroke-width="3"/><text x="920" y="205.25" text-anchor="middle" font-size="15" font-weight="bold" fill="#E8EDF2">SACAGAWEA</text>
+<circle cx="920" cy="400" r="52" fill="#712f59" stroke="#00bff3" stroke-width="3"/><text x="920" y="405.25" text-anchor="middle" font-size="15" font-weight="bold" fill="#E8EDF2">HIDATSA</text>
+<circle cx="920" cy="580" r="52" fill="#712f59" stroke="#00bff3" stroke-width="3"/><text x="920" y="585.25" text-anchor="middle" font-size="15" font-weight="bold" fill="#E8EDF2">MANDAN</text>
 <circle cx="1310" cy="250" r="30" fill="#3d3151" stroke="#ffb9f8" stroke-width="3"/>
 <circle cx="1310" cy="430" r="30" fill="#383250" stroke="#ffb9f8" stroke-width="3"/>
 <circle cx="1310" cy="610" r="30" fill="#383250" stroke="#ffb9f8" stroke-width="3"/>
-<text x="170" y="482" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="27" font-weight="bold" fill="#E8EDF2">.32</text>
+<text x="170" y="498" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="27" font-weight="bold" fill="#E8EDF2">.32</text>
 <text x="482" y="86" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#E8EDF2">.052</text>
 <text x="482" y="174" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#E8EDF2">.052</text>
 <text x="482" y="262" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#E8EDF2">.052</text>
@@ -52,5 +52,5 @@
 <text x="1372" y="616" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="19" font-weight="bold" fill="#E8EDF2">.016</text>
 <text x="1310" y="700" text-anchor="middle" font-size="19" fill="#7A8FA6">these passages never<tspan x="1310" dy="24">mention the seed</tspan></text>
 <text x="750.0" y="770" text-anchor="middle" font-family="Menlo, Consolas, monospace" font-size="21" fill="#E8EDF2"><tspan fill="#FFB454">step 4</tspan> — iterate until the numbers stop moving</text>
-<text x="1484" y="26" text-anchor="end" font-size="16" fill="#7A8FA6">schematic — the real seed has 85 mention edges</text>
+<text x="1484" y="26" text-anchor="end" font-size="16" fill="#7A8FA6">schematic — the real seed has 69 mention edges</text>
 </svg>

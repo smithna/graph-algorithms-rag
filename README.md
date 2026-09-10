@@ -2,9 +2,9 @@
 
 > Vector similarity gets you candidates. Graph algorithms get you the right answer.
 
-Companion code for a talk on using graph algorithms — personalized PageRank,
-Louvain community detection, and Yen's k-shortest paths — to improve context
-retrieval and ranking in a RAG pipeline.
+Companion code for a talk on using graph algorithms — node similarity,
+personalized PageRank, Leiden community detection, and Yen's k-shortest
+paths — to improve context retrieval and ranking in a RAG pipeline.
 
 It runs against the Lewis & Clark knowledge graph built by
 [corps-of-discovery-graph-rag](https://github.com/smithna/corps-of-discovery-graph-rag).
@@ -15,10 +15,18 @@ re-extraction, no re-embedding of the corpus.
 
 ## The talk
 
-**[`docs/talk-outline.md`](docs/talk-outline.md) is the source of truth** for
-the session this code backs: section-by-section outline, timings for the
-60-minute slot, and a progress table showing which sections are built. Start
-there.
+**The deck is the source of truth for the session this code backs** —
+[`deck/index.html`](deck/index.html), a self-contained reveal.js
+presentation with full speaker notes and per-slide timing baked in (see
+[`deck/README.md`](deck/README.md) for how to present it, and how to read the
+notes). There's no separate outline or script in this repo; the deck **is**
+the final form of the talk.
+
+The paper the talk's numbers are checked against —
+NICD's *Reducing hallucinations with GraphRAG* — is in
+[`docs/nicd-reducing-hallucinations-graphrag.pdf`](docs/nicd-reducing-hallucinations-graphrag.pdf)
+(reproduced here under its CC BY-NC-SA 4.0 license; see the file for
+attribution).
 
 ---
 
@@ -29,9 +37,9 @@ there.
 | Entity resolution, read-only | [`graphrank/resolution.py`](graphrank/resolution.py) | `CAPT. CLARK` and `WILLIAM CLARK` are separate nodes, so retrieval for Clark misses most of Clark. Node similarity + WCC find the duplicates — without writing anything. |
 | Node similarity retrieval | [`graphrank/cooccurrence.py`](graphrank/cooccurrence.py) | "Chunks that share entities with this chunk" is a different question from "chunks that sound like it", and catches passages embeddings miss. |
 | Personalized PageRank rerank | [`graphrank/pagerank.py`](graphrank/pagerank.py) | Vector top-k ranks by wording. PPR ranks by how central a passage is *to this question's* neighbourhood. |
-| Louvain community detection | [`graphrank/communities.py`](graphrank/communities.py) | Vector top-k returns eight restatements of one thing. Community caps force the window to cover the question. |
+| Leiden community detection | [`graphrank/communities.py`](graphrank/communities.py) | Vector top-k returns eight restatements of one thing, and can't answer whole-corpus questions at all. A theme map — communities as a table of contents — fixes both. |
 | Yen's k-shortest paths | [`graphrank/paths.py`](graphrank/paths.py) | Similarity says two concepts are both relevant. Paths say *how they are connected*, with the passage evidencing each hop. |
-| Hybrid | [`graphrank/strategies.py`](graphrank/strategies.py) | PageRank decides relevance, Louvain stops redundancy. This is the production configuration. |
+| Hybrid | [`graphrank/strategies.py`](graphrank/strategies.py) | PageRank decides relevance, community structure stops redundancy. This is the production configuration. |
 | Benchmark harness | [`scripts/benchmark.py`](scripts/benchmark.py) | Recall, redundancy, context size, and latency per strategy. |
 
 ---
@@ -57,7 +65,7 @@ most instructive thing in the demo.
 ## Prerequisites
 
 - **Python 3.10+**
-- **Neo4j 5.x with the GDS plugin.** PageRank, Louvain, and Yen's all run in
+- **Neo4j 5.x with the GDS plugin.** PageRank, Leiden, and Yen's all run in
   GDS. Aura Free does not include it — you would need
   [Aura Graph Analytics](https://neo4j.com/docs/graph-data-science/current/aura-graph-analytics/)
   instead, which changes the client code.
@@ -236,31 +244,44 @@ over-weighted toward structure.
 ## Repository layout
 
 ```
-graphrank/
-├── config.py        # env, driver, GDS client
-├── embedding.py     # question embedding with an on-disk cache
-├── models.py        # shared result types
-├── resolve.py       # phrase -> node, via full-text or vector index
-├── projection.py    # the GDS projection and its IDF weighting
-├── baseline.py      # pure vector search — the control
-├── resolution.py    # read-only entity resolution: signals, WCC, scoring, audit
-├── adjudicate.py    # LLM pair adjudication — opt-in, capped, disk-cached
-├── cooccurrence.py  # node similarity as a query-time retrieval strategy
-├── pagerank.py      # personalized PageRank reranking
-├── communities.py   # Louvain detection, summarization, diversification
-├── paths.py         # Yen's k-shortest paths + evidence assembly
-├── strategies.py    # the registry the benchmark runs against
-└── metrics.py       # recall, redundancy, context size
+deck/                 # the talk itself — reveal.js, vendored, presents offline
+├── index.html         # every slide, every speaker note, every timing budget
+├── README.md          # how to present it, keyboard shortcuts, structure notes
+└── assets/            # diagrams (mostly inline SVG) and the two supplied images
 
-scripts/
+graphrank/             # the retrieval/algorithms library
+├── config.py           # env, driver, GDS client
+├── embedding.py        # question embedding with an on-disk cache
+├── models.py            # shared result types
+├── resolve.py           # phrase -> node, via full-text or vector index
+├── projection.py        # the GDS projection and its IDF weighting
+├── baseline.py           # pure vector search — the control
+├── resolution.py         # read-only entity resolution: signals, WCC, scoring, audit
+├── adjudicate.py         # LLM pair adjudication — opt-in, capped, disk-cached
+├── cooccurrence.py       # node similarity as a query-time retrieval strategy
+├── pagerank.py           # personalized PageRank reranking
+├── communities.py        # Leiden detection, summarization, the theme-map
+├── paths.py              # Yen's k-shortest paths + evidence assembly
+├── strategies.py         # the registry the benchmark runs against
+└── metrics.py            # recall, redundancy, context size
+
+scripts/               # everything runnable
 ├── check_setup.py       # verify the environment first
 ├── project_graph.py     # project once, reuse everywhere
 ├── demo_resolution.py   # duplicate entities, zero writes
 ├── demo_pagerank.py     # before/after reranking
 ├── demo_communities.py  # themes + diversification
 ├── demo_paths.py        # explanatory routes with citations
+├── make_paths_readpack.py # human-readable dump of every path + receipt
 ├── verify_questions.py  # validate gold labels against the graph
-└── benchmark.py         # the comparison table
+├── benchmark.py         # the comparison table
+└── measure_*.py         # one-off measurement scripts behind specific deck
+                          # claims — each names its own output in results/
+
+questions/             # the benchmark's question bank and gold answer labels
+results/               # generated by scripts/ above; gitignored, reproducible
+tools/                 # one-time corpus-prep utilities — see tools/README.md
+docs/                  # the NICD paper the talk's numbers are checked against
 ```
 
 ---

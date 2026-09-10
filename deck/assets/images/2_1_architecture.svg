@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 640" font-family="Avenir Next, Calibri, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0l10 5l-10 5z" fill="#7A8FA6"/>
+    </marker>
+    <marker id="arrow-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M0 0l10 5l-10 5z" fill="#018BFF"/>
+    </marker>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#0D1B2A"/>
+
+  <!-- outer boundary: one database -->
+  <rect x="60" y="80" width="700" height="480" rx="28" fill="#152235" stroke="#018BFF" stroke-width="3"/>
+  <text x="100" y="132" font-size="30" font-weight="700" fill="#018BFF" letter-spacing="1">ONE DATABASE</text>
+  <text x="100" y="162" font-size="18" fill="#7A8FA6">same query language, same transaction</text>
+
+  <!-- vector index box -->
+  <rect x="100" y="188" width="620" height="150" rx="16" fill="#0D1B2A" stroke="#7A8FA6" stroke-width="1.6"/>
+  <!-- dot-grid icon: chunk embeddings -->
+  <g fill="#018BFF">
+    <circle cx="150" cy="238" r="6"/><circle cx="178" cy="238" r="6"/><circle cx="206" cy="238" r="6"/>
+    <circle cx="150" cy="266" r="6"/><circle cx="178" cy="266" r="6"/><circle cx="206" cy="266" r="6"/>
+    <circle cx="150" cy="294" r="6"/><circle cx="178" cy="294" r="6"/><circle cx="206" cy="294" r="6"/>
+  </g>
+  <text x="250" y="248" font-size="24" font-weight="700" fill="#018BFF">VECTOR INDEX</text>
+  <text x="250" y="278" font-size="17" fill="#E8EDF2">chunk embeddings</text>
+  <text x="250" y="304" font-size="15" fill="#7A8FA6">similarity search, one verb</text>
+
+  <!-- knowledge graph box -->
+  <rect x="100" y="358" width="620" height="150" rx="16" fill="#0D1B2A" stroke="#7A8FA6" stroke-width="1.6"/>
+  <!-- node-edge icon -->
+  <g stroke="#00CC76" stroke-width="1.6">
+    <line x1="160" y1="410" x2="195" y2="390"/>
+    <line x1="160" y1="410" x2="195" y2="432"/>
+    <line x1="195" y1="390" x2="222" y2="410"/>
+    <line x1="195" y1="432" x2="222" y2="410"/>
+  </g>
+  <g fill="#00CC76">
+    <circle cx="160" cy="410" r="7"/>
+    <circle cx="195" cy="390" r="7"/>
+    <circle cx="195" cy="432" r="7"/>
+    <circle cx="222" cy="410" r="7"/>
+  </g>
+  <text x="250" y="418" font-size="24" font-weight="700" fill="#00CC76">KNOWLEDGE GRAPH</text>
+  <text x="250" y="448" font-size="17" fill="#E8EDF2">entities, edges</text>
+  <text x="250" y="474" font-size="15" fill="#7A8FA6">structure to navigate, not just search</text>
+
+  <!-- convergence: both feed one retrieval step -->
+  <path d="M720 263 L 800 263 L 800 320" fill="none" stroke="#7A8FA6" stroke-width="1.6"/>
+  <path d="M720 433 L 800 433 L 800 320" fill="none" stroke="#7A8FA6" stroke-width="1.6"/>
+  <line x1="800" y1="320" x2="862" y2="320" stroke="#018BFF" stroke-width="2.5" marker-end="url(#arrow-accent)"/>
+  <text x="805" y="238" font-size="19" font-weight="700" fill="#018BFF">one retrieval step</text>
+
+  <!-- retrieval step pill -->
+  <rect x="880" y="270" width="200" height="100" rx="50" fill="#152235" stroke="#018BFF" stroke-width="2.5"/>
+  <text x="980" y="315" text-anchor="middle" font-size="20" font-weight="700" fill="#E8EDF2">RETRIEVAL</text>
+  <text x="980" y="342" text-anchor="middle" font-size="20" font-weight="700" fill="#E8EDF2">STEP</text>
+
+  <!-- arrow to context window -->
+  <line x1="1080" y1="320" x2="1140" y2="320" stroke="#7A8FA6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- context window box -->
+  <rect x="1150" y="255" width="130" height="130" rx="14" fill="#152235" stroke="#7A8FA6" stroke-width="1.6"/>
+  <text x="1215" y="310" text-anchor="middle" font-size="17" fill="#E8EDF2">CONTEXT</text>
+  <text x="1215" y="332" text-anchor="middle" font-size="17" fill="#E8EDF2">WINDOW</text>
+
+  <!-- arrow to LLM -->
+  <line x1="1280" y1="320" x2="1300" y2="320" stroke="#7A8FA6" stroke-width="2"/>
+  <path d="M1300 320 L1330 300 L1330 340 Z" fill="none" stroke="#7A8FA6" stroke-width="1.6" stroke-linejoin="round"/>
+  <text x="1330" y="326" font-size="16" font-weight="700" fill="#E8EDF2">LLM</text>
+
+  <text x="1340" y="600" text-anchor="end" font-size="16" fill="#7A8FA6">not a vector call, then a graph service, then a reranker</text>
+</svg>

@@ -34,7 +34,7 @@ Three membership/mass measurements per case, no relevance judgements:
    Medians of a tag-defined population, the 5e form — no relevance proxy,
    no top-k threshold.
 
-Results and their reading live in ``docs/talk-outline.md``, finding 5k.
+This script's own output is the write-up -- run it to see the numbers.
 """
 
 from __future__ import annotations

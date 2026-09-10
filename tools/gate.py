@@ -1,6 +1,6 @@
 """Abort the pipeline if disambiguation has produced mega-clusters."""
-import os, sys
-sys.path.insert(0, "/Users/nathansmith/Documents/kcdc-2026/graph-algorithms-rag")
+import os, sys, pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 os.environ["NEO4J_DATABASE"] = "lewisclark"
 from graphrank.config import read_query
 r = read_query("""CALL { MATCH (p:Person) RETURN count(p) AS persons }

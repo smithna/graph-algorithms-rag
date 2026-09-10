@@ -26,7 +26,7 @@ capacity* — how discoverable a neighbor's unshared chunks are from an anchor
 seed — as a function of anchor degree. It says nothing about beating cosine
 on any particular question (that needs questions and reads; 5m did two).
 
-Results and their reading live in ``docs/talk-outline.md``, finding 5n.
+This script's own output is the write-up -- run it to see the numbers.
 """
 
 from __future__ import annotations

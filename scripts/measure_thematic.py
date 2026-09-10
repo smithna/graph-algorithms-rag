@@ -32,7 +32,7 @@ windows, grouped by question, with per-strategy membership flags. Fresh hand
 reads are the cost 5h-2 priced in; the old finding-4/5 numbers used the
 proxy-contaminated gold and are not comparable.
 
-Results and their reading live in ``docs/talk-outline.md``, finding 5l.
+This script's own output is the write-up -- run it to see the numbers.
 """
 
 from __future__ import annotations

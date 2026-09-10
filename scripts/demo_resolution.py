@@ -391,8 +391,8 @@ def compare_signals(
             "inverted and never fired, while its co-occurrence\n    branch worked "
             "and swept the corpus — so these numbers flatter the string ladder "
             "and\n    penalise co-occurrence, by construction.\n"
-            "    Build a pre-disambiguation graph to measure this honestly; see "
-            "docs/talk-outline.md.\n"
+            "    Build a pre-disambiguation graph to measure this honestly — see "
+            "the README's note on rawluna.\n"
         )
 
     # The comparison that matters: does the graph signal reach anything the

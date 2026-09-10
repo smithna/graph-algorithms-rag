@@ -34,7 +34,7 @@ hand-read passages plus the 5h-1 receipts; ranks, never top-k, per
 corpus-wide, and the same walk with NEXT_CHUNK added. Projections are
 in-memory, in this database's own GDS catalog; ``--keep-graphs`` retains them.
 
-Results and their reading live in ``docs/talk-outline.md``, finding 5j.
+This script's own output is the write-up -- run it to see the numbers.
 """
 
 from __future__ import annotations

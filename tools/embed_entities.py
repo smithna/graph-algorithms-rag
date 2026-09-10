@@ -36,12 +36,12 @@ Usage:
 """
 import argparse
 import os
-import sys
+import sys, pathlib
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-sys.path.insert(0, "/Users/nathansmith/Documents/kcdc-2026/graph-algorithms-rag")
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--database", default="lewisclark")
