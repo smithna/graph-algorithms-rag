@@ -46,35 +46,30 @@ driving this from Claude Code.
 
 The deck is 1600×900 (16:9), matching last year's 10 × 5.625in deck.
 
-## What's still needed
+## Asset history
 
-**5 asset placeholders**, each rendered as a loud dashed box naming exactly
-what's missing. Find them with:
+All slide assets are in — `grep -n 'class="todo"' deck/index.html` returns
+nothing. For the record, in case a future diagram needs the same treatment:
 
-```bash
-grep -n 'class="todo"' deck/index.html
-```
+**Diagrams — arrows.app exports.** Nathan draws these; no hand-written SVG,
+with two exceptions (§2.1's architecture box and §10.2's QR code, below).
+Three fixes bit the one export already in hand and will bite every one: add a
+`viewBox` (the export ships bare `width`/`height` and won't scale), widen
+nodes until captions stop wrapping mid-word, and check the default `#959aa1`
+edge-label grey against the dark background on the actual projector. Landed
+2026-09-08: **§1.1**, both **§4.8** diagrams, **§5.6**, **§6.2** (its export
+shipped without a `viewBox`; the copy here has one added). Landed 2026-09-09:
+**§4.5's** co-occurrence export (fixed in place), **§4.5's** OVERLAP circles
+(hand-drawn, area-accurate), **§5.3's** mass-distribution build (five
+click-through overlay frames — `assets/images/5_3_ppr_generator.py`
+regenerates them), and **§2.1's** architecture diagram (hand-authored SVG,
+no arrows.app export — `assets/images/2_1_architecture.svg`).
 
-They fall into two groups:
-
-1. **Diagrams — arrows.app exports.** Nathan draws these; no hand-written SVG.
-   Three fixes bit the one export already in hand and will bite every one:
-   add a `viewBox` (the export ships bare `width`/`height` and won't scale),
-   widen nodes until captions stop wrapping mid-word, and check the default
-   `#959aa1` edge-label grey against the dark background on the actual
-   projector.
-   Five are in as of 2026-09-08 — **§1.1**, both **§4.8** diagrams, **§5.6**,
-   and **§6.2** — sourced from `docs/images/` and copied to `assets/images/`
-   (§6.2's export shipped without a `viewBox`; the copy in `assets/images/` has
-   one added). Three more landed 2026-09-09: **§4.5's** co-occurrence export
-   (fixed in place — viewBox, caption wraps, contrast), **§4.5's** OVERLAP
-   circles (hand-drawn, area-accurate), and **§5.3's** mass-distribution build
-   (five click-through overlay frames, exact PPR iterations —
-   `assets/images/5_3_ppr_generator.py` regenerates them).
-2. **The repo QR code** on §10.2 — blocked on the repo actually existing. It
-   has no git remote yet; create it under `smithna`, push, *then* generate the
-   code. Until then §8.1's "the harness is in the repo" and §10.2's "every
-   number with the script that produced it" are not yet true sentences.
+**The repo QR code** on §10.2 — the repo exists now
+(`github.com/smithna/graph-algorithms-rag`, public, pushed) and the code is
+generated from it (`assets/RepoQrCode.png`, verified to decode back to that
+URL). §8.1's "the harness is in the repo" and §10.2's "every number with the
+script that produced it" are both true sentences now.
 
 *(The two supplied images are already in — `assets/KCDC_2026_Sponsors_Slide.jpg`
 as a `contain` background on §0.3b, and `assets/SessionFeedbackQrCode.png` on
