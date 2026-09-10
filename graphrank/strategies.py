@@ -13,10 +13,9 @@ from typing import Callable
 
 import pandas as pd
 
-from . import baseline, communities, cooccurrence, pagerank, paths
+from . import baseline, communities, pagerank, paths
 from .baseline import attach_graph_context, vector_search
 from .communities import CommunityConfig
-from .cooccurrence import CooccurrenceConfig
 from .embedding import embed
 from .models import RetrievalResult, RetrievedChunk
 from .pagerank import ExpandConfig, RerankConfig
@@ -55,20 +54,6 @@ def community_strategy(question: str, k: int = 8, **options) -> RetrievalResult:
     )
 
 
-def cooccurrence_strategy(question: str, k: int = 8, **options) -> RetrievalResult:
-    """Rank by shared entities rather than shared vocabulary.
-
-    The build-time algorithm from section 4, pointed at query time. Two chunks
-    about the same episode can share almost no words while sharing the rare
-    entities that make them the same episode.
-    """
-    with_graph_context = options.pop("with_graph_context", False)
-    config = CooccurrenceConfig(k=k, **options)
-    return cooccurrence.retrieve(
-        question, config=config, with_graph_context=with_graph_context
-    )
-
-
 def path_strategy(question: str, k: int = 8, **options) -> RetrievalResult:
     anchors = options.pop("anchors", None)
     config = PathConfig(k=k, **options)
@@ -90,8 +75,8 @@ def hybrid_strategy(
     """Rank with personalized PageRank, then diversify across communities.
 
     This is the configuration to reach for in production: PageRank decides what
-    is *relevant to this question*, Louvain stops the window filling up with
-    eight restatements of the same relevant thing.
+    is *relevant to this question*, community structure stops the window
+    filling up with eight restatements of the same relevant thing.
     """
     started = time.perf_counter()
     rerank_config = RerankConfig(
@@ -158,13 +143,12 @@ REGISTRY: dict[str, StrategyFn] = {
     "ppr": ppr_strategy,
     "expand": expand_strategy,
     "community": community_strategy,
-    "cooccurrence": cooccurrence_strategy,
     "paths": path_strategy,
     "hybrid": hybrid_strategy,
 }
 
 #: Sensible order for reports — baseline first, then one idea at a time.
-DEFAULT_ORDER = ["vector", "ppr", "expand", "community", "cooccurrence", "hybrid"]
+DEFAULT_ORDER = ["vector", "ppr", "expand", "community", "hybrid"]
 
 
 def get(name: str) -> StrategyFn:

@@ -7,7 +7,7 @@ This package layers three algorithm-driven retrieval strategies on top of the
 Lewis & Clark knowledge graph built by ``corps-of-discovery-graph-rag``:
 
 * :mod:`graphrank.pagerank`    — personalized PageRank reranking
-* :mod:`graphrank.communities` — Louvain community detection
+* :mod:`graphrank.communities` — Leiden community detection
 * :mod:`graphrank.paths`       — Yen's k-shortest-path exploration
 """
 

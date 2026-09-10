@@ -114,10 +114,6 @@ raw surface form as an alias, so freshly extracted nodes already carry
 "Capt. Lewis" and "Chabonah". The right baseline is *post-extraction,
 pre-disambiguation* — which is exactly the state `disambiguate.py` operates on,
 and therefore the right place to judge its signals.
-
-None of this touches the query-time use of the same algorithm. "Which chunks
-share entities with this chunk" is a different question and does real work —
-that is `graphrank/cooccurrence.py`.
 """
 
 from __future__ import annotations

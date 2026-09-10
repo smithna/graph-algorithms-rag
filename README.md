@@ -41,7 +41,6 @@ attribution).
 | Technique | Module | What it fixes |
 |---|---|---|
 | Entity resolution, read-only | [`graphrank/resolution.py`](graphrank/resolution.py) | `CAPT. CLARK` and `WILLIAM CLARK` are separate nodes, so retrieval for Clark misses most of Clark. Node similarity + WCC find the duplicates — without writing anything. |
-| Node similarity retrieval | [`graphrank/cooccurrence.py`](graphrank/cooccurrence.py) | "Chunks that share entities with this chunk" is a different question from "chunks that sound like it", and catches passages embeddings miss. |
 | Personalized PageRank rerank | [`graphrank/pagerank.py`](graphrank/pagerank.py) | Vector top-k ranks by wording. PPR ranks by how central a passage is *to this question's* neighbourhood. |
 | Leiden community detection | [`graphrank/communities.py`](graphrank/communities.py) | Vector top-k returns eight restatements of one thing, and can't answer whole-corpus questions at all. A theme map — communities as a table of contents — fixes both. |
 | Yen's k-shortest paths | [`graphrank/paths.py`](graphrank/paths.py) | Similarity says two concepts are both relevant. Paths say *how they are connected*, with the passage evidencing each hop. |
@@ -264,7 +263,6 @@ graphrank/             # the retrieval/algorithms library
 ├── baseline.py           # pure vector search — the control
 ├── resolution.py         # read-only entity resolution: signals, WCC, scoring, audit
 ├── adjudicate.py         # LLM pair adjudication — opt-in, capped, disk-cached
-├── cooccurrence.py       # node similarity as a query-time retrieval strategy
 ├── pagerank.py           # personalized PageRank reranking
 ├── communities.py        # Leiden detection, summarization, the theme-map
 ├── paths.py              # Yen's k-shortest paths + evidence assembly
