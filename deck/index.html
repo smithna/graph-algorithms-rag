@@ -1861,14 +1861,14 @@ theme  date         what turned up                                   cos#
     the full table stays in <span class="mono">results/benchmark.md</span> for
     Q&amp;A (86.3% vector, +1.8 best, controls 100% every run, paths mean
     76.1 range 69.4–88.9, everything ≤221 ms p95).</p>
-    <p><strong>If the room is visibly flat, the drop-in is 8.3's
-    whole-corpus-comparison bullet</strong> (9.3, the other planned drop-in,
-    was cut outright 2026-09-09 — it's a §10.2 Q&amp;A pocket now). (The 8.4
-    disagreement beat — once the protected room-waker here — was CUT
-    2026-09-09: its setup, the §5 trade-goods and §6 illness wins, had already
-    left the deck, so the confession had no antecedent. Its history is in the
-    outline; the coverage-vs-reasoning lesson survives on the Ghoshal-split
-    glass.)</p>
+    <p>(9.3, the planned drop-in for a flat room, was cut outright 2026-09-09
+    — it's a §10.2 Q&amp;A pocket now. 8.3's own whole-corpus-comparison
+    bullet, the other drop-in candidate, was cut later for citing a source
+    that couldn't be verified.) (The 8.4 disagreement beat — once the
+    protected room-waker here — was CUT 2026-09-09: its setup, the §5
+    trade-goods and §6 illness wins, had already left the deck, so the
+    confession had no antecedent. Its history is in the outline; the
+    coverage-vs-reasoning lesson survives on the reasoning-split glass.)</p>
     <p><strong>Put the feedback QR up before you think you need to.</strong>
     People start packing at minute 50 in the last slot, and §10.2 is where both
     QR codes live.</p>
@@ -1890,8 +1890,6 @@ theme  date         what turned up                                   cos#
     <li>this corpus is <strong>~942k tokens</strong> — it fits in one context window.
         <strong class="warn">If your corpus fits, and you have the input token
         budget, stuff it in and skip retrieval.</strong></li>
-    <li>one hands-on comparison found the whole-corpus baseline beat every
-        retrieval setup; the NICD zero-shot numbers rhyme</li>
   </ul>
   <div class="marker">§8.3 · 1:00</div>
   <aside class="notes">
@@ -1905,9 +1903,6 @@ theme  date         what turned up                                   cos#
     caveat); a weekend benchmark on a 942k-token corpus is not evidence anyone
     should generalize — §2's NICD numbers (510 questions, 28k articles) are
     the stats this talk stands on.</p>
-    <p><em>Bullet three's unnamed comparison is Ghoshal's "When Does Graph RAG
-    Actually Add Value?" — unnamed on stage by choice; he's on §10.2's
-    further-reading list if anyone asks.</em></p>
     <p><strong>1:00. Nobody selling you a graph database will say this from a
     stage, so I will:</strong> on this corpus, at this window size, with the
     entities resolved, <strong>the boring baseline is very good</strong> — and
@@ -1927,7 +1922,7 @@ theme  date         what turned up                                   cos#
   </aside>
 </section>
 
-<section data-menu-title="8.4 The Ghoshal split + 8.4 Three signals">
+<section data-menu-title="8.4 The reasoning split + 8.4 Three signals">
   <h2>Graph algorithms fix <strong class="accent">reasoning</strong> problems.<br>
       They do very little for <strong class="warn">coverage</strong> problems.</h2>
   <p class="sub">If retrieval fails because the right chunk never came back —
@@ -1947,11 +1942,10 @@ theme  date         what turned up                                   cos#
   </div>
   <div class="marker">§8.4 · 1:00 → §8.4 · the shapes</div>
   <aside class="notes">
-    <p class="muted"><em>8.4 The Ghoshal split</em></p>
-    <p><strong>1:00. The reasoning-vs-coverage vocabulary is Ghoshal's framing
-    — he's unnamed on stage by choice (2026-09-09); the credit lives on §10.2's
-    further-reading list. Don't detour into who he is; name him only if
-    asked.</strong></p>
+    <p class="muted"><em>8.4 The reasoning split</em></p>
+    <p><strong>1:00. The reasoning-vs-coverage vocabulary is this talk's own
+    reading of the §8 benchmark</strong> — three worked examples across the
+    hour, not a cited framework. Say it as a conclusion, not a citation.</p>
     <hr>
     <p class="muted"><em>8.4 Three signals</em></p>
     <p><strong>Two of these you watched happen; the third lives in the
@@ -2178,6 +2172,7 @@ RETURN count(c)
   <h3>Thank you. Questions?</h3>
   <div class="two-col" style="margin-top:0.5em">
     <div>
+      <p><strong>Get the code</strong></p>
       <img src="assets/RepoQrCode.png?v=1" alt="QR code for github.com/smithna/graph-algorithms-rag"
            style="width:210px;background:#fff;padding:8px;border-radius:6px">
       <p class="footnote"><strong>github.com/smithna/graph-algorithms-rag</strong><br>
@@ -2196,7 +2191,6 @@ RETURN count(c)
     <li>NICD, <em>Reducing hallucinations with GraphRAG</em> — the 510-question study
         (paper in this repo; their code: <span class="mono">github.com/NICD-UK/graph-based-rag-qa</span>)</li>
     <li>Blumenfeld (Neo4j), <em>Scaling Karpathy's LLM wiki</em> — §2's box-vs-structure line, and §6's seeded-Leiden practice (his conductance thresholds are wiki-graph numbers; §6 ranks with them rather than gating)</li>
-    <li>Ghoshal, <em>When Does Graph RAG Actually Add Value?</em> — small experiment, useful reasoning-vs-coverage framing</li>
     <li>Last year: <em>RAG Has a Relationship Problem</em> —
         <span class="mono">github.com/smithna/corps-of-discovery-graph-rag</span> — the pipeline that built this graph</li>
   </ul>
@@ -2210,7 +2204,8 @@ RETURN count(c)
     missed"</em> — then stop talking.</p>
     <p><em>Q&amp;A pockets, one hidden slide of pointers: filter parity (5g), the
     budget-graph replication (5j), the §5 metric retraction, the paths
-    run-to-run spread, Ghoshal caveats. No Louvain pocket. Plus tune-vs-decide
+    run-to-run spread, the reasoning-vs-coverage split's limits. No Louvain
+    pocket. Plus tune-vs-decide
     (9.3, cut 2026-09-09): operating points don't transfer — a threshold right
     for read-only analysis welded identities together when a merge ran
     downstream; and γ is a corpus decision, not a tunable — pick it by reading
