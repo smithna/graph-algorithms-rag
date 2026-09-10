@@ -8,8 +8,14 @@ paths — to improve context retrieval and ranking in a RAG pipeline.
 
 It runs against the Lewis & Clark knowledge graph built by
 [corps-of-discovery-graph-rag](https://github.com/smithna/corps-of-discovery-graph-rag).
-This repo adds **only** the algorithm and retrieval layer: no re-ingest, no
-re-extraction, no re-embedding of the corpus.
+This repo adds the algorithm and retrieval layer on top of that graph — it
+doesn't re-ingest or re-chunk the source text, and the original chunk
+embeddings are untouched. It does, however, rerun parts of that repo's
+entity-resolution and taxonomy-extraction pipeline against a newer model
+(`gpt-5.6-luna`, via the patches in `tools/corps-patches/`) where measurement
+surfaced problems the original pipeline didn't catch, and adds a handful of
+entity embeddings the original build didn't have. See
+[`tools/README.md`](tools/README.md) for exactly what changed and why.
 
 ---
 
